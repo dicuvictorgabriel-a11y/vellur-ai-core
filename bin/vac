@@ -8,7 +8,7 @@
 #   vac keys list | add <name> | revoke <name>  gateway client keys (OpenCode, apps)
 #   vac expose [--force] | unexpose  publish through Caddy / roll back (backup + validate + auto-restore)
 #   vac gpu init                     create the SSH key + vLLM API key for the GPU workspace
-#   vac gpu connect <host> <port>    point the tunnel at a running GPU workspace, then start it
+#   vac gpu connect [<host>] <port>  point the tunnel at a running GPU workspace, then start it
 #   vac gpu up | down | status | test
 #   vac ui enable | disable          optional Open WebUI (~1 GB RAM)
 #   vac backup | restore <file>
@@ -340,7 +340,12 @@ cmd_gpu() {
 		echo; echo "    $(envval VELLUR_GPU_API_KEY)"
 		echo; echo "Neither key gives access to this VPS, GitHub or any production system." ;;
 	connect)
-		local host=${2:?usage: vac gpu connect <ssh-host> <ssh-port> [user]} port=${3:?usage: vac gpu connect <ssh-host> <ssh-port> [user]} user=${4:-root} fp
+		local host port user fp
+		if [[ ${2:-} =~ ^[0-9]+$ ]]; then   # vac gpu connect <port>: same host as last time (default ssh.hyper.ai)
+			port=$2; host=$(envval GPU_SSH_HOST); host=${host:-ssh.hyper.ai}; user=${3:-root}
+		else
+			host=${2:?usage: vac gpu connect [<ssh-host>] <ssh-port> [user]}; port=${3:?usage: vac gpu connect [<ssh-host>] <ssh-port> [user]}; user=${4:-root}
+		fi
 		[ -f "$s/gpu_ed25519" ] || die "Run first: sudo vac gpu init"
 		[[ $port =~ ^[0-9]+$ ]] || die "Port must be a number."
 		echo "Fetching the SSH host key of $host:$port …"
