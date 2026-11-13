@@ -108,7 +108,7 @@ sudo vac gpu init            # arată cheia publică SSH și cheia API pentru vL
 În HyperAI (consola web):
 1. Abonament Pro + sold mic (aprobarea ta).
 2. Adaugă cheia publică SSH în setările contului.
-3. Creează un spațiu Jupyter cu **RTX 5090**, imagine cu CUDA ≥ 12.8.
+3. Creează un spațiu Jupyter cu **RTX 5090**, familia de imagini **VLLM**, cea mai nouă versiune (la 13.11.2026: `vllm-0.27.1-2404`, CUDA 13.0). Scriptul folosește vLLM-ul din imagine.
 4. În terminalul spațiului: copiază `gpu/hyperai-serve.sh` în `/hyperai/home/`, apoi
    ```bash
    export VLLM_API_KEY='<cheia de la vac gpu init>'

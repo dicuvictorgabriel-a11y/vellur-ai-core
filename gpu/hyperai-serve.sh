@@ -31,17 +31,26 @@ VENV="$HOME_DIR/vllm-venv"
 MODEL_DIR="$HOME_DIR/models/$(echo "$MODEL_REPO" | tr '/' '__')"
 
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
-if [ ! -x "$VENV/bin/vllm" ]; then
-	echo "Installing vLLM ${VLLM_VERSION:-(latest)} into $VENV (persists in /hyperai/home) …"
-	python3 -m venv "$VENV"
-	"$VENV/bin/pip" install -q --upgrade pip
-	"$VENV/bin/pip" install -q "vllm${VLLM_VERSION:+==$VLLM_VERSION}" "huggingface_hub[cli]"
+# Prefer the vLLM that the HyperAI "VLLM" image already ships (e.g. vllm-0.27.1-2404); otherwise
+# install one into a venv under /hyperai/home so it survives restarts.
+if [ -z "$VLLM_VERSION" ] && command -v vllm >/dev/null 2>&1; then
+	VLLM_BIN="$(command -v vllm)"; PY_BIN="$(dirname "$VLLM_BIN")/python3"; [ -x "$PY_BIN" ] || PY_BIN=python3
+	"$PY_BIN" -c 'import huggingface_hub' 2>/dev/null || "$PY_BIN" -m pip install -q "huggingface_hub[cli]" || uv pip install -q --system "huggingface_hub[cli]"
+	HF_BIN="$(command -v hf || echo "$(dirname "$VLLM_BIN")/hf")"
+else
+	if [ ! -x "$VENV/bin/vllm" ]; then
+		echo "Installing vLLM ${VLLM_VERSION:-(latest)} into $VENV (persists in /hyperai/home) …"
+		python3 -m venv "$VENV"
+		"$VENV/bin/pip" install -q --upgrade pip
+		"$VENV/bin/pip" install -q "vllm${VLLM_VERSION:+==$VLLM_VERSION}" "huggingface_hub[cli]"
+	fi
+	VLLM_BIN="$VENV/bin/vllm"; PY_BIN="$VENV/bin/python"; HF_BIN="$VENV/bin/hf"
 fi
-echo "vLLM $("$VENV/bin/python" -c 'import vllm; print(vllm.__version__)')"
+echo "vLLM $("$PY_BIN" -c 'import vllm; print(vllm.__version__)')  ($VLLM_BIN)"
 
 if [ ! -f "$MODEL_DIR/config.json" ]; then
 	echo "Downloading $MODEL_REPO → $MODEL_DIR (once; counts against HyperAI storage) …"
-	"$VENV/bin/hf" download "$MODEL_REPO" --local-dir "$MODEL_DIR"
+	"$HF_BIN" download "$MODEL_REPO" --local-dir "$MODEL_DIR"
 fi
 du -sh "$MODEL_DIR"
 
@@ -59,7 +68,7 @@ ARGS=(serve "$MODEL_DIR"
 [ -n "$EXTRA_ARGS" ] && ARGS+=($EXTRA_ARGS)
 
 echo "Starting: vllm ${ARGS[*]/$VLLM_API_KEY/***}"
-"$VENV/bin/vllm" "${ARGS[@]}" &
+"$VLLM_BIN" "${ARGS[@]}" &
 VLLM_PID=$!
 trap 'kill $VLLM_PID 2>/dev/null || true' EXIT INT TERM
 
