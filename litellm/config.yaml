@@ -1,0 +1,26 @@
+# VELLUR AI CORE — LiteLLM gateway configuration.
+#
+# Models live in models.yaml (included below). With no models the gateway still runs,
+# answers /v1/models with an empty list and rejects chat requests with a clear error.
+# Secrets are never written here: they come from the environment (.env on the server).
+
+include:
+  - models.yaml
+
+litellm_settings:
+  drop_params: true          # ignore OpenAI params a backend does not support instead of failing
+  request_timeout: 600       # long coding generations
+  num_retries: 1
+  telemetry: false
+
+router_settings:
+  routing_strategy: simple-shuffle
+  # Fallbacks between public model names, e.g. when the GPU server is down:
+  # fallbacks:
+  #   - vellur-coder: ["vellur-coder-cloud"]   # only if a paid fallback is ever approved
+
+general_settings:
+  master_key: os.environ/LITELLM_MASTER_KEY
+  # Phase 1 runs without a database: no virtual keys, no spend tracking, no admin UI.
+  # Per-client keys are enforced by Caddy in front of the gateway (see caddy/).
+  disable_spend_logs: true

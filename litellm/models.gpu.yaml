@@ -1,0 +1,14 @@
+# VELLUR AI CORE — models served by the GPU workspace (activated by `sudo vac gpu connect`).
+# Clients only see the public names (vellur-coder …). Changing the GPU provider or the model
+# behind a name changes this file and .env only; OpenCode and apps keep working unchanged.
+model_list:
+  - model_name: vellur-coder
+    litellm_params:
+      model: hosted_vllm/vellur-coder          # = --served-model-name on the GPU (gpu/hyperai-serve.sh)
+      api_base: os.environ/VELLUR_GPU_API_BASE  # default http://gpu-tunnel:8000/v1 (SSH tunnel)
+      api_key: os.environ/VELLUR_GPU_API_KEY    # = VLLM_API_KEY on the GPU
+      timeout: 900
+      stream_timeout: 180
+    model_info:
+      mode: chat
+      supports_function_calling: true

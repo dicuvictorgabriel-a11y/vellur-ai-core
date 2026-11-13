@@ -1,0 +1,38 @@
+{
+  "$schema": "https://opencode.ai/config.json",
+  "provider": {
+    "vellur": {
+      "npm": "@ai-sdk/openai-compatible",
+      "name": "VELLUR AI Core",
+      "options": {
+        "baseURL": "https://ai.vellurdigital.com/v1",
+        "apiKey": "{env:VELLUR_AI_KEY}",
+        "timeout": 900000
+      },
+      "models": {
+        "vellur-coder": {
+          "name": "VELLUR Coder (open-weight, GPU)",
+          "tool_call": true,
+          "reasoning": true,
+          "temperature": true,
+          "limit": { "context": 131072, "output": 32768 }
+        }
+      }
+    }
+  },
+  "model": "vellur/vellur-coder",
+  "small_model": "vellur/vellur-coder",
+  "permission": {
+    "edit": "ask",
+    "webfetch": "ask",
+    "bash": {
+      "*": "ask",
+      "git status*": "allow",
+      "git diff*": "allow",
+      "git log*": "allow",
+      "ls*": "allow",
+      "cat *": "allow",
+      "rg *": "allow"
+    }
+  }
+}

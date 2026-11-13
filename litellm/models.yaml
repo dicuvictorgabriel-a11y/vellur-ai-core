@@ -1,0 +1,5 @@
+# VELLUR AI CORE — active models.
+#
+# Empty on purpose: no inference backend is connected yet (Phase 1).
+# `sudo vac gpu connect` fills it from models.gpu.yaml. More templates: models.example.yaml.
+model_list: []

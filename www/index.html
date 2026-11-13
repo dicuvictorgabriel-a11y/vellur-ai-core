@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>VELLUR AI Core</title>
+<style>
+  :root { --obsidian:#050508; --panel:#0d0d12; --line:#1d1d26; --text:#f4f4f6; --muted:#8a8a98; --lime:#c6ff00; --orange:#ff5a24; }
+  * { box-sizing:border-box; }
+  html,body { margin:0; background:var(--obsidian); color:var(--text); }
+  body { font:15px/1.55 ui-sans-serif, "Inter", "Segoe UI", system-ui, -apple-system, sans-serif; min-height:100vh; display:flex; justify-content:center; padding:56px 16px; }
+  main { width:100%; max-width:640px; }
+  .brand { letter-spacing:.32em; font-weight:700; font-size:12px; color:var(--muted); }
+  h1 { font-weight:600; font-size:30px; letter-spacing:-.01em; margin:10px 0 6px; }
+  p.lead { color:var(--muted); margin:0 0 36px; }
+  section { border:1px solid var(--line); background:var(--panel); border-radius:14px; padding:20px 22px; margin-bottom:14px; }
+  .row { display:flex; justify-content:space-between; align-items:center; gap:12px; padding:9px 0; border-bottom:1px solid var(--line); }
+  .row:last-child { border-bottom:0; }
+  .k { color:var(--muted); }
+  .v { font-family:ui-monospace, "JetBrains Mono", "SF Mono", Menlo, monospace; font-size:13px; text-align:right; overflow-wrap:anywhere; }
+  @media (max-width:560px) { .row { flex-direction:column; align-items:flex-start; gap:2px; } .v { text-align:left; } }
+  .dot { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:8px; background:var(--muted); vertical-align:1px; }
+  .ok .dot { background:var(--lime); box-shadow:0 0 10px var(--lime); } .warn .dot { background:var(--orange); }
+  label { display:block; color:var(--muted); font-size:13px; margin-bottom:8px; }
+  .key { display:flex; gap:8px; }
+  input { flex:1; min-width:0; background:var(--obsidian); color:var(--text); border:1px solid var(--line); border-radius:9px; padding:10px 12px; font:13px ui-monospace, Menlo, monospace; }
+  input:focus, button:focus-visible { outline:2px solid var(--lime); outline-offset:1px; }
+  button { background:var(--lime); color:var(--obsidian); border:0; border-radius:9px; padding:10px 16px; font-weight:600; cursor:pointer; }
+  button.ghost { background:transparent; color:var(--text); border:1px solid var(--line); }
+  button:disabled { opacity:.38; cursor:not-allowed; }
+  .note { color:var(--muted); font-size:12.5px; margin-top:10px; }
+  pre { margin:12px 0 0; padding:12px; background:var(--obsidian); border:1px solid var(--line); border-radius:9px; color:var(--muted); font-size:12px; white-space:pre-wrap; word-break:break-word; max-height:220px; overflow:auto; }
+  footer { color:var(--muted); font-size:12px; margin-top:28px; }
+</style>
+</head>
+<body>
+<main>
+  <div class="brand">VELLUR</div>
+  <h1>AI Core</h1>
+  <p class="lead">Private OpenAI-compatible gateway. Inference runs on a separate GPU workspace that is switched on only when needed.</p>
+
+  <section>
+    <div class="row"><span class="k">Gateway</span><span class="v" id="gw"><span class="dot"></span>checking…</span></div>
+    <div class="row"><span class="k">Endpoint</span><span class="v" id="ep"></span></div>
+    <div class="row"><span class="k">Models</span><span class="v" id="models">enter a key below</span></div>
+    <div class="row"><span class="k">Inference backend</span><span class="v" id="backend">enter a key below</span></div>
+  </section>
+
+  <section>
+    <label for="key">Gateway key (kept only in this browser tab)</label>
+    <div class="key"><input id="key" type="password" autocomplete="off" spellcheck="false" placeholder="sk-vellur-…"><button id="check">Check</button></div>
+    <div class="key" style="margin-top:8px"><button class="ghost" id="test" disabled>Send a real test prompt</button></div>
+    <div class="note">The test prompt uses the GPU for a second. Nothing here is simulated: if no backend is connected, you will see the gateway's real error.</div>
+    <pre id="out" hidden></pre>
+  </section>
+
+  <footer>Administration happens on the server only (<code>sudo vac</code>). This page has no admin functions.</footer>
+</main>
+<script>
+(() => {
+  const $ = (id) => document.getElementById(id);
+  const base = location.origin + "/v1";
+  $("ep").textContent = base;
+  const set = (id, cls, text) => { const el = $(id); el.className = "v " + cls; el.innerHTML = '<span class="dot"></span>'; el.append(text); };
+  fetch("/healthz", { cache: "no-store" }).then(r => set("gw", r.ok ? "ok" : "warn", r.ok ? "online" : "error " + r.status))
+    .catch(() => set("gw", "warn", "unreachable"));
+  try { $("key").value = sessionStorage.getItem("vellurKey") || ""; } catch (e) {}
+  const hdr = () => ({ "Authorization": "Bearer " + $("key").value.trim(), "Content-Type": "application/json" });
+  const show = (t) => { $("out").hidden = false; $("out").textContent = t; };
+  $("check").onclick = async () => {
+    try { sessionStorage.setItem("vellurKey", $("key").value.trim()); } catch (e) {}
+    try {
+      const r = await fetch(base + "/models", { headers: hdr(), cache: "no-store" });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { set("models", "warn", (j.error && j.error.message) || ("error " + r.status)); $("test").disabled = true; return; }
+      const ids = (j.data || []).map(m => m.id);
+      if (ids.length === 0) { set("models", "warn", "none configured"); set("backend", "warn", "no inference backend connected"); $("test").disabled = true; }
+      else { set("models", "ok", ids.join(", ")); set("backend", "", "not tested yet"); $("test").disabled = false; $("test").dataset.model = ids[0]; }
+    } catch (e) { set("models", "warn", "request failed"); }
+  };
+  $("test").onclick = async () => {
+    const model = $("test").dataset.model; set("backend", "", "testing " + model + "…");
+    const t0 = performance.now();
+    try {
+      const r = await fetch(base + "/chat/completions", { method: "POST", headers: hdr(),
+        body: JSON.stringify({ model, max_tokens: 24, messages: [{ role: "user", content: "Reply with one short sentence confirming you are online." }] }) });
+      const j = await r.json().catch(() => ({}));
+      const ms = Math.round(performance.now() - t0);
+      if (r.ok && j.choices) { set("backend", "ok", "answered in " + ms + " ms"); show(j.choices[0].message.content || ""); }
+      else { set("backend", "warn", "unavailable (" + r.status + ")"); show((j.error && j.error.message) || JSON.stringify(j)); }
+    } catch (e) { set("backend", "warn", "request failed"); }
+  };
+})();
+</script>
+</body>
+</html>

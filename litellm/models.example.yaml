@@ -1,0 +1,34 @@
+# VELLUR AI CORE — more model templates. NOT loaded. Copy entries into models.yaml, then:
+#   sudo vac restart gateway
+model_list:
+
+  # Second model on the same GPU workspace (e.g. a faster MoE next to the main coder)
+  - model_name: vellur-coder-fast
+    litellm_params:
+      model: hosted_vllm/vellur-coder-fast
+      api_base: os.environ/VELLUR_GPU_API_BASE
+      api_key: os.environ/VELLUR_GPU_API_KEY
+
+  # Any other provider with an OpenAI-compatible HTTPS endpoint (RunPod, Vast, own server, …).
+  # Set VELLUR_GPU_API_BASE=https://…/v1 in .env; the SSH tunnel is then not needed.
+  - model_name: vellur-coder
+    litellm_params:
+      model: hosted_vllm/<served-model-name>
+      api_base: os.environ/VELLUR_GPU_API_BASE
+      api_key: os.environ/VELLUR_GPU_API_KEY
+
+  # Embeddings for Open WebUI documents (optional)
+  - model_name: vellur-embed
+    litellm_params:
+      model: hosted_vllm/vellur-embed
+      api_base: os.environ/VELLUR_EMBED_API_BASE
+      api_key: os.environ/VELLUR_GPU_API_KEY
+    model_info:
+      mode: embedding
+
+  # Commercial fallback — OFF. Only if you decide later to pay for an API. Then add to config.yaml:
+  #   router_settings: { fallbacks: [ { "vellur-coder": ["vellur-coder-cloud"] } ] }
+  # - model_name: vellur-coder-cloud
+  #   litellm_params:
+  #     model: openrouter/qwen/<model>
+  #     api_key: os.environ/OPENROUTER_API_KEY
