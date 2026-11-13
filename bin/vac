@@ -372,7 +372,7 @@ cmd_gpu() {
 		local gp mk out
 		gp=$(envval GATEWAY_PORT); mk=$(envval LITELLM_MASTER_KEY)
 		out=$(curl -sS -m 120 -H "Authorization: Bearer $mk" -H 'content-type: application/json' \
-			-d '{"model":"vellur-coder","max_tokens":16,"messages":[{"role":"user","content":"Reply with the single word: ready"}]}' \
+			-d '{"model":"vellur-coder","max_tokens":400,"messages":[{"role":"user","content":"Reply with the single word: ready"}]}' \
 			"http://127.0.0.1:$gp/v1/chat/completions" || true)
 		if echo "$out" | grep -q '"choices"'; then ok "The backend answered through the gateway: $(echo "$out" | grep -oE '"content":"[^"]*"' | head -1)"
 		else bad "No inference yet: $(echo "$out" | head -c 300)"; return 1; fi ;;

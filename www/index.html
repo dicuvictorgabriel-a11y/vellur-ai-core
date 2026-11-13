@@ -84,10 +84,10 @@
     const t0 = performance.now();
     try {
       const r = await fetch(base + "/chat/completions", { method: "POST", headers: hdr(),
-        body: JSON.stringify({ model, max_tokens: 24, messages: [{ role: "user", content: "Reply with one short sentence confirming you are online." }] }) });
+        body: JSON.stringify({ model, max_tokens: 400, messages: [{ role: "user", content: "Reply with one short sentence confirming you are online." }] }) });
       const j = await r.json().catch(() => ({}));
       const ms = Math.round(performance.now() - t0);
-      if (r.ok && j.choices) { set("backend", "ok", "answered in " + ms + " ms"); show(j.choices[0].message.content || ""); }
+      if (r.ok && j.choices) { set("backend", "ok", "answered in " + ms + " ms"); const m = j.choices[0].message || {}; show((m.content || "").trim() || ("[model was still thinking]\n" + (m.reasoning_content || m.reasoning || ""))); }
       else { set("backend", "warn", "unavailable (" + r.status + ")"); show((j.error && j.error.message) || JSON.stringify(j)); }
     } catch (e) { set("backend", "warn", "request failed"); }
   };
