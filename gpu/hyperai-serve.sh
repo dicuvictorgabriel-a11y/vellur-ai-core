@@ -21,6 +21,7 @@ VLLM_VERSION="${VLLM_VERSION:-}"                 # pin it once a version is conf
 SERVED_NAME="${SERVED_NAME:-vellur-coder}"
 MAX_MODEL_LEN="${MAX_MODEL_LEN:-131072}"        # 128k: room for OpenCode + repository context
 GPU_MEM="${GPU_MEM:-0.92}"
+KV_CACHE_DTYPE="${KV_CACHE_DTYPE:-fp8}"          # RTX 3090 (Ampere): use "auto" — safest there
 TOOL_PARSER="${TOOL_PARSER:-qwen3_coder}"       # Qwen3-Coder / Qwen3.5+ family — verify on the model card
 REASONING_PARSER="${REASONING_PARSER:-qwen3}"   # empty to disable
 IDLE_MINUTES="${IDLE_MINUTES:-20}"
@@ -60,7 +61,7 @@ ARGS=(serve "$MODEL_DIR"
 	--served-model-name "$SERVED_NAME"
 	--max-model-len "$MAX_MODEL_LEN"
 	--gpu-memory-utilization "$GPU_MEM"
-	--kv-cache-dtype fp8
+	--kv-cache-dtype "$KV_CACHE_DTYPE"
 	--enable-prefix-caching
 	--enable-auto-tool-choice --tool-call-parser "$TOOL_PARSER")
 [ -n "$REASONING_PARSER" ] && ARGS+=(--reasoning-parser "$REASONING_PARSER")

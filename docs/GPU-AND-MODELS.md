@@ -115,6 +115,7 @@ sudo vac gpu init            # arată cheia publică SSH și cheia API pentru vL
    export MODEL_REPO='<build NVFP4/AWQ verificat al Qwen3.8-27B>'
    bash /hyperai/home/hyperai-serve.sh        # prima dată: instalează vLLM și descarcă modelul (o dată)
    ```
+   Pe **RTX 3090 (24 GB)**: `MODEL_REPO=RedHatAI/Qwen3.8-27B-INT4`, `MAX_MODEL_LEN=32768`, `KV_CACHE_DTYPE=auto`.
 5. Notează host-ul și portul din panoul „SSH Access”.
 
 Pe VPS:
