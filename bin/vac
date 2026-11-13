@@ -206,7 +206,16 @@ refresh_caddy() { if is_exposed; then caddy_apply with-import; fi; }
 
 # ── DNS ────────────────────────────────────────────────────────────────────────────
 server_ips() { { hostname -I 2>/dev/null || true; ip -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 || true; } | tr ' ' '\n' | sed '/^$/d' | sort -u || true; }
-dns_points_here() { local ip; for ip in $(getent ahosts "$1" 2>/dev/null | awk '{print $1}' | sort -u); do server_ips | grep -qxF "$ip" && return 0; done; return 1; }
+# Addresses that reach this server: its own interface addresses, plus the addresses of the sites the
+# existing Caddy already serves (covers VPSs whose public IP is NAT-ed and not on any interface).
+known_ips() {
+	server_ips
+	[ -r "$CADDYFILE" ] && awk '/^[a-z0-9.-]+\.[a-z][a-z]+[ \t]*\{[ \t]*$/ {print $1}' "$CADDYFILE" | sort -u | while read -r site; do
+		getent ahosts "$site" 2>/dev/null | awk '{print $1}'
+	done
+}
+resolved_ips() { getent ahosts "$1" 2>/dev/null | awk '{print $1}' | sort -u; }
+dns_points_here() { local ip known; known=$(known_ips | sort -u); for ip in $(resolved_ips "$1"); do echo "$known" | grep -qxF "$ip" && return 0; done; return 1; }
 
 # ── commands ───────────────────────────────────────────────────────────────────────
 cmd_status() {
@@ -254,7 +263,8 @@ cmd_expose() {
 	if is_exposed; then caddy_apply with-import; return; fi   # already public: just refresh the generated site
 	if [ "${1:-}" != --force ]; then
 		for d in $(envval AI_DOMAIN) $(envval GATEWAY_DOMAIN); do
-			if dns_points_here "$d"; then ok "DNS $d → this server"; else bad_dns=1; warn "DNS $d does not point to this server yet"; fi
+			if dns_points_here "$d"; then ok "DNS $d → this server"
+			else bad_dns=1; warn "DNS $d does not point to this server yet (resolves to: $(resolved_ips "$d" | tr '\n' ' ' | sed 's/ $//;s/^$/nothing/'); this server: $(known_ips | sort -u | tr '\n' ' '))"; fi
 		done
 		if [ $bad_dns = 1 ]; then
 			ips=$(server_ips | grep -vE '^(10|127|172\.(1[6-9]|2[0-9]|3[01])|192\.168)\.|^f[cd]|^fe80|:' | head -1 || true)
@@ -262,6 +272,7 @@ cmd_expose() {
 			echo "    Type A   Name ai   Content ${ips:-<server IPv4>}"
 			[ -n "$(envval GATEWAY_DOMAIN)" ] && echo "    Type A   Name ${GATEWAY_LABEL:-gateway.ai}   Content ${ips:-<server IPv4>}"
 			echo "  Then run again:  sudo vac expose"
+			echo "  If the record already exists and resolves to this server's public IP, publish anyway: sudo vac expose --force"
 			exit 2
 		fi
 	fi
