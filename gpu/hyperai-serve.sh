@@ -49,10 +49,10 @@ else
 fi
 echo "vLLM $("$PY_BIN" -c 'import vllm; print(vllm.__version__)')  ($VLLM_BIN)"
 
-if [ ! -f "$MODEL_DIR/config.json" ]; then
-	echo "Downloading $MODEL_REPO → $MODEL_DIR (once; counts against HyperAI storage) …"
-	"$HF_BIN" download "$MODEL_REPO" --local-dir "$MODEL_DIR"
-fi
+# Always run: it resumes an interrupted download and returns in seconds when everything is present.
+# Slow? Ctrl+C, then `proxy-on` (HyperAI's accelerator) or `export HF_ENDPOINT=https://hf-mirror.com`, and run again.
+echo "Downloading/checking $MODEL_REPO → $MODEL_DIR (counts against HyperAI storage) …"
+"$HF_BIN" download "$MODEL_REPO" --local-dir "$MODEL_DIR"
 du -sh "$MODEL_DIR"
 
 ARGS=(serve "$MODEL_DIR"
