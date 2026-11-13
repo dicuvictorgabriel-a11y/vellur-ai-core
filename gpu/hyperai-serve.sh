@@ -14,14 +14,26 @@
 # Still: stop the workspace yourself in the HyperAI console when you finish.
 set -euo pipefail
 
+# Settings saved once in /hyperai/home/vellur.env (persists across restarts), e.g.:
+#   VLLM_API_KEY='vllm-…'
+#   MODEL_REPO='RedHatAI/Qwen3.8-27B-INT4'
+# Then starting is just:  bash /hyperai/home/hyperai-serve.sh
+[ -f /hyperai/home/vellur.env ] && { set -a; . /hyperai/home/vellur.env; set +a; }
+
 : "${VLLM_API_KEY:?set VLLM_API_KEY (from: sudo vac gpu init)}"
 : "${MODEL_REPO:?set MODEL_REPO, e.g. a Qwen3.8-27B NVFP4/AWQ build verified on Hugging Face}"
 HOME_DIR="${HOME_DIR:-/hyperai/home}"
 VLLM_VERSION="${VLLM_VERSION:-}"                 # pin it once a version is confirmed to support the model
 SERVED_NAME="${SERVED_NAME:-vellur-coder}"
-MAX_MODEL_LEN="${MAX_MODEL_LEN:-131072}"        # 128k: room for OpenCode + repository context
+# Defaults follow the GPU: >= 30 GB VRAM -> 128k context; smaller cards (RTX 3090, 24 GB) -> 32k.
+# FP8 KV cache only on Ada/Hopper/Blackwell (compute capability >= 8.9); older cards use "auto".
+VRAM_MIB=$(nvidia-smi --query-gpu=memory.total --format=csv,noheader,nounits | head -1 | tr -d ' ')
+CC=$(nvidia-smi --query-gpu=compute_cap --format=csv,noheader | head -1 | tr -d ' .')
+if [ "${VRAM_MIB:-0}" -ge 30000 ]; then DEF_LEN=131072; else DEF_LEN=32768; fi
+if [ "${CC:-0}" -ge 89 ]; then DEF_KV=fp8; else DEF_KV=auto; fi
+MAX_MODEL_LEN="${MAX_MODEL_LEN:-$DEF_LEN}"
 GPU_MEM="${GPU_MEM:-0.92}"
-KV_CACHE_DTYPE="${KV_CACHE_DTYPE:-fp8}"          # RTX 3090 (Ampere): use "auto" — safest there
+KV_CACHE_DTYPE="${KV_CACHE_DTYPE:-$DEF_KV}"
 TOOL_PARSER="${TOOL_PARSER:-qwen3_coder}"       # Qwen3-Coder / Qwen3.5+ family — verify on the model card
 REASONING_PARSER="${REASONING_PARSER:-qwen3}"   # empty to disable
 IDLE_MINUTES="${IDLE_MINUTES:-20}"
@@ -32,6 +44,7 @@ VENV="$HOME_DIR/vllm-venv"
 MODEL_DIR="$HOME_DIR/models/$(echo "$MODEL_REPO" | tr '/' '__')"
 
 nvidia-smi --query-gpu=name,memory.total,driver_version --format=csv,noheader
+echo "settings: context $MAX_MODEL_LEN tokens, KV cache $KV_CACHE_DTYPE"
 # Prefer the vLLM that the HyperAI "VLLM" image already ships (e.g. vllm-0.27.1-2404); otherwise
 # install one into a venv under /hyperai/home so it survives restarts.
 if [ -z "$VLLM_VERSION" ] && command -v vllm >/dev/null 2>&1; then
@@ -68,6 +81,7 @@ ARGS=(serve "$MODEL_DIR"
 # shellcheck disable=SC2206
 [ -n "$EXTRA_ARGS" ] && ARGS+=($EXTRA_ARGS)
 
+pkill -f "vllm serve" 2>/dev/null && sleep 5 || true
 echo "Starting: vllm ${ARGS[*]/$VLLM_API_KEY/***}"
 "$VLLM_BIN" "${ARGS[@]}" &
 VLLM_PID=$!

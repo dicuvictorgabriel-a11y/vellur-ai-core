@@ -351,10 +351,16 @@ cmd_gpu() {
 		echo "Fetching the SSH host key of $host:$port …"
 		ssh-keyscan -T 10 -p "$port" "$host" 2>/dev/null </dev/null > "$s/gpu_known_hosts.new" || true
 		[ -s "$s/gpu_known_hosts.new" ] || die "No answer from $host:$port. Is the GPU workspace running?"
-		echo "Host key fingerprints (compare with the provider's panel if it shows them):"
-		ssh-keygen -lf "$s/gpu_known_hosts.new" </dev/null | sed 's/^/    /'
-		read -r -p "Trust this host? [y/N] " fp || fp=""; [[ $fp =~ ^[Yy]$ ]] || { rm -f "$s/gpu_known_hosts.new"; die "Cancelled."; }
-		mv -f "$s/gpu_known_hosts.new" "$s/gpu_known_hosts"; chown "$TUNNEL_UID:$TUNNEL_UID" "$s/gpu_known_hosts"; chmod 644 "$s/gpu_known_hosts"
+		if same_host_key "$host" "$s/gpu_known_hosts.new" "$s/gpu_known_hosts"; then
+			ok "Same host key as the one you already trusted for $host: accepted."
+		else
+			echo "Host key fingerprints (compare with the provider's panel if it shows them):"
+			ssh-keygen -lf "$s/gpu_known_hosts.new" </dev/null | sed 's/^/    /'
+			read -r -p "Trust this host? [y/N] " fp || fp=""; [[ $fp =~ ^[Yy]$ ]] || { rm -f "$s/gpu_known_hosts.new"; die "Cancelled."; }
+		fi
+		{ grep -v "^\[$host\]:$port \|^$host " "$s/gpu_known_hosts" 2>/dev/null || true; cat "$s/gpu_known_hosts.new"; } | sort -u > "$s/gpu_known_hosts.tmp"
+		mv -f "$s/gpu_known_hosts.tmp" "$s/gpu_known_hosts"; rm -f "$s/gpu_known_hosts.new"
+		chown "$TUNNEL_UID:$TUNNEL_UID" "$s/gpu_known_hosts"; chmod 644 "$s/gpu_known_hosts"
 		setenv GPU_SSH_HOST "$host"; setenv GPU_SSH_PORT "$port"; setenv GPU_SSH_USER "$user"
 		ensure_gpu_models
 		cmd_gpu up ;;
@@ -383,6 +389,16 @@ cmd_gpu() {
 		else bad "No inference yet: $(echo "$out" | head -c 300)"; return 1; fi ;;
 	*) die "usage: vac gpu init|connect <host> <port>|up|down|status|test" ;;
 	esac
+}
+
+# True when every key the host offers now was already trusted for the same host name (any port):
+# HyperAI uses one SSH gateway (ssh.hyper.ai) and only the port changes between executions.
+same_host_key() {   # $1 host, $2 new scan, $3 known_hosts
+	[ -s "$3" ] || return 1
+	local known
+	known=$(awk -v h="$1" '{split($1,a,","); n=a[1]; sub(/^\[/,"",n); sub(/\]:[0-9]+$/,"",n); if (n==h) print $2" "$3}' "$3" | sort -u)
+	[ -n "$known" ] || return 1
+	awk '{print $2" "$3}' "$2" | sort -u | while read -r k; do echo "$known" | grep -qxF "$k" || exit 1; done
 }
 
 ensure_gpu_models() {   # activate the GPU model entries once (keeps any custom models.yaml)

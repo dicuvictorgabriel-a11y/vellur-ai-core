@@ -115,7 +115,7 @@ sudo vac gpu init            # arată cheia publică SSH și cheia API pentru vL
    export MODEL_REPO='<build NVFP4/AWQ verificat al Qwen3.8-27B>'
    bash /hyperai/home/hyperai-serve.sh        # prima dată: instalează vLLM și descarcă modelul (o dată)
    ```
-   Pe **RTX 3090 (24 GB)**: `MODEL_REPO=RedHatAI/Qwen3.8-27B-INT4`, `MAX_MODEL_LEN=32768`, `KV_CACHE_DTYPE=auto`.
+   Scriptul alege singur contextul și tipul de cache după placă (RTX 3090: 32k; 5090/H100: 128k).
 5. Notează host-ul și portul din panoul „SSH Access”.
 
 Pe VPS:
@@ -126,7 +126,18 @@ sudo vac verify
 La final de zi: `sudo vac gpu down` **și** oprește spațiul în consola HyperAI. Plasă de siguranță: scriptul oprește
 vLLM după 20 min fără cereri, iar HyperAI oprește spațiul după încă ~30 min.
 
-## 6. Ce rămâne neverificat până la activare
+## 6. Rutina zilnică (după configurarea o singură dată)
+
+O singură dată, în terminalul JupyterLab, creezi `/hyperai/home/vellur.env` (mode 600) cu două rânduri:
+`VLLM_API_KEY='vllm-…'` și `MODEL_REPO='RedHatAI/Qwen3.8-27B-INT4'`.
+Opțional, experimental: `cp /hyperai/home/autostart.sh /hyperai/home/dependencies.sh` (modelul pornește singur).
+
+Apoi, de fiecare dată:
+- **Pornire:** HyperAI → execuție nouă (placă liberă) → în JupyterLab `bash /hyperai/home/hyperai-serve.sh`
+  (sau nimic, dacă merge pornirea automată) → pe VPS `sudo vac gpu connect <port>`.
+- **Oprire:** HyperAI → Stop execution. Tunelul de pe VPS poate rămâne pornit: reîncearcă la 30 s, fără cost.
+
+## 7. Ce rămâne neverificat
 
 - Funcționarea reală pe HyperAI: SSH cu cheie, portul, viteza descărcării, versiunea vLLM compatibilă cu Qwen3.8 pe 5090.
 - Parserele de tool calling (`qwen3_coder`) și de raționament (`qwen3`) pentru Qwen3.8: de confirmat pe model card.
