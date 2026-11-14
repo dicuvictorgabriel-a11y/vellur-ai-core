@@ -6,78 +6,162 @@
 <meta name="robots" content="noindex, nofollow">
 <title>VELLUR AI Core</title>
 <style>
-:root{--bg:#050508;--panel:#0d0d12;--line:#1d1d26;--text:#f4f4f6;--muted:#8a8a98;--lime:#c6ff00;--orange:#ff5a24;--cyan:#00c9db}
-*{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text)}
-body{font:14.5px/1.5 ui-sans-serif,"Inter","Segoe UI",system-ui,-apple-system,sans-serif;padding:32px 16px 64px}
-main{max-width:1100px;margin:0 auto}
-.brand{letter-spacing:.32em;font-weight:700;font-size:12px;color:var(--muted)}
-h1{font-weight:600;font-size:28px;margin:6px 0 4px}h2{font-size:13px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0 0 14px}
-.sub{color:var(--muted);margin:0 0 24px}
+:root{--bg:#0d0d0f;--side:#131316;--panel:#17171b;--raise:#1d1d22;--line:#26262d;--line2:#33333c;--text:#ececef;--soft:#c9c9d1;--muted:#8b8b96;--lime:#c6ff00;--accent:#d4ff4d;--orange:#ff7a4d;--cyan:#5fd4e0;--r:12px}
+*{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--text)}
+body{font:15px/1.55 "Inter","SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;display:flex;min-height:100dvh}
+code,pre,.mono{font-family:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace}
+a{color:inherit}
+/* shell */
+#side{width:268px;flex:none;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;height:100dvh;position:sticky;top:0;padding:14px 10px}
+.logo{display:flex;align-items:center;gap:10px;padding:6px 10px 14px;font-weight:600;letter-spacing:.01em}
+.logo i{width:22px;height:22px;border-radius:7px;background:linear-gradient(140deg,var(--accent),#7da800);display:block}
+.logo small{color:var(--muted);font-weight:500;letter-spacing:.18em;font-size:10.5px;display:block;line-height:1}
+#tabs{display:flex;flex-direction:column;gap:2px}
+#tabs button,.navbtn{display:flex;align-items:center;gap:10px;width:100%;background:transparent;color:var(--soft);border:0;border-radius:9px;padding:8px 10px;font:inherit;font-size:14px;font-weight:500;text-align:left;cursor:pointer}
+#tabs button:hover,.navbtn:hover{background:var(--raise)}#tabs button.on{background:var(--raise);color:var(--text)}
+#tabs button.on svg{color:var(--accent)}
+#tabs .sep{height:1px;background:var(--line);margin:8px 6px}
+svg.ic{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
+.sidehead{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;padding:16px 10px 6px}
+#convList{flex:1;overflow:auto;display:flex;flex-direction:column;gap:1px;min-height:40px}
+#convList button{background:transparent;border:0;color:var(--soft);text-align:left;padding:7px 10px;border-radius:8px;font:inherit;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;flex:none}
+#convList button:hover{background:var(--raise)}#convList button.on{background:var(--raise);color:var(--text)}
+#sideBudget{border-top:1px solid var(--line);padding:12px 10px 4px;font-size:12.5px;color:var(--muted)}
+#sideBudget b{color:var(--text);font-weight:600}
+.bar{height:5px;border-radius:99px;background:#232329;overflow:hidden;margin:8px 0 4px}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .4s}
+.bar.warn i{background:#ffd23f}.bar.hot i{background:var(--orange)}
+main{flex:1;min-width:0;padding:28px 28px 64px;overflow:auto;height:100dvh}
+.wrap{max-width:1040px;margin:0 auto}
+#topbar{display:none}
+body:not(.is-admin) #side{display:none}body:not(.is-admin) main{height:auto}
+body.is-admin .pubhead{display:none}
+.brand{letter-spacing:.32em;font-weight:700;font-size:11px;color:var(--muted)}
+h1{font-weight:600;font-size:26px;letter-spacing:-.01em;margin:6px 0 4px}
+h2{font-size:15px;font-weight:600;margin:0 0 12px;letter-spacing:-.005em}
+.sub{color:var(--muted);margin:0 0 22px}.sub2{color:var(--muted);font-size:13px;margin:-6px 0 14px;max-width:760px}
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:18px 20px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;min-width:0}
 .c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}.c4{grid-column:span 4}
-@media(max-width:860px){.c8,.c6,.c4{grid-column:span 12}}
+@media(max-width:1100px){.c8,.c6,.c4{grid-column:span 12}}
+@media(min-width:1101px){body:not(.is-admin) .c4{grid-column:span 6}}
+body:not(.is-admin) .admin-only{display:none!important}body.is-admin .public-only{display:none!important}
+[hidden]{display:none!important}
 .hero{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
-.phase{font-size:24px;font-weight:600;display:flex;align-items:center;gap:12px}
-.dot{width:12px;height:12px;border-radius:50%;background:var(--muted);flex:none}
-.ok .dot{background:var(--lime);box-shadow:0 0 14px var(--lime)}.busy .dot{background:var(--cyan);box-shadow:0 0 14px var(--cyan);animation:p 1.2s infinite}
-.bad .dot{background:var(--orange)}@keyframes p{50%{opacity:.35}}
+.phase{font-size:20px;font-weight:600;display:flex;align-items:center;gap:10px}
+.dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
+.ok .dot{background:var(--accent);box-shadow:0 0 10px rgba(198,255,0,.5)}.busy .dot{background:var(--cyan);animation:p 1.2s infinite}.bad .dot{background:var(--orange)}
+@keyframes p{50%{opacity:.35}}
 .steps{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
 .step{font-size:11.5px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
-.step.on{border-color:var(--cyan);color:var(--cyan)}.step.done{border-color:#2c3a10;color:var(--lime)}
-.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px}.kv dt{color:var(--muted)}.kv dd{margin:0;text-align:right;font-family:ui-monospace,Menlo,monospace;font-size:13px;overflow-wrap:anywhere}
-.bar{height:8px;border-radius:99px;background:#16161d;overflow:hidden;margin:10px 0 4px}.bar i{display:block;height:100%;background:var(--lime);width:0;transition:width .4s}
-.bar.warn i{background:#ffd23f}.bar.hot i{background:var(--orange)}
-.note{color:var(--muted);font-size:12.5px;margin-top:8px}
+.step.on{border-color:var(--cyan);color:var(--cyan)}.step.done{border-color:#3a4a14;color:var(--accent)}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;margin:0;font-size:13.5px}.kv dt{color:var(--muted)}.kv dd{margin:0;text-align:right;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12.5px;overflow-wrap:anywhere}
+.note,.viewnote{color:var(--muted);font-size:12.5px;margin-top:8px}
 .msg{margin-top:12px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);font-size:13px;display:none}
-.msg.show{display:block}.msg.bad{border-color:#4a1d10;color:#ffb39a}.msg.info{border-color:#103a40;color:#9eeef6}
-button{background:var(--lime);color:var(--bg);border:0;border-radius:9px;padding:9px 15px;font-weight:600;cursor:pointer;font:inherit;font-weight:600}
-button.ghost{background:transparent;color:var(--text);border:1px solid var(--line)}button.danger{background:transparent;color:var(--orange);border:1px solid #4a1d10}
-button:disabled{opacity:.35;cursor:not-allowed}
+.msg.show{display:block}.msg.bad{border-color:#5a2616;color:#ffb9a3;background:#1c1210}.msg.info{border-color:#1d4a50;color:#a8eef5;background:#0f191b}
+button{background:var(--text);color:#111;border:0;border-radius:9px;padding:8px 14px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;transition:opacity .15s,background .15s}
+button:hover{opacity:.9}button.ghost{background:transparent;color:var(--text);border:1px solid var(--line2)}button.ghost:hover{background:var(--raise);opacity:1}
+button.danger{background:transparent;color:var(--orange);border:1px solid #5a2616}button:disabled{opacity:.35;cursor:not-allowed}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
-label{display:block;font-size:12.5px;color:var(--muted);margin:10px 0 5px}
-input,select,textarea{width:100%;background:var(--bg);color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font:inherit}
-input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid var(--lime);outline-offset:1px}
-.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:8px 0;border-bottom:1px solid var(--line)}
-.toggle:last-child{border-bottom:0}.toggle span{font-size:13.5px}.toggle small{display:block;color:var(--muted);font-size:12px}
-.sw{position:relative;width:42px;height:24px;flex:none}.sw input{opacity:0;width:0;height:0}
-.sw b{position:absolute;inset:0;background:#1d1d26;border-radius:99px;transition:.2s}.sw b:after{content:"";position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--muted);transition:.2s}
-.sw input:checked+b{background:#2c3a10}.sw input:checked+b:after{transform:translateX(18px);background:var(--lime)}
-.f2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
-.chat{height:300px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:12px;background:var(--bg);font-size:13.5px}
-.chat .u{color:var(--muted);margin:10px 0 2px}.chat .a{white-space:pre-wrap}
-table{width:100%;border-collapse:collapse;font-size:12.5px}td,th{text-align:left;padding:6px 8px;border-bottom:1px solid var(--line);vertical-align:top}
-th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monospace;white-space:nowrap}
-.lv-alert,.lv-error{color:#ffb39a}.lv-warn{color:#ffd23f}
-.pill{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
-.pill.live{border-color:#4a1d10;color:var(--orange)}.pill.dry{border-color:#103a40;color:var(--cyan)}
-a.btn{display:inline-block;background:var(--lime);color:var(--bg);border-radius:9px;padding:9px 15px;font-weight:600;text-decoration:none}
-body:not(.is-admin) .admin-only{display:none!important}
-@media(min-width:861px){body:not(.is-admin) .c4{grid-column:span 6}}body.is-admin .public-only{display:none!important}
-.viewnote{color:var(--muted);font-size:12.5px;margin-top:10px}
-nav.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
-nav.tabs button{background:transparent;color:var(--muted);border:1px solid var(--line);padding:7px 14px;border-radius:99px;font-weight:500}
-nav.tabs button.on{color:var(--bg);background:var(--lime);border-color:var(--lime);font-weight:600}
-.msgs{height:46vh;min-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--bg);font-size:14px}
-.m{margin:0 0 14px}.m .who{font-size:11.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}
-.m .txt{white-space:pre-wrap;overflow-wrap:anywhere}.m.user .txt{color:#d9d9e2}
-.m pre,pre.box{background:#0a0a0f;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font:12.5px/1.45 ui-monospace,Menlo,monospace;white-space:pre;margin:8px 0}
-pre.box{max-height:360px;white-space:pre-wrap;overflow-wrap:anywhere}
-.m code{font:12.5px ui-monospace,Menlo,monospace;background:#14141c;padding:1px 4px;border-radius:4px}
-.good{color:var(--lime)}.warnc{color:#ffd23f}.badc{color:#ffb39a}
-textarea{resize:vertical;font:13px/1.45 ui-monospace,Menlo,monospace}
+label{display:block;font-size:12.5px;color:var(--muted);margin:12px 0 5px}
+input,select,textarea{width:100%;background:#101013;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font:inherit;font-size:14px}
+textarea{resize:vertical;font:13px/1.5 "JetBrains Mono",ui-monospace,Menlo,monospace}
+input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid rgba(212,255,77,.55);outline-offset:1px;border-color:transparent}
+.toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
+.toggle:last-child{border-bottom:0}.toggle span{font-size:14px}.toggle small{display:block;color:var(--muted);font-size:12px}
+.sw{position:relative;width:40px;height:23px;flex:none;margin:0}.sw input{opacity:0;width:0;height:0}
+.sw b{position:absolute;inset:0;background:#2a2a31;border-radius:99px;transition:.2s}.sw b:after{content:"";position:absolute;left:3px;top:3px;width:17px;height:17px;border-radius:50%;background:#9a9aa6;transition:.2s}
+.sw input:checked+b{background:#3d4d12}.sw input:checked+b:after{transform:translateX(17px);background:var(--accent)}
+.f2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}@media(max-width:640px){.f2{grid-template-columns:1fr}}
+table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
+th{color:var(--muted);font-weight:500;font-size:12px}td.m{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;white-space:nowrap;font-size:12px}
 td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
-.sub2{color:var(--muted);font-size:12.5px;margin:-6px 0 12px}
+.lv-alert,.lv-error,.badc{color:#ffb9a3}.lv-warn,.warnc{color:#ffd76a}.good{color:var(--accent)}
+.pill{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;border:1px solid var(--line2);color:var(--muted)}
+.pill.live{border-color:#5a2616;color:var(--orange)}.pill.dry{border-color:#1d4a50;color:var(--cyan)}
+pre.box{background:#0a0a0c;border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;font-size:12.5px;line-height:1.5;max-height:340px;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0}
+details.adv{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}details.adv summary{cursor:pointer;color:var(--muted);font-size:13px}
+/* chat */
+body.is-admin[data-view="chat"] main{padding:0;overflow:hidden;display:flex;flex-direction:column}
+body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{display:contents}
+#chatCard{background:transparent;border:0;border-radius:0;padding:0;display:flex;flex-direction:column;flex:1;min-height:0}
+.chathead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 20px;border-bottom:1px solid var(--line)}
+.chathead select{width:auto;background:transparent;border-color:transparent;font-weight:600;padding:6px 8px}
+.chathead select:hover{background:var(--raise)}
+#convSel{display:none}
+.msgs{flex:1;min-height:0;overflow:auto;padding:28px 20px 12px;scroll-behavior:smooth}
+.msgs>*{max-width:760px;margin-left:auto;margin-right:auto}
+.m{margin-bottom:22px}.m .who{display:none}
+.m .txt{white-space:pre-wrap;overflow-wrap:anywhere;font-size:15.5px;line-height:1.65}
+.m.user{display:flex;justify-content:flex-end}.m.user .txt{background:var(--raise);border:1px solid var(--line);padding:10px 15px;border-radius:18px 18px 4px 18px;max-width:85%}
+.m.assistant .txt{color:var(--text)}
+.m pre{position:relative;background:#0a0a0c;border:1px solid var(--line);border-radius:10px;padding:34px 14px 12px;overflow:auto;font-size:13px;line-height:1.5;white-space:pre;margin:10px 0;cursor:copy}
+.m pre:before{content:"Copy";position:absolute;top:7px;right:10px;font:500 11.5px "Inter",system-ui,sans-serif;color:var(--muted)}
+.m pre.copied:before{content:"Copied";color:var(--accent)}
+.m code{font-size:13px;background:#202026;padding:1.5px 5px;border-radius:5px}
+.msgs .note{text-align:center;margin-top:18vh;font-size:15px;color:var(--muted)}
+.msgs .note:before{content:"VELLUR AI";display:block;font-size:24px;font-weight:600;color:var(--text);letter-spacing:-.01em;margin-bottom:6px}
+.composer{max-width:800px;width:calc(100% - 32px);margin:0 auto 10px;background:var(--panel);border:1px solid var(--line2);border-radius:20px;padding:10px 12px 8px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
+.composer:focus-within{border-color:#4a4a55}
+.composer textarea{border:0;background:transparent;padding:4px 6px;font:15.5px/1.5 "Inter",-apple-system,system-ui,sans-serif;resize:none;max-height:200px;outline:0}
+.composer textarea:focus{outline:0}
+.cbar{display:flex;align-items:center;gap:8px;margin-top:4px}
+.cbar .grow{flex:1;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.iconbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;padding:0;margin:0;background:transparent;color:var(--soft);border:1px solid var(--line2);cursor:pointer;flex:none}
+.iconbtn:hover{background:var(--raise)}
+#btnSend{width:34px;height:34px;border-radius:50%;padding:0;background:var(--accent);color:#111;display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:0}
+#chatFile{display:none}
+.chatfoot{max-width:800px;width:calc(100% - 32px);margin:0 auto 12px;font-size:12px;color:var(--muted)}
+.chatfoot details summary{cursor:pointer;list-style:none;text-align:center}.chatfoot details[open] summary{text-align:left;margin-bottom:6px}
+/* agent */
+#tDetail{border-top:1px solid var(--line);padding-top:16px}
+#tTitle{font-size:15px}
+#tLog{max-height:260px;color:var(--soft)}
+.dadd{color:#b7f08a}.ddel{color:#ff9d8a}.dhdr{color:var(--muted)}
+/* mobile */
+#scrim{display:none}
+@media(max-width:860px){
+  body{display:block}
+  #topbar{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20;background:rgba(13,13,15,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top))}
+  body:not(.is-admin) #topbar{display:none}
+  #topbar b{font-weight:600;flex:1}
+  #side{position:fixed;z-index:40;left:0;top:0;transform:translateX(-105%);transition:transform .22s ease;width:84vw;max-width:320px;box-shadow:20px 0 60px rgba(0,0,0,.5)}
+  body.nav-open #side{transform:none}body.nav-open #scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:30}
+  main{padding:16px 12px 48px;height:auto;overflow:visible}
+  body.is-admin[data-view="chat"]{position:fixed;inset:0;display:flex;flex-direction:column}
+  body.is-admin[data-view="chat"] main{flex:1;min-height:0}
+  .chathead{display:none}.msgs{padding:16px 12px 8px}.m .txt{font-size:16px}
+  .composer{width:calc(100% - 16px);margin-bottom:6px;border-radius:18px}.composer textarea{font-size:16px}
+  .chatfoot{margin-bottom:max(8px,env(safe-area-inset-bottom))}
+  input,select,textarea{font-size:16px}button{min-height:40px}#tabs button{padding:11px 10px;font-size:15px}
+  table{font-size:12.5px}.card{padding:14px}
+}
 </style>
 </head>
 <body>
+<aside id="side" class="admin-only">
+  <div class="logo"><i></i><div>AI Core<small>VELLUR</small></div></div>
+  <nav id="tabs">
+    <button data-view="chat"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>Agent</button>
+    <div class="sep"></div>
+    <button data-view="models"><svg class="ic" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>Models</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>Costs</button><button data-view="gpu"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>GPU</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button>
+  </nav>
+  <div class="sidehead"><span>Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:26px;height:26px"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button></div>
+  <div id="convList"></div>
+  <div id="sideBudget"></div>
+  <button class="navbtn" id="btnLogout" style="margin-top:6px;color:var(--muted)">Log out</button>
+</aside>
+<div id="scrim"></div>
 <main>
+<div id="topbar"><button class="iconbtn" id="navOpen" aria-label="Menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><b id="topTitle">Chat</b><button class="iconbtn" id="topNew" aria-label="New chat"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button></div>
+<div class="wrap">
+  <div class="pubhead">
   <div class="brand">VELLUR</div>
   <h1>AI Core</h1>
   <p class="sub">Your private AI workspace: chat, coding agent, model routing and cost control. <a href="/" style="color:var(--muted)">Status page</a></p>
+  </div>
 
   <div class="grid">
-    <section class="card c12">
+    <section class="card c12" data-tab="gpu">
       <div class="hero">
         <div>
           <div class="phase" id="phase"><span class="dot"></span><span id="phaseText">Connecting…</span></div>
@@ -88,14 +172,9 @@ td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
           <button id="btnStart" class="admin-only">Start GPU</button>
           <button class="danger admin-only" id="btnStop">Stop GPU</button>
           <button class="public-only" id="btnLogin">Log in for controls</button>
-          <button class="ghost admin-only" id="btnLogout">Log out</button>
         </div>
       </div>
       <div class="steps" id="steps"></div>
-      <nav class="tabs admin-only" id="tabs">
-        <button data-view="chat">Chat</button><button data-view="agent">Agent</button><button data-view="models">Models</button>
-        <button data-view="costs">Costs</button><button data-view="gpu">GPU</button><button data-view="activity">Activity</button>
-      </nav>
       <div class="viewnote public-only">Public view: status and budget only. Starting, stopping, settings and chat need a login.</div>
       <div class="msg" id="msg"></div>
     </section>
@@ -187,17 +266,25 @@ td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
       <div class="note" id="profileNote"></div>
     </section>
 
-    <section class="card c12 admin-only" data-tab="chat">
-      <div class="row" style="justify-content:space-between;margin-bottom:12px">
-        <div class="row"><select id="convSel" style="width:auto;max-width:320px"></select><button class="ghost" id="convNew">New chat</button><button class="ghost" id="convDel">Delete</button></div>
-        <div class="row"><label style="margin:0">Model</label><select id="chatModel" style="width:auto"></select></div>
+    <section class="admin-only" id="chatCard" data-tab="chat">
+      <div class="chathead">
+        <div class="row"><select id="convSel"></select><button class="ghost" id="convNew">New chat</button><button class="ghost" id="convDel">Delete</button></div>
+        <span class="note" id="chatTarget" style="margin:0"></span>
       </div>
       <div class="msgs" id="msgs"></div>
-      <div class="row" style="margin-top:10px;flex-wrap:nowrap;align-items:flex-end"><textarea id="chatIn" rows="3" placeholder="Ask your VELLUR AI…  (Enter = send, Shift+Enter = new line)"></textarea><button id="btnSend">Send</button></div>
-      <div class="row" style="margin-top:8px"><input type="file" id="chatFile" multiple style="width:auto"><span class="note" id="chatFileNote" style="margin:0">Attach text or code files (added to your message; up to 200 KB in total).</span></div>
-      <label for="memory" style="margin-top:14px">Project memory — notes added to every chat and agent task</label>
-      <textarea id="memory" rows="3" placeholder="e.g. Answer in Romanian. COMMON is a Next.js app with SQLite; never touch the production database."></textarea>
-      <div class="row" style="margin-top:8px"><button class="ghost" id="memSave">Save memory</button><span class="note" id="memNote" style="margin:0"></span></div>
+      <div class="composer">
+        <textarea id="chatIn" rows="1" placeholder="Message VELLUR AI…"></textarea>
+        <div class="cbar">
+          <label class="iconbtn" for="chatFile" title="Attach text or code files"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></label><input type="file" id="chatFile" multiple>
+          <select id="chatModel" style="width:auto;border-radius:99px;padding:6px 10px;font-size:13px"></select>
+          <span class="grow" id="chatFileNote"></span>
+          <button id="btnSend" aria-label="Send"><svg class="ic" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
+        </div>
+      </div>
+      <div class="chatfoot"><details><summary>Project memory</summary>
+        <textarea id="memory" rows="3" placeholder="Notes added to every chat and agent task, e.g. Answer in Romanian."></textarea>
+        <div class="row" style="margin-top:8px"><button class="ghost" id="memSave">Save memory</button><span class="note" id="memNote" style="margin:0"></span></div>
+      </details></div>
     </section>
 
     <section class="card c12 admin-only" data-tab="agent">
@@ -260,6 +347,7 @@ td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
       <div style="overflow:auto;max-height:340px"><table><thead><tr><th>Time</th><th>Level</th><th>Kind</th><th>Message</th></tr></thead><tbody id="ev"></tbody></table></div>
     </section>
   </div>
+</div>
 </main>
 <script>
 (() => {
@@ -278,7 +366,7 @@ td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
     return j;
   }
   function render(s) {
-    S = s;
+    S = s; sideBudget(s);
     const ph = s.phase, ses = s.session || {};
     const el = $("phase"); el.className = "phase " + (["ready","processing","idle"].includes(ph) ? "ok" : ["failed"].includes(ph) ? "bad" : STEPS.includes(ph) || ph === "stopping" ? "busy" : "");
     $("phaseText").textContent = STEPS.slice(0,5).includes(ph) ? "Starting your AI environment… (" + LABEL[ph] + ")" : (LABEL[ph] || ph);
@@ -345,7 +433,7 @@ td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
   function fillModels(sel, value) { sel.innerHTML = ""; ROLE_NAMES.forEach(r => sel.add(new Option(r, r))); if (value) sel.value = value; }
   let VIEW = "chat";
   function setView(v) {
-    VIEW = v; try { sessionStorage.setItem("vellurView", v); } catch (e) {}
+    VIEW = v; document.body.dataset.view = v; document.body.classList.remove("nav-open"); $("topTitle").textContent = v[0].toUpperCase() + v.slice(1); try { sessionStorage.setItem("vellurView", v); } catch (e) {}
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
     document.querySelectorAll("section[data-tab]").forEach(sec => { sec.hidden = !sec.dataset.tab.split(" ").includes(v); });
     ({ chat: loadConvs, agent: loadAgent, models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {} })[v]();
@@ -362,13 +450,13 @@ td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
   async function loadConvs(selectId) {
     const list = (await send("conversations", "GET")).conversations; const sel = $("convSel"); sel.innerHTML = "";
     list.forEach(c => sel.add(new Option(c.title, c.id)));
-    if (!list.length) { CONV = null; $("msgs").innerHTML = '<div class="note">No conversation yet. Write a message to start one.</div>'; fillModels($("chatModel"), "vellur-chat"); return; }
+    if (!list.length) { CONV = null; $("msgs").innerHTML = '<div class="note">Ask anything, or attach a file to analyse.</div>'; fillModels($("chatModel"), "vellur-chat"); return; }
     await openConv(selectId || CONV || list[0].id);
   }
   async function openConv(id) {
     const c = await send("conversations/" + id, "GET"); CONV = c.id; $("convSel").value = c.id; fillModels($("chatModel"), c.model);
     $("msgs").innerHTML = ""; c.messages.forEach(m => addMsg(m.role, m.content));
-    if (!c.messages.length) $("msgs").innerHTML = '<div class="note">Empty conversation.</div>';
+    if (!c.messages.length) $("msgs").innerHTML = '<div class="note">Ask anything, or attach a file to analyse.</div>';
   }
   $("convSel").onchange = () => openConv($("convSel").value);
   $("convNew").onclick = async () => { const c = await send("conversations", "POST", { model: $("chatModel").value }); await loadConvs(c.id); $("chatIn").focus(); };
@@ -403,7 +491,7 @@ td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
     } catch (e) { addMsg("assistant", "⚠ " + e.message); } finally { $("btnSend").disabled = false; }
   };
   async function loadConvsQuiet() { const list = (await send("conversations", "GET")).conversations; const sel = $("convSel"); sel.innerHTML = ""; list.forEach(c => sel.add(new Option(c.title, c.id))); sel.value = CONV; }
-  $("chatIn").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("btnSend").click(); } });
+  $("chatIn").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer:coarse)").matches) { e.preventDefault(); $("btnSend").click(); } });
   $("memSave").onclick = async () => { try { await send("settings", "PUT", { memory: $("memory").value }); $("memNote").textContent = "saved"; } catch (e) { $("memNote").textContent = e.message; } };
 
   // agent
@@ -421,7 +509,7 @@ td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
   async function showTask() {
     const t = await send("agent/tasks/" + TASK, "GET"); const live = !["done", "failed", "cancelled", "timeout", "over_budget"].includes(t.state);
     $("tDetail").style.display = ""; $("tTitle").textContent = "Task " + t.id + " — " + t.state + " — $" + Number(t.cost_usd).toFixed(4);
-    $("tErr").textContent = t.error || ""; $("tStat").textContent = t.diff_stat || "(no changes yet)"; $("tDiff").textContent = t.diff || ""; $("tDiff").style.display = t.diff ? "" : "none";
+    $("tErr").textContent = t.error || ""; $("tStat").textContent = t.diff_stat || "(no changes yet)"; $("tDiff").innerHTML = (t.diff || "").split("\n").map(l => { const c = l.startsWith("+") && !l.startsWith("+++") ? "dadd" : l.startsWith("-") && !l.startsWith("---") ? "ddel" : l.startsWith("@@") || l.startsWith("diff ") ? "dhdr" : ""; return "<span class='" + c + "'>" + esc(l) + "</span>"; }).join("\n"); $("tDiff").style.display = t.diff ? "" : "none";
     $("tLog").textContent = t.log || "(no output yet)"; $("tLog").scrollTop = $("tLog").scrollHeight;
     $("tCancel").style.display = live ? "" : "none"; $("tPublish").style.display = t.can_publish ? "" : "none";
     $("tPr").textContent = t.pr_url || ""; $("tPr").href = t.pr_url || "#";
@@ -483,6 +571,21 @@ td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
   }
   $("fixedSave").onclick = async () => { try { const rows = $("fixed").value.split("\n").map(x => x.trim()).filter(Boolean).map(l => { const p = l.split("|").map(x => x.trim()); return { name: p[0], usd: Number(p[1] || 0), in_budget: /^y/i.test(p[2] || "") }; });
       await send("settings", "PUT", { fixed_costs: rows }); $("fixedNote").textContent = "saved"; await loadCosts(); } catch (e) { $("fixedNote").textContent = e.message; } };
+  // ── shell: sidebar conversations, budget, mobile drawer, copy, autosize ──────────────────────
+  function sideBudget(s) { const b = s.budget; if (!b || !$("sideBudget")) return;
+    $("sideBudget").innerHTML = "<b>" + money(b.total_usd) + "</b> of " + money(b.budget_usd) + " this month<div class='bar" + (b.percent >= 90 ? " hot" : b.percent >= 75 ? " warn" : "") + "'><i style='width:" + Math.min(100, b.percent) + "%'></i></div>"; }
+  function syncConvList() { const box = $("convList"); box.innerHTML = "";
+    [...$("convSel").options].forEach(o => { const b = document.createElement("button"); b.textContent = o.text; b.className = String(o.value) === String($("convSel").value) ? "on" : "";
+      b.onclick = () => { if (VIEW !== "chat") setView("chat"); openConv(o.value).then(syncConvList); document.body.classList.remove("nav-open"); }; box.appendChild(b); }); }
+  new MutationObserver(syncConvList).observe($("convSel"), { childList: true });
+  $("convSel").addEventListener("change", () => setTimeout(syncConvList, 300));
+  const newChat = () => { if (VIEW !== "chat") setView("chat"); $("convNew").click(); document.body.classList.remove("nav-open"); };
+  $("sideNew").onclick = newChat; $("topNew").onclick = newChat;
+  $("navOpen").onclick = () => document.body.classList.add("nav-open"); $("scrim").onclick = () => document.body.classList.remove("nav-open");
+  $("msgs").addEventListener("click", (e) => { const pre = e.target.closest("pre"); if (!pre || !navigator.clipboard) return;
+    navigator.clipboard.writeText(pre.textContent).then(() => { pre.classList.add("copied"); setTimeout(() => pre.classList.remove("copied"), 1400); }); });
+  const grow = () => { const t = $("chatIn"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; };
+  $("chatIn").addEventListener("input", grow); $("btnSend").addEventListener("click", () => setTimeout(grow, 50));
   async function loadHistory() {
     try { const h = await api("history?limit=80", { method: "GET", headers: {} });
       $("ev").innerHTML = h.events.map(e => `<tr><td class="m">${new Date(e.ts * 1000).toLocaleString()}</td><td class="lv-${e.level}">${e.level}</td><td>${e.kind}</td><td></td></tr>`).join("");

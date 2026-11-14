@@ -40,6 +40,10 @@ secrets, short-lived inference token). GPU Autopilot (`lifecycle.py`, `providers
 4. Only then: automatic routing by request type, if it measurably helps.
 5. Image input in chat; browser automation; Blender later.
 
+## UI (2026-11-14)
+Single static file `autopilot/app/static/dashboard.html`: sidebar shell, chat-first layout, mobile drawer. No framework,
+no build step. Icons are inline Lucide SVG paths (ISC licence). Login and password-change markup and JS are unchanged.
+
 ## Known caveats
 - GitHub Actions CI for this repo does not exist yet (allowed: repo is standalone now).
 - Agent image ~2.8 GB; installer enables it only with ≥ 2.5 GB free RAM and ≥ 8 GB disk.
