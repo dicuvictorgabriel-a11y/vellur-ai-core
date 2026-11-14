@@ -387,6 +387,8 @@ class Controller:
         s = self.current()
         if not s:
             return "offline"
+        if s["state"] == "failed" and (s.get("reason") or "").startswith(("manual", "dry_run")):
+            return "offline"   # waiting for the owner (HyperAI) or dry run: not a real failure
         if s["state"] == "ready":
             if self.inflight > 0:
                 return "processing"
@@ -585,6 +587,36 @@ class Controller:
                 t.cancel()
                 with contextlib.suppress(BaseException):
                     await t
+
+    PUBLIC_EXPLAIN = {
+        "dry_run": "Dry run: no paid GPU is rented.", "manual": "Waiting for the HyperAI workspace to be started.",
+        "backend_gone": "The GPU workspace was stopped.", "idle": "Released after inactivity.",
+        "session_limit": "Released at the session time limit.", "budget": "Monthly GPU budget reached.",
+        "manual_stop": "Released.", "capacity": "No GPU capacity available.", "timeout": "The GPU did not start in time.",
+        "auth": "Provider authentication problem.", "config": "Configuration needed.", "provider": "Provider error.",
+        "termination_unverified": "Waiting for the provider to confirm the GPU stopped.",
+    }
+
+    def public_status(self) -> dict:
+        """What anyone may see: no hosts, ports, instance ids, settings, balances or detailed error text."""
+        full = self.status()
+        s = full["session"] or {}
+        code = (s.get("reason") or "").split(":")[0].strip()
+        b = full["budget"]
+        keep = ("month", "budget_usd", "total_usd", "remaining_usd", "percent", "confirmed_usd",
+                "estimated_unconfirmed_usd", "current_session_estimate_usd", "current_rate_usd_per_hour",
+                "hours_left_at_current_rate", "hyperai_hours_left_estimate", "note")
+        return {
+            "public": True,
+            "phase": full["phase"], "live_mode": full["live_mode"], "enabled": full["enabled"],
+            "provider": full["provider"],
+            "session": {k: s.get(k) for k in ("state", "gpu_name", "vram_gb", "dph", "provider")} if s else None,
+            "explain": self.PUBLIC_EXPLAIN.get(code, "") if s.get("state") in ("failed", "stopped") else "",
+            "inflight": full["inflight"], "queued": full["queued"],
+            "idle_shutdown_in_s": full["idle_shutdown_in_s"], "termination": full["termination"],
+            "budget": {k: b[k] for k in keep},
+            "version": full["version"],
+        }
 
     def status(self) -> dict:
         st = self.settings.get()

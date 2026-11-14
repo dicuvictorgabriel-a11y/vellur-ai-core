@@ -329,3 +329,12 @@ async def test_assisted_unreachable_workspace_explains(rig):
     with pytest.raises(ControlError) as e:
         await ctrl.ensure_ready()
     assert e.value.code == "manual" and "not reachable" in e.value.message and "Start a workspace" in e.value.message
+
+
+async def test_waiting_for_manual_start_is_shown_as_offline(rig):
+    ctrl = rig(manual=True)
+    ctrl.fake_tunnel.fail = "Connection refused"
+    with pytest.raises(ControlError):
+        await ctrl.ensure_ready()
+    assert state(ctrl) == "failed" and ctrl.phase() == "offline"
+    assert "Waiting for the HyperAI workspace" in ctrl.public_status()["explain"]

@@ -42,7 +42,7 @@ capabilități eliminate, sistem de fișiere doar-citire (gateway, tunel), limit
 
 ## GPU Autopilot
 
-Panou: **https://ai.vellurdigital.com/autopilot/** (login). Pornește și eliberează GPU-ul automat, cu buget lunar,
+Panou: **https://ai.vellurdigital.com/autopilot/** (public doar vizualizare; comenzile cer login). Pornește și eliberează GPU-ul automat, cu buget lunar,
 plafoane pe server și dry run implicit. HyperAI e asistat (fără API de pornire/oprire), Vast.ai e automat (după ce
 pui o cheie). Detalii, limite și ce e testat: [`docs/AUTOPILOT.md`](docs/AUTOPILOT.md).
 

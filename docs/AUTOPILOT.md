@@ -1,8 +1,12 @@
 # GPU Autopilot
 
 Autopilotul pornește un GPU când AI-ul are nevoie, îl păstrează cât lucrezi și îl eliberează după inactivitate reală,
-în limita bugetului. Panoul de control e la **https://ai.vellurdigital.com/autopilot/**, cu utilizatorul `vellur` și
-parola afișată o singură dată la instalare (`sudo vac autopilot password` creează alta).
+în limita bugetului. Panoul e la **https://ai.vellurdigital.com/autopilot/**:
+- **public, doar vizualizare:** oricine vede starea GPU-ului, furnizorul și bugetul (fără adrese, porturi, ID-uri de
+  instanță, setări sau mesaje de eroare detaliate);
+- **„Log in for controls”:** utilizatorul `vellur` și parola afișată o singură dată la instalare
+  (`sudo vac autopilot password` creează alta) deblochează pornire/oprire, setări, chat și istoric. Login-ul e ținut
+  minte în browser; „Log out” revine la vizualizare (pentru delogare completă închizi browserul).
 
 > **Limită importantă.** Un controller de pe VPS **nu poate garanta un plafon strict de cheltuieli**: un furnizor poate
 > continua să factureze, poate raporta cu întârziere sau poate deveni inaccesibil exact când trebuie oprit GPU-ul.
@@ -64,8 +68,10 @@ mai rapide. **Netestat cu un cont real** (nu exista cheie).
 
 - **DRY RUN implicit:** nu se poate crea, porni sau opri nimic plătit. Se activează doar pe server:
   `sudo vac autopilot live on` (cere să tastezi LIVE). Citirile (oferte, sold) merg și în dry run.
-- Panoul: login în browser (Caddy basic auth), apoi Caddy adaugă un antet secret pe care controllerul îl verifică la
-  fiecare apel; scrierile cer și antet anti-CSRF + aceeași origine. Cheile furnizorilor nu ajung în browser.
+- Panoul: pagina și `/autopilot/api/public/*` sunt publice și filtrate (maxim 20 de fluxuri live publice simultan).
+  Orice altă cale cere login în browser (Caddy basic auth); doar după login Caddy adaugă antetul secret pe care
+  controllerul îl verifică la fiecare apel (un antet trimis de client pe calea publică e șters). Scrierile cer și
+  antet anti-CSRF + aceeași origine. Cheile furnizorilor nu ajung în browser.
 - Container: utilizator neprivilegiat (10001), sistem de fișiere doar-citire, fără capabilități, 256 MB, 0,5 CPU,
   fără socket Docker, port doar pe 127.0.0.1. Măsurat: ~51 MB RAM, ~0,2 % CPU.
 - SSH: cheie dedicată (`secrets/gpu_ed25519`), GPU-ul nu primește nicio cheie a VPS-ului; cheia serverului SSH e

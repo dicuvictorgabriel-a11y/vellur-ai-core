@@ -75,7 +75,8 @@ inference proxy `gpu-backend:8000`; it ensures a GPU (start/attach, hold the req
 watchdog handles idle / session limit / budget / unverified stops / orphans / billing sync. Providers: HyperAI
 **assisted** (no documented start/stop API — do not invent one), Vast.ai automated (endpoints copied from the official
 `vastai` SDK 1.11.0; untested with a real account), mock for tests. DRY RUN unless `AUTOPILOT_LIVE=1`
-(`sudo vac autopilot live on`). Dashboard behind Caddy basic auth + secret header checked server-side + CSRF header.
+(`sudo vac autopilot live on`). Dashboard: public read-only view (page + /autopilot/api/public/*, redacted); everything else behind Caddy basic auth +
+secret header checked server-side + CSRF header.
 Tests: `cd autopilot && pytest -q` (60, no network: guarded). Never let tests reach a real provider.
 
 ## Open work (priority order)

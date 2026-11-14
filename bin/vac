@@ -138,16 +138,26 @@ EOF
 		[ -n "$auth" ] && [ ${#secret} -ge 32 ] || die "Autopilot credentials missing: sudo vac autopilot enable"
 		directive=$(caddy_basic_auth_directive)
 		cat <<EOF
-	# GPU Autopilot dashboard + API: browser login (basic auth), then Caddy adds the secret header the
-	# controller checks on every call. The secret never reaches the browser.
+	# GPU Autopilot. Public, read-only: the page and a filtered status (no secret header; a client-sent one is
+	# removed). Everything else: browser login (basic auth), then Caddy adds the secret header the controller
+	# checks on every call. The secret never reaches the browser.
 	redir /autopilot /autopilot/ 308
 	handle /autopilot/* {
-		$directive {
-			$auth
+		@vellur_ap_public path /autopilot/ /autopilot/api/public/status /autopilot/api/public/events
+		handle @vellur_ap_public {
+			reverse_proxy 127.0.0.1:$ap {
+				header_up -X-Vellur-Admin
+				flush_interval -1
+			}
 		}
-		reverse_proxy 127.0.0.1:$ap {
-			header_up X-Vellur-Admin "$secret"
-			flush_interval -1
+		handle {
+			$directive {
+				$auth
+			}
+			reverse_proxy 127.0.0.1:$ap {
+				header_up X-Vellur-Admin "$secret"
+				flush_interval -1
+			}
 		}
 	}
 EOF
@@ -636,8 +646,10 @@ cmd_verify() {
 		t "admin API answers with secret"     "curl -fsS -m 5 -H 'X-Vellur-Admin: $asec' http://127.0.0.1:$app/autopilot/api/status | grep -q '\"phase\"'"
 		t "LiteLLM routes the model via Autopilot" "[ \"\$(envval VELLUR_GPU_API_BASE)\" = http://gpu-backend:8000/v1 ]"
 		if is_exposed; then
-			t "public dashboard needs a login (401)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 https://$ai/autopilot/)\" = 401 ]"
-			t "public API needs a login (401)"       "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 -H 'X-Vellur-Admin: $asec' https://$ai/autopilot/api/status)\" = 401 ]"
+			t "public view: page answers (200)"      "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 https://$ai/autopilot/)\" = 200 ]"
+			t "public view: status hides settings"   "curl -fsS -m 15 https://$ai/autopilot/api/public/status | grep -q '\"public\": *true' && ! curl -fsS -m 15 https://$ai/autopilot/api/public/status | grep -qE 'hyperai_ssh|instance_id|settings'"
+			t "controls need a login (401)"          "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 -H 'X-Vellur-Admin: $asec' https://$ai/autopilot/api/status)\" = 401 ]"
+			t "login page needs a login (401)"       "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 https://$ai/autopilot/login)\" = 401 ]"
 		fi
 		[ "$(envval AUTOPILOT_LIVE)" = 1 ] && warn "Autopilot LIVE mode: real provider actions allowed" || ok "Autopilot in DRY RUN (no paid actions possible)"
 	fi

@@ -20,7 +20,7 @@ async def test_admin_requires_secret_header(rig):
     async with client(build_admin(ctrl)) as c:
         assert (await c.get("/autopilot/api/status")).status_code == 401
         assert (await c.get("/autopilot/api/status", headers={"X-Vellur-Admin": "wrong" * 8})).status_code == 401
-        assert (await c.get("/autopilot/", headers={})).status_code == 401
+        assert (await c.get("/autopilot/", headers={})).status_code == 200      # the page is public (view only)
         r = await c.get("/autopilot/api/status", headers=ADMIN)
         assert r.status_code == 200 and r.json()["phase"] == "offline"
         assert (await c.get("/healthz")).status_code == 200      # unauthenticated liveness only
@@ -127,3 +127,33 @@ async def test_forget_host_key(rig):
         r = await c.post("/autopilot/api/hostkeys/forget", headers=WRITE, json={"port": 0, "host": "ssh.hyper.ai"})
         assert r.json() == {"removed": True}
     assert ctrl.db.kv_get("host_keys") == {}
+
+
+async def test_public_view_is_readonly_and_redacted(rig):
+    ctrl = rig(manual=True)
+    ctrl.settings.update({"hyperai_ssh_port": 32387})
+    await ctrl.start("manual")
+    for _ in range(300):
+        if ctrl.current()["state"] == "ready":
+            break
+        await asyncio.sleep(0.01)
+    ctrl.db.x("UPDATE sessions SET reason='manual: HyperAI workspace not reachable at ssh.example:2222' WHERE id=?",
+              (ctrl.current()["id"],))
+    async with client(build_admin(ctrl)) as c:
+        assert (await c.get("/autopilot/")).status_code == 200                 # page: public
+        r = await c.get("/autopilot/api/public/status")
+        assert r.status_code == 200
+        body = r.text
+        d = r.json()
+        assert d["public"] and d["phase"] == "ready" and "budget_usd" in d["budget"]
+        for secret in ("ssh.example", "2222", "32387", "hyperai_ssh", "instance_id", "settings", "balances", "sk-"):
+            assert secret not in body, secret
+        # controls and details still need the admin header (Caddy adds it only after login)
+        assert (await c.get("/autopilot/api/status")).status_code == 401
+        assert (await c.get("/autopilot/api/history")).status_code == 401
+        assert (await c.post("/autopilot/api/stop", headers={"X-Vellur-Request": "1"})).status_code == 401
+        assert (await c.put("/autopilot/api/settings", json={"enabled": False})).status_code == 401
+        assert (await c.post("/autopilot/api/chat", json={"messages": []})).status_code == 401
+        assert (await c.get("/autopilot/login")).status_code == 401
+        r = await c.get("/autopilot/login", headers=ADMIN, follow_redirects=False)
+        assert r.status_code == 303 and r.headers["location"] == "/autopilot/?admin=1"

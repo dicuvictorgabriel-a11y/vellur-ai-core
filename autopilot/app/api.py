@@ -15,7 +15,7 @@ from typing import Optional
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .lifecycle import ControlError, Controller
@@ -75,9 +75,39 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     async def healthz():
         return {"ok": True, "phase": ctrl.phase()}
 
-    @app.get("/autopilot/", dependencies=[Depends(admin)])
+    # ── public, read-only (no login): the page itself and a filtered status ─────────────────────
+    public_streams = {"n": 0}
+    MAX_PUBLIC_STREAMS = 20
+
+    @app.get("/autopilot/")
     async def dashboard():
         return FileResponse(os.path.join(STATIC, "dashboard.html"), headers={"Cache-Control": "no-store"})
+
+    @app.get("/autopilot/api/public/status")
+    async def public_status():
+        return ctrl.public_status()
+
+    @app.get("/autopilot/api/public/events")
+    async def public_events(request: Request):
+        if public_streams["n"] >= MAX_PUBLIC_STREAMS:
+            return JSONResponse(status_code=503, content={"error": "busy", "message": "too many viewers; retry"})
+        public_streams["n"] += 1
+
+        async def gen():
+            try:
+                v = -1
+                while not await request.is_disconnected():
+                    v = await ctrl.wait_change(v, 5.0)
+                    yield f"data: {json.dumps(ctrl.public_status(), default=str)}\n\n"
+            finally:
+                public_streams["n"] -= 1
+        return StreamingResponse(gen(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+    # ── login: a protected URL; the browser asks for the password, then comes back with controls ───
+    @app.get("/autopilot/login", dependencies=[Depends(admin)])
+    async def login():
+        return RedirectResponse("/autopilot/?admin=1", status_code=303)
 
     @app.get("/autopilot/api/status", dependencies=[Depends(admin)])
     async def status():

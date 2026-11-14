@@ -51,6 +51,10 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
 .lv-alert,.lv-error{color:#ffb39a}.lv-warn{color:#ffd23f}
 .pill{display:inline-block;font-size:11.5px;padding:2px 8px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
 .pill.live{border-color:#4a1d10;color:var(--orange)}.pill.dry{border-color:#103a40;color:var(--cyan)}
+a.btn{display:inline-block;background:var(--lime);color:var(--bg);border-radius:9px;padding:9px 15px;font-weight:600;text-decoration:none}
+body:not(.is-admin) .admin-only{display:none!important}
+@media(min-width:861px){body:not(.is-admin) .c4{grid-column:span 6}}body.is-admin .public-only{display:none!important}
+.viewnote{color:var(--muted);font-size:12.5px;margin-top:10px}
 </style>
 </head>
 <body>
@@ -68,11 +72,14 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
         </div>
         <div class="row">
           <span class="pill" id="mode"></span>
-          <button id="btnStart">Start GPU</button>
-          <button class="danger" id="btnStop">Stop GPU</button>
+          <button id="btnStart" class="admin-only">Start GPU</button>
+          <button class="danger admin-only" id="btnStop">Stop GPU</button>
+          <a class="btn public-only" id="btnLogin" href="/autopilot/login">Log in for controls</a>
+          <button class="ghost admin-only" id="btnLogout">Log out</button>
         </div>
       </div>
       <div class="steps" id="steps"></div>
+      <div class="viewnote public-only">Public view: status and budget only. Starting, stopping, settings and chat need a login.</div>
       <div class="msg" id="msg"></div>
     </section>
 
@@ -106,7 +113,7 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
       <div class="note">Estimates are not charges. A local controller cannot enforce a hard cap if a provider keeps billing or reports late — keep provider balances prepaid and auto top-up off.</div>
     </section>
 
-    <section class="card c4">
+    <section class="card c4 admin-only">
       <h2>HyperAI (assisted)</h2>
       <p class="note" style="margin-top:0">HyperAI has no documented start/stop API. Start a workspace in its console, run <code>hyperai-serve.sh</code>, then connect here with the SSH port from its SSH panel.</p>
       <div class="f2">
@@ -120,7 +127,7 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
       <div class="note" id="vastOffer"></div>
     </section>
 
-    <section class="card c6">
+    <section class="card c6 admin-only">
       <h2>Settings</h2>
       <div class="toggle"><span>Autopilot<small>react to AI requests and run the watchdog</small></span><label class="sw"><input type="checkbox" data-k="enabled"><b></b></label></div>
       <div class="toggle"><span>Automatic start of paid GPUs<small>a message may rent a GPU by itself</small></span><label class="sw"><input type="checkbox" data-k="auto_start_paid"><b></b></label></div>
@@ -137,13 +144,13 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
       <div class="note" id="profileNote"></div>
     </section>
 
-    <section class="card c6">
+    <section class="card c6 admin-only">
       <h2>Chat</h2>
       <div class="chat" id="chat"><div class="note">Messages go through the gateway like any client. If no GPU is running, Autopilot starts one when policy allows, otherwise it tells you why.</div></div>
       <div class="row" style="margin-top:10px;flex-wrap:nowrap"><textarea id="chatIn" rows="2" placeholder="Ask your VELLUR AI…"></textarea><button id="btnSend">Send</button></div>
     </section>
 
-    <section class="card c12">
+    <section class="card c12 admin-only">
       <h2>Activity</h2>
       <div style="overflow:auto;max-height:340px"><table><thead><tr><th>Time</th><th>Level</th><th>Kind</th><th>Message</th></tr></thead><tbody id="ev"></tbody></table></div>
     </section>
@@ -182,7 +189,7 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
     $("pGpu").textContent = ses.gpu_name || (s.provider && !s.provider.automated && live ? "HyperAI workspace" : "—");
     $("pVram").textContent = ses.vram_gb ? ses.vram_gb + " GB" : "—";
     $("pRate").textContent = ses.dph ? "$" + Number(ses.dph).toFixed(3) + "/h" : (s.budget.current_rate_usd_per_hour ? "$" + s.budget.current_rate_usd_per_hour + "/h" : "—");
-    $("pInst").textContent = ses.instance_id || "—";
+    $("pInst").textContent = ses.instance_id || (s.public ? "hidden" : "—");
     $("pTerm").textContent = s.termination || "—";
     $("pHours").textContent = s.budget.hyperai_hours_left_estimate + " h (estimate)";
     $("pReq").textContent = s.inflight + " active, " + s.queued + " waiting";
@@ -197,7 +204,7 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
     const vast = (s.providers || []).find(p => p.provider === "vastai");
     $("vastState").textContent = vast ? (vast.configured ? "API key configured on the server." : vast.detail) : "—";
     $("btnCheckVast").disabled = !(vast && vast.configured);
-    if (!dirty) fillSettings(s.settings, s.profiles);
+    if (!dirty && s.settings) fillSettings(s.settings, s.profiles);
   }
   function fillSettings(st, profiles) {
     const sel = $("selProfile");
@@ -224,15 +231,15 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
       $("vastOffer").textContent = r.offer ? `Cheapest match: ${r.offer.gpu} ${r.offer.vram_gb} GB, $${r.offer.usd_per_hour}/h, ${r.offer.location} (download ≈ $${r.offer.download_cost_estimate})` : (r.offer_error || r.detail);
     } catch (e) { $("vastOffer").textContent = e.message; }
   };
-  const history = [];
+  const chatLog = [];
   $("btnSend").onclick = async () => {
     const text = $("chatIn").value.trim(); if (!text) return;
-    $("chatIn").value = ""; history.push({ role: "user", content: text });
+    $("chatIn").value = ""; chatLog.push({ role: "user", content: text });
     const box = $("chat"); const u = document.createElement("div"); u.className = "u"; u.textContent = "You: " + text; box.appendChild(u);
     const a = document.createElement("div"); a.className = "a"; a.textContent = "…"; box.appendChild(a); box.scrollTop = box.scrollHeight;
     $("btnSend").disabled = true; let out = "";
     try {
-      const r = await fetch("/autopilot/api/chat", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Vellur-Request": "1" }, body: JSON.stringify({ messages: history }) });
+      const r = await fetch("/autopilot/api/chat", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Vellur-Request": "1" }, body: JSON.stringify({ messages: chatLog }) });
       const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
       for (;;) { const { value, done } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true });
         let i; while ((i = buf.indexOf("\n\n")) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
@@ -240,7 +247,7 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
           try { const j = JSON.parse(d); if (j.vellur_error) { out = "⚠ " + j.vellur_error; continue; }
             const delta = (j.choices && j.choices[0] && j.choices[0].delta) || {}; out += delta.content || ""; } catch (e) {}
           a.textContent = out || "…"; box.scrollTop = box.scrollHeight; } }
-      if (!out.startsWith("⚠")) history.push({ role: "assistant", content: out }); a.textContent = out || "(empty answer)";
+      if (!out.startsWith("⚠")) chatLog.push({ role: "assistant", content: out }); a.textContent = out || "(empty answer)";
     } catch (e) { a.textContent = "⚠ " + e.message; } finally { $("btnSend").disabled = false; }
   };
   $("chatIn").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("btnSend").click(); } });
@@ -250,13 +257,29 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
       [...$("ev").rows].forEach((row, i) => row.cells[3].textContent = h.events[i].message);
     } catch (e) {}
   }
+  let ADMIN = false;
+  const store = { get: () => { try { return localStorage.getItem("vellurAdmin") === "1"; } catch (e) { return false; } },
+                  set: (v) => { try { v ? localStorage.setItem("vellurAdmin", "1") : localStorage.removeItem("vellurAdmin"); } catch (e) {} } };
+  if (new URLSearchParams(location.search).get("admin") === "1") { store.set(true); window.history.replaceState(null, "", "/autopilot/"); }
   function connect() {
-    const es = new EventSource("/autopilot/api/events");
+    const es = new EventSource(ADMIN ? "/autopilot/api/events" : "/autopilot/api/public/events");
     es.onmessage = (m) => { try { render(JSON.parse(m.data)); } catch (e) {} };
     es.onerror = () => { $("phaseText").textContent = "Reconnecting…"; };
   }
-  api("status", { method: "GET", headers: {} }).then(render).catch(e => show("Cannot load status: " + e.message, "bad"));
-  connect(); loadHistory(); setInterval(loadHistory, 15000);
+  $("btnLogout").onclick = () => { store.set(false); location.href = "/autopilot/"; };
+  (async () => {
+    if (store.get()) {
+      try { render(await api("status", { method: "GET", headers: {} })); ADMIN = true; }
+      catch (e) { store.set(false); }
+    }
+    document.body.classList.toggle("is-admin", ADMIN);
+    if (!ADMIN) {
+      try { const r = await fetch("/autopilot/api/public/status", { cache: "no-store" }); render(await r.json()); }
+      catch (e) { show("Cannot load status: " + e.message, "bad"); }
+    }
+    connect();
+    if (ADMIN) { loadHistory(); setInterval(loadHistory, 15000); }
+  })();
 })();
 </script>
 </body>
