@@ -1,6 +1,5 @@
 # VELLUR AI CORE â€” instructions for agents (Codex, Claude, others)
 
-This folder is a separate project from the RING CITY render in the repository root: ignore `../AGENTS.md`.
 Talk to the owner in **Romanian, simply**: they are the product owner, not a developer.
 
 ## What it is
@@ -74,7 +73,7 @@ in its network namespace; `vac verify` must pass. Validate Caddy output on 2.6â€
 1. Owner runs `deploy-from-pc.ps1` (VPS still has an older `vac`), rotates the vLLM key, creates `vellur.env`.
 2. Test OpenCode end to end with the real model (tool calling: create/edit a file).
 3. Check whether the `bayes` CLI works with HyperAI (`bayes gear restart|stop`); if yes, add `vac gpu start|stop`
-   (owner logs in himself on the VPS; low prepaid balance limits the risk).
+   (the owner logs in on the VPS; a low prepaid balance limits the risk).
 4. Verify `gpu/autostart.sh` (`/hyperai/home/dependencies.sh`) on a workspace.
 5. Decide Open WebUI on the 4 GB VPS (`sudo vac ui enable` checks RAM) vs. a lighter chat UI.
 6. Add CI for this folder (shellcheck, `bash -n`, compose config, Caddy validate on 2.6/2.8/latest, stub e2e).
