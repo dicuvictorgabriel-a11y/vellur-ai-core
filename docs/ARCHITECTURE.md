@@ -58,7 +58,7 @@ sold preplătit și, la OpenRouter, o limită de credit pe cheie.
 
 ## Ce e testat
 
-93 de teste automate (router, costuri, buget, conversații, agent, GitHub simulat, autentificare, GPU). În sandbox, cap
+85 de teste automate (router, costuri, buget, conversații, agent, GitHub simulat, autentificare, GPU). În sandbox, cap
 la cap: instalare peste versiunea veche, Caddy real, login neschimbat, chat persistent, sarcină de agent reală
 (OpenCode în containerul izolat a executat o comandă cerută de un backend de test și a raportat diff-ul).
 **Netestat:** orice furnizor real de modele, GitHub real, calitatea unui model real.
