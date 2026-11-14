@@ -51,6 +51,11 @@ class FakeGitHub:
         self.auth.add(req.headers.get("authorization"))
         p, body = req.url.path, json.loads(req.content or b"{}")
         self.calls.append((req.method, p, body))
+        if p == "/user/repos":
+            return httpx.Response(200, json=[{"full_name": "o/r", "default_branch": "main", "private": True},
+                                             {"full_name": "o/s", "default_branch": "dev", "private": False}])
+        if p == "/repos/o/r/branches":
+            return httpx.Response(200, json=[{"name": "feature"}, {"name": "main"}])
         if p == "/repos/o/r":
             return httpx.Response(200, json={"default_branch": "main"})
         if p == "/repos/o/r/tarball/main":
@@ -115,6 +120,21 @@ async def test_task_runs_and_publishes_only_on_request(agents):
     assert pr["draft"] is True and pr["base"] == "main" and pr["head"] == f"vellur/task-{tid}"
     assert gh.auth == {"Bearer github_pat_" + "a" * 30}
     assert "github_pat" not in (await admin.get("/autopilot/api/agent", headers=ADMIN)).text
+
+
+async def test_repository_and_branch_pickers(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    r = (await admin.get("/autopilot/api/agent/repos", headers=ADMIN)).json()
+    assert r == {"github_token_set": False, "repos": []} and not gh.calls          # no token → no GitHub call
+    await admin.put("/autopilot/api/agent/github", headers=WRITE, json={"token": "github_pat_" + "a" * 30})
+    r = (await admin.get("/autopilot/api/agent/repos", headers=ADMIN)).json()
+    assert [x["name"] for x in r["repos"]] == ["o/r", "o/s"] and r["repos"][0]["private"] is True
+    assert "github_pat" not in json.dumps(r)
+    b = (await admin.get("/autopilot/api/agent/branches", params={"repo": "o/r"}, headers=ADMIN)).json()
+    assert b == {"default": "main", "branches": ["main", "feature"]}
+    bad = await admin.get("/autopilot/api/agent/branches", params={"repo": "not a repo"}, headers=ADMIN)
+    assert bad.status_code == 400
+    assert (await admin.get("/autopilot/api/agent/repos")).status_code in (401, 403)   # admin only
 
 
 async def test_one_task_at_a_time_and_cancel(agents):

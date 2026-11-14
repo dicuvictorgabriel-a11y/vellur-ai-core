@@ -292,12 +292,16 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
       <p class="sub2">Runs OpenCode in an isolated container on a snapshot of the repository: edits files, runs tests, fixes errors. Nothing reaches GitHub until you press “Create pull request”. One task at a time.</p>
       <div class="msg" id="agentMsg"></div>
       <div class="f2">
-        <div><label>GitHub repository (owner/name) — empty for an empty scratch workspace</label><input id="tRepo" placeholder="dicuvictorgabriel-a11y/bloom-vellur-studio" autocomplete="off"></div>
-        <div><label>Base branch (empty = default branch)</label><input id="tBase" autocomplete="off"></div>
+        <div><label>Repository</label><select id="tRepoSel"><option value="">Loading…</option></select>
+          <input id="tRepo" placeholder="owner/name" autocomplete="off" style="display:none;margin-top:6px"></div>
+        <div><label>Branch</label><select id="tBase"><option value="">default branch</option></select></div>
       </div>
-      <label>Task</label><textarea id="tPrompt" rows="4" placeholder="Implement … in common/, run the tests, fix what fails."></textarea>
+      <label>Task</label><textarea id="tPrompt" rows="4" placeholder="What should the agent do? e.g. Add a dark-mode toggle in common/, run the tests, fix what fails."></textarea>
       <div class="row" style="margin-top:10px"><select id="tModel" style="width:auto"></select><button id="tStart">Start task</button><span class="note" id="tLimits" style="margin:0"></span></div>
-      <div class="row" style="margin-top:14px"><input id="ghToken" type="password" autocomplete="off" placeholder="GitHub fine-grained token (stored on the server, never shown again)" style="max-width:460px"><button class="ghost" id="ghSave">Save token</button><span class="note" id="ghNote" style="margin:0"></span></div>
+      <details id="ghBox" style="margin-top:14px"><summary class="note" id="ghNote" style="cursor:pointer;margin:0">GitHub connection</summary>
+        <div class="row" style="margin-top:8px"><input id="ghToken" type="password" autocomplete="off" placeholder="GitHub fine-grained token (stored on the server, never shown again)" style="max-width:460px"><button class="ghost" id="ghSave">Save token</button></div>
+        <p class="note">Create it at github.com → Settings → Developer settings → Fine-grained tokens. Repository access: the repositories you want; permissions: Contents and Pull requests (read and write), Metadata (read).</p>
+      </details>
       <div style="overflow:auto;margin-top:14px"><table><thead><tr><th>#</th><th>State</th><th>Repository</th><th>Task</th><th>Files</th><th>Cost</th><th></th></tr></thead><tbody id="tList"></tbody></table></div>
       <div id="tDetail" style="display:none;margin-top:14px">
         <h2 id="tTitle"></h2>
@@ -495,12 +499,37 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
   $("memSave").onclick = async () => { try { await send("settings", "PUT", { memory: $("memory").value }); $("memNote").textContent = "saved"; } catch (e) { $("memNote").textContent = e.message; } };
 
   // agent
-  let TASK = null, taskTimer = null;
+  let TASK = null, taskTimer = null, REPOS_LOADED = false, LAST_REPO = "";
+  async function loadRepos() {
+    REPOS_LOADED = true; const sel = $("tRepoSel"); let list = [];
+    try { list = (await send("agent/repos", "GET")).repos || []; } catch (e) { tnote(e.message); }
+    const owner = list.length ? list[0].name.split("/")[0] : "";
+    sel.innerHTML = list.map(r => `<option value="${esc(r.name)}">${esc(r.name.startsWith(owner + "/") ? r.name.slice(owner.length + 1) : r.name)}${r.private ? " 🔒" : ""}</option>`).join("")
+      + '<option value="">Empty workspace (no repository)</option><option value="__other">Other (type owner/name)…</option>';
+    const last = LAST_REPO;
+    if (last && [...sel.options].some(o => o.value === last)) sel.value = last;
+    else if (!list.length) sel.value = "";
+    await repoChanged();
+  }
+  const repoValue = () => $("tRepoSel").value === "__other" ? $("tRepo").value.trim() : $("tRepoSel").value;
+  async function repoChanged() {
+    const v = $("tRepoSel").value, b = $("tBase");
+    $("tRepo").style.display = v === "__other" ? "" : "none";
+    b.innerHTML = '<option value="">default branch</option>';
+    if (!v || v === "__other") return;
+    try { const r = await send("agent/branches?repo=" + encodeURIComponent(v), "GET");
+      b.innerHTML = r.branches.map(n => `<option value="${esc(n)}">${esc(n)}${n === r.default ? " (default)" : ""}</option>`).join(""); b.value = r.default; }
+    catch (e) { /* keep "default branch" */ }
+  }
+  $("tRepoSel").onchange = repoChanged;
   const tnote = (text, kind) => { const m = $("agentMsg"); m.textContent = text || ""; m.className = "msg" + (text ? " show " + (kind || "bad") : ""); };
   async function loadAgent() {
     const a = await send("agent", "GET"); fillModels($("tModel"), $("tModel").value || "vellur-coder");
     tnote(a.available ? "" : a.why, "info"); $("tStart").disabled = !a.available;
-    $("ghNote").textContent = a.github_token_set ? "A GitHub token is saved." : "No GitHub token: only public repositories, no pull requests.";
+    $("ghNote").textContent = a.github_token_set ? "GitHub connected ✓ (change token)" : "Connect GitHub to pick your repositories ▸";
+    if (!a.github_token_set) $("ghBox").open = true;
+    LAST_REPO = (a.tasks.find(t => t.repo) || {}).repo || "";
+    if (!REPOS_LOADED) loadRepos();
     $("tLimits").textContent = "Limits per task: " + a.max_minutes + " min, $" + a.max_usd + " (GPU tab → settings).";
     $("tList").innerHTML = a.tasks.map(t => `<tr><td class="m">${t.id}</td><td class="${t.state === "done" ? "good" : ["failed", "timeout", "over_budget"].includes(t.state) ? "badc" : "warnc"}">${esc(t.state)}</td><td>${esc(t.repo || "scratch")}</td><td>${esc(t.prompt.slice(0, 90))}</td><td class="m">${t.files_changed}</td><td class="m">$${Number(t.cost_usd).toFixed(4)}</td><td><button class="ghost" data-task="${t.id}">Open</button></td></tr>`).join("");
     document.querySelectorAll("[data-task]").forEach(b => b.onclick = () => openTask(Number(b.dataset.task)));
@@ -517,12 +546,12 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
   }
   function openTask(id) { TASK = id; showTask(); }
   $("tStart").onclick = async () => { tnote("");
-    try { const t = await send("agent/tasks", "POST", { prompt: $("tPrompt").value, model: $("tModel").value, repo: $("tRepo").value.trim(), base: $("tBase").value.trim() }); TASK = t.id; await loadAgent(); }
+    try { const t = await send("agent/tasks", "POST", { prompt: $("tPrompt").value, model: $("tModel").value, repo: repoValue(), base: $("tBase").value }); TASK = t.id; await loadAgent(); }
     catch (e) { tnote(e.message); } };
   $("tCancel").onclick = async () => { await send("agent/tasks/" + TASK + "/cancel", "POST", {}); await loadAgent(); };
   $("tPublish").onclick = async () => { if (!confirm("Create a branch and a draft pull request on GitHub with these changes?")) return;
     try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await loadAgent(); } catch (e) { $("tErr").textContent = e.message; } };
-  $("ghSave").onclick = async () => { try { await send("agent/github", "PUT", { token: $("ghToken").value }); $("ghToken").value = ""; await loadAgent(); } catch (e) { $("ghNote").textContent = e.message; } };
+  $("ghSave").onclick = async () => { try { await send("agent/github", "PUT", { token: $("ghToken").value }); $("ghToken").value = ""; $("ghBox").open = false; REPOS_LOADED = false; await loadAgent(); } catch (e) { $("ghNote").textContent = e.message; $("ghBox").open = true; } };
 
   // models
   const pnote = (text, kind) => { const m = $("provMsg"); m.textContent = text || ""; m.className = "msg" + (text ? " show " + (kind || "bad") : ""); };

@@ -56,6 +56,23 @@ class GitHub:
             raise AgentError("github_not_found", "repository or branch not found (or the token has no access to it)")
         raise AgentError("github", f"GitHub answered HTTP {r.status_code}: {r.text[:200]}", 502)
 
+    async def repos(self) -> list:
+        """Repositories the token can see, most recently pushed first (at most 300)."""
+        out = []
+        for page in (1, 2, 3):
+            r = await self._req("GET", "/user/repos", params={"per_page": 100, "page": page, "sort": "pushed",
+                                                             "affiliation": "owner,collaborator,organization_member"})
+            batch = r.json()
+            out += [{"name": x["full_name"], "default_branch": x.get("default_branch") or "main",
+                     "private": bool(x.get("private")), "pushed_at": x.get("pushed_at") or ""} for x in batch]
+            if len(batch) < 100:
+                break
+        return out
+
+    async def branches(self, repo: str) -> list:
+        r = await self._req("GET", f"/repos/{repo}/branches", params={"per_page": 100})
+        return [b["name"] for b in r.json()]
+
     async def default_branch(self, repo: str) -> str:
         return (await self._req("GET", f"/repos/{repo}")).json()["default_branch"]
 
@@ -119,6 +136,28 @@ class AgentManager:
             raise AgentError("invalid", "that does not look like a GitHub token")
         self.db.kv_set("github_token", token)
         self.db.event("info", "agent", "GitHub token saved" if token else "GitHub token removed")
+
+    async def repos(self) -> list:
+        if not self.github_token():
+            return []
+        gh = GitHub(self.github_token(), self.github_transport)
+        try:
+            return await gh.repos()
+        finally:
+            await gh.c.aclose()
+
+    async def branches(self, repo: str) -> dict:
+        repo = (repo or "").strip()
+        if not REPO_RE.match(repo):
+            raise AgentError("invalid", "repository must look like owner/name")
+        gh = GitHub(self.github_token(), self.github_transport)
+        try:
+            default = await gh.default_branch(repo)
+            names = await gh.branches(repo)
+        finally:
+            await gh.c.aclose()
+        names = [default] + sorted(n for n in names if n != default)
+        return {"default": default, "branches": names}
 
     def task(self, tid: int) -> Optional[dict]:
         t = self.db.one("SELECT * FROM tasks WHERE id=?", (tid,))

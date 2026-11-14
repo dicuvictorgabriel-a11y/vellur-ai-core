@@ -265,6 +265,20 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         except AgentError as e:
             return err(e)
 
+    @app.get("/autopilot/api/agent/repos", dependencies=[Depends(admin)])
+    async def agent_repos():
+        try:
+            return {"github_token_set": bool(agent.github_token()), "repos": await agent.repos()}
+        except AgentError as e:
+            return err(e)
+
+    @app.get("/autopilot/api/agent/branches", dependencies=[Depends(admin)])
+    async def agent_branches(repo: str = ""):
+        try:
+            return await agent.branches(repo)
+        except AgentError as e:
+            return err(e)
+
     @app.put("/autopilot/api/agent/github", dependencies=[Depends(admin_write)])
     async def github_token(body: TokenBody):
         try:
