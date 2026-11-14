@@ -64,7 +64,17 @@ class Budget:
         unreconciled = self.db.all(
             "SELECT * FROM sessions WHERE created_at>=? AND reconciled=0 AND dry_run=0", (month_start(now),))
         estimated = sum(self.session_estimate(s, settings, now) for s in unreconciled)
-        total = confirmed + estimated
+        # Model APIs: per-request cost reported by the provider vs. our own token × price estimate.
+        api = {r["cost_source"]: float(r["c"] or 0) for r in self.db.all(
+            "SELECT cost_source, SUM(cost_usd) AS c FROM usage WHERE month=? GROUP BY cost_source", (m,))}
+        api_reported, api_estimated = api.get("provider", 0.0), api.get("estimate", 0.0)
+        # Fixed monthly costs: provider subscriptions always count; listed fixed costs only if marked in_budget.
+        subs = sum(float(p.get("monthly_usd") or 0) for p in (self.db.kv_get("llm_providers", {}) or {}).values()
+                   if p.get("plan") == "subscription" and p.get("enabled", True))
+        fixed = settings.get("fixed_costs") or []
+        fixed_in = sum(float(f["usd"]) for f in fixed if f.get("in_budget"))
+        fixed_out = sum(float(f["usd"]) for f in fixed if not f.get("in_budget"))
+        total = confirmed + estimated + api_reported + api_estimated + subs + fixed_in
         budget = float(settings["monthly_budget_usd"])
         cur_est, rate = 0.0, 0.0
         if current and not current.get("ended_at") and not current.get("dry_run"):
@@ -86,6 +96,12 @@ class Budget:
             "hours_left_at_current_rate": round(remaining / rate, 1) if rate > 0 and remaining > 0 else None,
             "hyperai_hours_used_estimate": round(self.hyperai_hours_used(now), 2),
             "hyperai_hours_left_estimate": round(max(0.0, float(settings["hyperai_included_hours"]) - self.hyperai_hours_used(now)), 2),
+            "api_reported_usd": round(api_reported, 4),
+            "api_estimated_usd": round(api_estimated, 4),
+            "subscriptions_usd": round(subs, 2),
+            "fixed_in_budget_usd": round(fixed_in, 2),
+            "fixed_outside_budget_usd": round(fixed_out, 2),
+            "all_in_total_usd": round(total + fixed_out, 2),
             "exhausted": budget <= 0 or total >= budget,
             "note": "Estimates are not confirmed charges. Confirmed = provider-reported.",
         }

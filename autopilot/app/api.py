@@ -56,10 +56,16 @@ class ChatBody(BaseModel):
     max_tokens: int = 2048
 
 
-def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | None = None) -> FastAPI:
+def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | None = None,
+                router=None, agent=None) -> FastAPI:
+    from .agent import AgentManager
+    from .router import Router
+    from .workspace import register as register_workspace
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     env = ctrl.env
-    gw = httpx.AsyncClient(transport=gateway_transport, timeout=httpx.Timeout(connect=10, read=960, write=60, pool=10))
+    router = router or Router(ctrl)
+    agent = agent or AgentManager(ctrl, router)
+    app.state.router, app.state.agent = router, agent
 
     auth = Auth(ctrl.db)
     ALLOWED_DURING_CHANGE = {"/autopilot/api/auth/change", "/autopilot/api/auth/logout", "/autopilot/api/auth/me"}
@@ -275,29 +281,6 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
         ctrl.db.event("info", "check", f"provider check {name}", result=out)
         return out
 
-    @app.post("/autopilot/api/chat", dependencies=[Depends(admin_write)])
-    async def chat(body: ChatBody):
-        """Dashboard chat: goes through LiteLLM → inference proxy (so it starts the GPU like any client)."""
-        payload = {"model": "vellur-coder", "messages": body.messages[-40:], "stream": True,
-                   "max_tokens": max(64, min(body.max_tokens, 8192))}
-
-        async def gen():
-            try:
-                async with gw.stream("POST", f"{env.gateway_url}/v1/chat/completions", json=payload,
-                                     headers={"Authorization": f"Bearer {env.gateway_master_key}"}) as r:
-                    if r.status_code != 200:
-                        text = (await r.aread()).decode(errors="replace")
-                        try:
-                            msg = json.loads(text)["error"]["message"]
-                        except Exception:
-                            msg = text[:400]
-                        yield f"data: {json.dumps({'vellur_error': msg})}\n\n"
-                        return
-                    async for chunk in r.aiter_raw():
-                        yield chunk
-            except httpx.HTTPError as e:
-                yield f"data: {json.dumps({'vellur_error': f'gateway unreachable ({e.__class__.__name__})'})}\n\n"
-
-        return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-store"})
+    register_workspace(app, ctrl, router, agent, admin, admin_write)
 
     return app

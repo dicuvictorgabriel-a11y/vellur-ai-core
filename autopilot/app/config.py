@@ -46,12 +46,16 @@ class Env:
     provision_timeout_seconds: float = field(default_factory=lambda: _f("AUTOPILOT_PROVISION_TIMEOUT", 1500.0))
     model_load_timeout_seconds: float = field(default_factory=lambda: _f("AUTOPILOT_MODEL_LOAD_TIMEOUT", 2400.0))
     poll_seconds: float = field(default_factory=lambda: _f("AUTOPILOT_POLL_SECONDS", 10.0))
+    # Agent runner (isolated container). Empty URL/secret = agent tasks unavailable.
+    agent_runner_url: str = field(default_factory=lambda: os.environ.get("AGENT_RUNNER_URL", ""))
+    agent_runner_secret: str = field(default_factory=lambda: os.environ.get("AGENT_RUNNER_SECRET", ""))
+    agent_proxy_url: str = field(default_factory=lambda: os.environ.get("AGENT_PROXY_URL", "http://autopilot:8000/v1"))
 
 
 # Defaults for the dashboard-editable settings. Values are clamped by Env ceilings in Settings.validate().
 DEFAULT_SETTINGS: dict = {
     "enabled": True,                 # Autopilot reacts to requests and runs its watchdog
-    "preferred_provider": "hyperai",
+    "preferred_provider": "vastai",   # GPU is optional; HyperAI stays available but is no longer the default
     "profile": "coding",
     "idle_timeout_min": 20,
     "monthly_budget_usd": 50.0,
@@ -67,6 +71,23 @@ DEFAULT_SETTINGS: dict = {
     "vast_geo_preference": "NL,DE,BE,FR,PL,RO,SE,FI,GB",
     "vast_idle_action": "destroy",   # destroy = no storage charges; stop = keeps disk (billed) for faster restart
     "vast_disk_gb": 60,
+    "max_session_usd": 5.0,          # a GPU session is released when its estimated cost reaches this
+    # Model routing: public model name → ordered targets ("provider:model-id" or "gpu"). First usable target wins.
+    "routes": {"vellur-coder": [], "vellur-chat": [], "vellur-max": []},
+    # Manual prices, USD per million tokens: {"provider:model-id": [input, output]} (catalog prices are used otherwise)
+    "prices": {},
+    # Shown in the cost report. in_budget=False: visible, but not counted against the monthly budget.
+    "fixed_costs": [{"name": "VPS ro-prod-01", "usd": 0.0, "in_budget": False},
+                    {"name": "HyperAI Pro (already purchased)", "usd": 4.99, "in_budget": False}],
+    "memory": "",                    # project notes added as a system message to dashboard chats and agent tasks
+    "agent_max_minutes": 30,
+    "agent_max_usd": 2.0,
+}
+
+ROLES: dict = {
+    "vellur-coder": "Coding (default for agents and OpenCode)",
+    "vellur-chat": "General chat (economical)",
+    "vellur-max": "Hard problems (strongest model you connected)",
 }
 
 # Model profiles. The served name is always "vellur-coder" so LiteLLM and clients never change.

@@ -433,13 +433,14 @@ class Controller:
                     await self.notifier.alert("manual_idle", f"HyperAI GPU idle for {st['idle_timeout_min']} min. "
                                               "Stop the workspace in the HyperAI console to stop billing.", session=s["id"])
             started = s["billing_started_at"] or s["ready_at"] or now
-            over_time = now - started >= 3600 * float(st["max_session_hours"])
+            over_time = (now - started >= 3600 * float(st["max_session_hours"])
+                         or self.budget.session_estimate(s, st, now) >= float(st["max_session_usd"]))
             over_budget = self.budget.status(st, s, now)["exhausted"]
             if over_time or over_budget:
                 if self.limit_hit_at is None:
                     self.limit_hit_at = now
                     await self.notifier.alert("budget_stop" if over_budget else "session_limit",
-                                              ("Budget reached" if over_budget else "Session time limit reached") +
+                                              ("Budget reached" if over_budget else "Session time or cost limit reached") +
                                               ": new GPU requests are blocked; the GPU is released after active work ends.",
                                               session=s["id"])
                 if self.inflight == 0 or now - self.limit_hit_at > STOP_GRACE_SECONDS:
@@ -605,7 +606,8 @@ class Controller:
         b = full["budget"]
         keep = ("month", "budget_usd", "total_usd", "remaining_usd", "percent", "confirmed_usd",
                 "estimated_unconfirmed_usd", "current_session_estimate_usd", "current_rate_usd_per_hour",
-                "hours_left_at_current_rate", "hyperai_hours_left_estimate", "note")
+                "hours_left_at_current_rate", "hyperai_hours_left_estimate", "note", "api_reported_usd",
+                "api_estimated_usd", "subscriptions_usd", "fixed_outside_budget_usd", "all_in_total_usd")
         return {
             "public": True,
             "phase": full["phase"], "live_mode": full["live_mode"], "enabled": full["enabled"],

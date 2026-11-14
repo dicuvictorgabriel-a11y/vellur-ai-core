@@ -9,6 +9,7 @@ from app.proxy import build_proxy
 SECRET = "s" * 32
 ADMIN = {"X-Vellur-Admin": SECRET}
 WRITE = {**ADMIN, "X-Vellur-Request": "1", "Origin": "https://ai.example"}
+KEY = {"Authorization": "Bearer vllm-test"}
 
 
 def client(app):
@@ -98,12 +99,14 @@ async def test_proxy_explains_why_no_gpu(rig):
     ctrl = rig()
     app = build_proxy(ctrl, transport=httpx.MockTransport(lambda r: httpx.Response(500)))
     async with client(app) as c:
-        r = await c.post("/v1/chat/completions", json={})
+        assert (await c.post("/v1/chat/completions", json={})).status_code == 401          # internal key required
+        assert (await c.post("/v1/chat/completions", json={}, headers={"Authorization": "Bearer nope"})).status_code == 401
+        r = await c.post("/v1/chat/completions", json={}, headers=KEY)
         assert r.status_code == 503
         err = r.json()["error"]
-        assert err["code"] == "auto_start_disabled" and err["message"].startswith("VELLUR GPU Autopilot (configuration)")
+        assert err["code"] == "auto_start_disabled" and err["message"].startswith("VELLUR AI (auto_start_disabled)")
         ctrl.budget.record_provider_charge("mock", "all", 60, ctrl.fake_clock.t)
-        r = await c.post("/v1/chat/completions", json={})
+        r = await c.post("/v1/chat/completions", json={}, headers=KEY)
         assert r.json()["error"]["code"] == "budget"
 
 
@@ -115,8 +118,8 @@ async def test_proxy_backend_error_releases_activity(rig):
         raise httpx.ConnectError("refused")
     app = build_proxy(ctrl, transport=httpx.MockTransport(down))
     async with client(app) as c:
-        r = await c.post("/v1/chat/completions", json={})
-        assert r.status_code == 502 and r.json()["error"]["code"] == "provider"
+        r = await c.post("/v1/chat/completions", json={}, headers=KEY)
+        assert r.status_code == 503 and r.json()["error"]["code"] == "provider"
     assert ctrl.inflight == 0
 
 
@@ -153,7 +156,12 @@ async def test_public_view_is_readonly_and_redacted(rig):
         assert (await c.get("/autopilot/api/history")).status_code == 401
         assert (await c.post("/autopilot/api/stop", headers={"X-Vellur-Request": "1"})).status_code == 401
         assert (await c.put("/autopilot/api/settings", json={"enabled": False})).status_code == 401
-        assert (await c.post("/autopilot/api/chat", json={"messages": []})).status_code == 401
+        assert (await c.get("/autopilot/api/conversations")).status_code == 401
+        assert (await c.get("/autopilot/api/llm")).status_code == 401
+        assert (await c.get("/autopilot/api/costs")).status_code == 401
+        assert (await c.get("/autopilot/api/agent")).status_code == 401
+        assert (await c.post("/autopilot/api/agent/tasks", json={"prompt": "do something"})).status_code == 401
+        assert (await c.put("/autopilot/api/llm/providers/openrouter", json={"api_key": "x"})).status_code == 401
 
 
 def https_client(app):

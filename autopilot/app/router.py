@@ -1,0 +1,461 @@
+"""Model router: public model names (vellur-coder, vellur-chat, vellur-max) → ordered targets.
+
+A target is "provider:model-id" (any OpenAI-compatible API) or "gpu" (the GPU Autopilot backend). The first usable
+target answers; a later target is tried only when an earlier one fails before sending any data, and a *paid* later
+target only if "paid fallback" is enabled. Every request is recorded (tokens, cost, latency). Costs reported by the
+provider are kept apart from our own estimates (tokens × price). Paid targets stop when the monthly budget is used up.
+
+Provider keys are write-only: stored on the server, never returned to the browser.
+"""
+from __future__ import annotations
+
+import json
+import re
+import secrets
+import time
+from dataclasses import dataclass, field
+from typing import AsyncIterator, Optional
+
+import httpx
+
+from .budget import month_key
+from .config import ROLES
+from .lifecycle import ControlError, Controller
+
+# Base URLs of OpenAI-compatible APIs. Each can be overridden in the dashboard; "custom" providers can be added.
+CATALOG: dict = {
+    "openrouter": {"display": "OpenRouter", "base_url": "https://openrouter.ai/api/v1", "reports_cost": True,
+                   "note": "Many open-weight models from many hosts; models ending in :free cost nothing "
+                           "(daily request limits). Prepaid credits; per-key spending limits available."},
+    "groq": {"display": "Groq", "base_url": "https://api.groq.com/openai/v1",
+             "note": "Very fast open-weight models; free tier with rate limits."},
+    "cerebras": {"display": "Cerebras", "base_url": "https://api.cerebras.ai/v1",
+                 "note": "Very fast open-weight models. Free-tier terms changed in 2026: check before relying on it."},
+    "deepseek": {"display": "DeepSeek", "base_url": "https://api.deepseek.com/v1",
+                 "note": "DeepSeek's own API (prepaid balance)."},
+    "mistral": {"display": "Mistral", "base_url": "https://api.mistral.ai/v1",
+                "note": "Mistral / Devstral / Codestral; free experiment tier with limits."},
+    "gemini": {"display": "Google Gemini (OpenAI-compatible)",
+               "base_url": "https://generativelanguage.googleapis.com/v1beta/openai",
+               "note": "Not open-weight. Free tier with limits; free-tier content may be used by Google."},
+    "together": {"display": "Together AI", "base_url": "https://api.together.xyz/v1", "note": "Open-weight model host."},
+    "deepinfra": {"display": "DeepInfra", "base_url": "https://api.deepinfra.com/v1/openai", "note": "Open-weight model host."},
+    "fireworks": {"display": "Fireworks AI", "base_url": "https://api.fireworks.ai/inference/v1", "note": "Open-weight model host."},
+    "zai": {"display": "Z.ai (GLM)", "base_url": "https://api.z.ai/api/paas/v4", "note": "GLM models, pay per token."},
+    "zai-coding": {"display": "Z.ai GLM Coding Plan", "base_url": "https://api.z.ai/api/coding/paas/v4",
+                   "note": "Flat monthly plan endpoint; verify the URL in your Z.ai plan page."},
+}
+PLANS = ("free", "per_token", "subscription")
+NAME_RE = re.compile(r"^[a-z0-9][a-z0-9-]{1,23}$")
+RETRYABLE = {402, 404, 408, 409, 425, 429}
+API_PATHS = ("chat/completions", "completions", "embeddings", "responses")
+HOP = {"host", "content-length", "connection", "keep-alive", "transfer-encoding", "te", "upgrade",
+       "proxy-authorization", "proxy-connection", "content-encoding", "authorization"}
+
+
+class RouterError(Exception):
+    def __init__(self, code: str, message: str, status: int = 400):
+        super().__init__(message)
+        self.code, self.message, self.status = code, message, status
+
+
+class _Skip(Exception):
+    def __init__(self, code: str, message: str):
+        super().__init__(message)
+        self.code, self.message = code, message
+
+
+@dataclass
+class RouterResponse:
+    status: int
+    headers: dict = field(default_factory=dict)
+    content: Optional[bytes] = None
+    stream: Optional[AsyncIterator[bytes]] = None
+    media_type: Optional[str] = "application/json"
+
+
+def error_response(code: str, message: str, status: int = 503) -> RouterResponse:
+    headers = {"Retry-After": "60"} if code in ("starting", "busy") else {}
+    return RouterResponse(status, headers, json.dumps({"error": {
+        "message": f"VELLUR AI ({code}): {message}", "type": "vellur_router", "code": code}}).encode())
+
+
+class _Sniffer:
+    """Finds the OpenAI `usage` object in a response while it streams through, without altering it."""
+
+    def __init__(self, sse: bool):
+        self.sse, self.buf, self.found, self.total = sse, b"", None, 0
+
+    def feed(self, chunk: bytes) -> None:
+        self.total += len(chunk)
+        if self.sse:
+            self.buf += chunk
+            *lines, self.buf = self.buf.split(b"\n")
+            for line in lines:
+                if line.startswith(b"data:") and b'"usage"' in line:
+                    try:
+                        u = json.loads(line[5:].strip()).get("usage")
+                        if isinstance(u, dict):
+                            self.found = u
+                    except ValueError:
+                        pass
+            if len(self.buf) > 1_000_000:
+                self.buf = b""
+        elif self.total <= 16_000_000:
+            self.buf += chunk
+
+    def usage(self) -> Optional[dict]:
+        if not self.sse and self.buf:
+            try:
+                u = json.loads(self.buf).get("usage")
+                return u if isinstance(u, dict) else None
+            except (ValueError, AttributeError):
+                return None
+        return self.found
+
+
+class Router:
+    def __init__(self, ctrl: Controller, transport: Optional[httpx.AsyncBaseTransport] = None):
+        self.ctrl, self.db, self.env, self.settings = ctrl, ctrl.db, ctrl.env, ctrl.settings
+        self.client = httpx.AsyncClient(transport=transport,
+                                        timeout=httpx.Timeout(connect=15, read=900, write=120, pool=30))
+        self.tokens: dict[str, str] = {}
+
+    # ── providers ───────────────────────────────────────────────────────────────────────────────
+    def providers(self) -> dict:
+        stored = self.db.kv_get("llm_providers", {}) or {}
+        out = {}
+        for name in list(CATALOG) + [n for n in stored if n not in CATALOG]:
+            base = CATALOG.get(name, {})
+            cfg = stored.get(name, {})
+            out[name] = {
+                "name": name, "custom": name not in CATALOG,
+                "display": cfg.get("display") or base.get("display") or name,
+                "base_url": (cfg.get("base_url") or base.get("base_url") or "").rstrip("/"),
+                "plan": cfg.get("plan", "per_token"), "monthly_usd": float(cfg.get("monthly_usd") or 0),
+                "enabled": bool(cfg.get("enabled", True)), "note": base.get("note", ""),
+                "reports_cost": bool(base.get("reports_cost")),
+            }
+        return out
+
+    def key(self, name: str) -> str:
+        return (self.db.kv_get("llm_keys", {}) or {}).get(name, "")
+
+    def providers_public(self) -> list:
+        keys = self.db.kv_get("llm_keys", {}) or {}
+        out = []
+        for p in self.providers().values():
+            k = keys.get(p["name"], "")
+            cat = self.db.kv_get(f"llm_catalog_{p['name']}") or {}
+            out.append({**p, "key_set": bool(k), "key_hint": ("…" + k[-4:]) if len(k) >= 12 else "",
+                        "catalog_models": len(cat.get("models") or []), "catalog_ts": cat.get("ts")})
+        return out
+
+    def update_provider(self, name: str, ch: dict) -> None:
+        if not NAME_RE.match(name):
+            raise RouterError("invalid", "provider name: lowercase letters, digits and - (2–24 characters)")
+        stored = self.db.kv_get("llm_providers", {}) or {}
+        cfg = dict(stored.get(name, {}))
+        if name not in CATALOG and name not in stored and not ch.get("base_url"):
+            raise RouterError("invalid", "a custom provider needs a base URL")
+        if "base_url" in ch:
+            url = str(ch["base_url"] or "").strip().rstrip("/")
+            if url and not re.match(r"^https://[A-Za-z0-9.-]+(:\d+)?(/[A-Za-z0-9._~/-]*)?$", url):
+                raise RouterError("invalid", "base URL must be an https:// address")
+            cfg["base_url"] = url
+        if "plan" in ch:
+            if ch["plan"] not in PLANS:
+                raise RouterError("invalid", f"plan must be one of {', '.join(PLANS)}")
+            cfg["plan"] = ch["plan"]
+        if "monthly_usd" in ch:
+            try:
+                cfg["monthly_usd"] = float(ch["monthly_usd"] or 0)
+            except (TypeError, ValueError):
+                raise RouterError("invalid", "monthly price must be a number")
+            if not 0 <= cfg["monthly_usd"] <= 10000:
+                raise RouterError("invalid", "monthly price out of range")
+        if "enabled" in ch:
+            cfg["enabled"] = bool(ch["enabled"])
+        if "display" in ch:
+            cfg["display"] = str(ch["display"])[:40]
+        stored[name] = cfg
+        self.db.kv_set("llm_providers", stored)
+        if "api_key" in ch:
+            keys = self.db.kv_get("llm_keys", {}) or {}
+            k = str(ch["api_key"] or "").strip()
+            if k:
+                if len(k) > 400 or any(c.isspace() for c in k):
+                    raise RouterError("invalid", "that does not look like an API key")
+                keys[name] = k
+            else:
+                keys.pop(name, None)
+            self.db.kv_set("llm_keys", keys)
+        self.db.event("info", "llm", f"model provider {name} updated",
+                      fields=sorted(k for k in ch if k != "api_key") + (["api_key"] if "api_key" in ch else []))
+
+    def delete_provider(self, name: str) -> None:
+        stored = self.db.kv_get("llm_providers", {}) or {}
+        keys = self.db.kv_get("llm_keys", {}) or {}
+        stored.pop(name, None)
+        keys.pop(name, None)
+        self.db.kv_set("llm_providers", stored)
+        self.db.kv_set("llm_keys", keys)
+        self.db.event("info", "llm", f"model provider {name} removed/reset")
+
+    async def catalog(self, name: str) -> list:
+        """Fetch the provider's model list (free call). OpenRouter-style pricing is kept when present."""
+        p = self.providers().get(name)
+        if not p or not p["base_url"]:
+            raise RouterError("config", "unknown provider")
+        headers = {"Authorization": f"Bearer {self.key(name)}"} if self.key(name) else {}
+        try:
+            r = await self.client.get(f"{p['base_url']}/models", headers=headers, timeout=30)
+        except httpx.HTTPError as e:
+            raise RouterError("provider", f"{p['display']} unreachable ({e.__class__.__name__})", 502)
+        if r.status_code in (401, 403):
+            raise RouterError("auth", f"{p['display']} rejected the API key", 502)
+        if r.status_code != 200:
+            raise RouterError("provider", f"{p['display']} answered HTTP {r.status_code}", 502)
+        try:
+            data = r.json()
+            rows = data.get("data") if isinstance(data, dict) else data
+        except ValueError:
+            raise RouterError("provider", "the model list is not JSON", 502)
+        models = []
+        for m in (rows or [])[:3000]:
+            if not isinstance(m, dict) or not m.get("id"):
+                continue
+            pin = pout = None
+            pr = m.get("pricing")
+            if isinstance(pr, dict):
+                try:
+                    pin, pout = float(pr.get("prompt")) * 1e6, float(pr.get("completion")) * 1e6
+                except (TypeError, ValueError):
+                    pin = pout = None
+            models.append({"id": str(m["id"])[:200], "in": pin, "out": pout,
+                           "ctx": m.get("context_length") or m.get("context_window")})
+        self.db.kv_set(f"llm_catalog_{name}", {"ts": time.time(), "models": models})
+        return models
+
+    # ── targets ─────────────────────────────────────────────────────────────────────────────────
+    def chain(self, role: str) -> list:
+        routes = self.settings.get()["routes"]
+        return list(routes.get(role) or routes.get("vellur-coder") or ["gpu"])
+
+    def info(self, target: str) -> Optional[dict]:
+        if target == "gpu":
+            return {"kind": "gpu", "provider": "gpu", "model": "vellur-coder", "free": False}
+        name, _, model = target.partition(":")
+        p = self.providers().get(name)
+        if not p:
+            return None
+        free = p["plan"] in ("free", "subscription") or (name == "openrouter" and model.endswith(":free"))
+        return {"kind": "api", "provider": name, "model": model, "free": free, "cfg": p}
+
+    def price(self, target: str) -> Optional[tuple]:
+        manual = self.settings.get()["prices"].get(target)
+        if manual:
+            return float(manual[0]), float(manual[1])
+        name, _, model = target.partition(":")
+        for m in (self.db.kv_get(f"llm_catalog_{name}") or {}).get("models") or []:
+            if m["id"] == model and m.get("in") is not None:
+                return float(m["in"]), float(m["out"])
+        return None
+
+    def usable(self, target: str, fallback: bool) -> tuple:
+        st = self.settings.get()
+        info = self.info(target)
+        if info is None:
+            return False, "config", "unknown model provider"
+        if info["kind"] == "gpu":
+            if fallback and not st["paid_fallback"] and self.ctrl.phase() not in ("ready", "processing", "idle"):
+                return False, "policy", "paid fallback is off (no GPU is running)"
+            return True, "", ""
+        cfg = info["cfg"]
+        if not cfg["enabled"]:
+            return False, "config", "provider is disabled"
+        if not cfg["base_url"]:
+            return False, "config", "provider has no base URL"
+        if not self.key(info["provider"]):
+            return False, "config", f"no API key saved for {cfg['display']}"
+        if info["free"]:
+            return True, "", ""
+        if self.ctrl.budget.status(st, None, self.ctrl.clock())["exhausted"]:
+            return False, "budget", "monthly budget is used up; paid model APIs are blocked"
+        if self.price(target) is None and not cfg["reports_cost"]:
+            return False, "config", "no price known for this model: set one (Models → Prices) so costs can be tracked"
+        if fallback and not st["paid_fallback"]:
+            return False, "policy", "paid fallback is off"
+        return True, "", ""
+
+    # ── access tokens for the internal proxy ────────────────────────────────────────────────────
+    def issue_token(self, tag: str) -> str:
+        tok = "vtask-" + secrets.token_urlsafe(32)
+        self.tokens[tok] = tag
+        return tok
+
+    def revoke_tag(self, tag: str) -> None:
+        for t in [t for t, g in self.tokens.items() if g == tag]:
+            self.tokens.pop(t, None)
+
+    def authorize(self, bearer: str) -> Optional[str]:
+        """Returns the usage tag for this caller, or None if not allowed."""
+        internal = self.env.vllm_api_key
+        if bearer and bearer in self.tokens:
+            return self.tokens[bearer]
+        if not internal or (bearer and secrets.compare_digest(bearer.encode(), internal.encode())):
+            return ""
+        return None
+
+    # ── accounting ──────────────────────────────────────────────────────────────────────────────
+    def cost(self, target: str, info: dict, usage: Optional[dict]) -> tuple:
+        if info["kind"] == "gpu":
+            return 0.0, "gpu"
+        if info["free"]:
+            return 0.0, "plan"
+        if usage is None:
+            return 0.0, "unknown"
+        if isinstance(usage.get("cost"), (int, float)):
+            return float(usage["cost"]), "provider"
+        pr = self.price(target)
+        if pr:
+            return (int(usage.get("prompt_tokens") or 0) * pr[0] + int(usage.get("completion_tokens") or 0) * pr[1]) / 1e6, "estimate"
+        return 0.0, "unpriced"
+
+    def record(self, role: str, target: str, info: dict, ok: bool, status: int, usage: Optional[dict],
+               t0: float, tag: str, error: str = "") -> None:
+        cost, source = self.cost(target, info, usage) if ok else (0.0, "")
+        u = usage or {}
+        cached = ((u.get("prompt_tokens_details") or {}).get("cached_tokens") or 0) if isinstance(u.get("prompt_tokens_details"), dict) else 0
+        now = self.ctrl.clock()
+        self.db.x("INSERT INTO usage(ts,month,role,target,provider,model,ok,status,in_tokens,out_tokens,cached_tokens,"
+                  "cost_usd,cost_source,latency_ms,tag,error) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                  (now, month_key(now), role, target, info["provider"], info["model"], 1 if ok else 0, status,
+                   int(u.get("prompt_tokens") or 0), int(u.get("completion_tokens") or 0), int(cached), cost, source,
+                   int((time.monotonic() - t0) * 1000), tag, error[:300]))
+
+    def tag_cost(self, tag: str) -> float:
+        r = self.db.one("SELECT SUM(cost_usd) AS c FROM usage WHERE tag=?", (tag,))
+        return float((r or {}).get("c") or 0)
+
+    # ── dispatch ────────────────────────────────────────────────────────────────────────────────
+    async def handle(self, method: str, path: str, query: str, headers: dict, body: bytes, tag: str = "") -> RouterResponse:
+        path = path.strip("/")
+        if method == "GET":
+            if path == "models":
+                return RouterResponse(200, {}, json.dumps({"object": "list", "data": [
+                    {"id": r, "object": "model", "owned_by": "vellur"} for r in ROLES]}).encode())
+            return error_response("not_found", "unknown path", 404)
+        try:
+            payload = json.loads(body or b"{}")
+            if not isinstance(payload, dict):
+                raise ValueError
+        except ValueError:
+            return error_response("invalid_request", "the request body is not JSON", 400)
+        role = payload.get("model") or "vellur-coder"
+        if role not in ROLES:
+            return error_response("model_not_found", f"unknown model {role!r}; available: {', '.join(ROLES)}", 404)
+        errors = []
+        for i, target in enumerate(self.chain(role)):
+            ok, code, why = self.usable(target, fallback=i > 0)
+            if not ok:
+                errors.append((target, code, why))
+                continue
+            try:
+                return await self._send(target, role, path, query, headers, payload, tag)
+            except _Skip as e:
+                errors.append((target, e.code, e.message))
+        if len(errors) == 1:
+            target, code, why = errors[0]
+            if target == "gpu" and code == "config" and not any(self.key(n) for n in self.providers()):
+                why = ("No inference backend is configured yet. Add a model provider key in the workspace "
+                       "(Models), or set up a GPU provider. " + why)
+            return error_response(code, why if target == "gpu" else f"{target}: {why}")
+        return error_response("no_backend", "no backend could answer — " + "; ".join(f"{t}: {w}" for t, _, w in errors))
+
+    async def _send(self, target: str, role: str, path: str, query: str, headers: dict, payload: dict, tag: str) -> RouterResponse:
+        info = self.info(target)
+        t0 = time.monotonic()
+        up = dict(payload)
+        up["model"] = info["model"]
+        scope = None
+        if info["kind"] == "gpu":
+            try:
+                base = await self.ctrl.ensure_ready()
+            except ControlError as e:
+                raise _Skip(e.code, e.message)
+            auth = self.env.vllm_api_key
+            scope = self.ctrl.activity()
+            await scope.__aenter__()
+        else:
+            if path not in API_PATHS:
+                raise _Skip("config", f"path /v1/{path} is not supported for model APIs")
+            base, auth = info["cfg"]["base_url"], self.key(info["provider"])
+            if up.get("stream") and path in ("chat/completions", "completions"):
+                up["stream_options"] = {**(up.get("stream_options") or {}), "include_usage": True}
+            if info["provider"] == "openrouter":
+                up["usage"] = {"include": True}
+        h = {k: v for k, v in headers.items() if k.lower() not in HOP}
+        h["Authorization"] = f"Bearer {auth}"
+        h["Content-Type"] = "application/json"
+        url = f"{base}/v1/{path}" if info["kind"] == "gpu" else f"{base}/{path}"
+        if query:
+            url += "?" + query
+        try:
+            r = await self.client.send(self.client.build_request("POST", url, content=json.dumps(up).encode(), headers=h), stream=True)
+        except httpx.HTTPError as e:
+            if scope:
+                await scope.__aexit__(None, None, None)
+            self.record(role, target, info, False, 0, None, t0, tag, e.__class__.__name__)
+            raise _Skip("provider", f"did not answer ({e.__class__.__name__})")
+        if info["kind"] == "api" and (r.status_code in RETRYABLE or r.status_code in (401, 403) or r.status_code >= 500):
+            text = (await r.aread()).decode(errors="replace")[:300]
+            await r.aclose()
+            self.record(role, target, info, False, r.status_code, None, t0, tag, text)
+            code = "auth" if r.status_code in (401, 403) else "provider_credit" if r.status_code == 402 else "provider"
+            hint = {401: "API key rejected", 403: "API key rejected", 402: "no credit left at the provider",
+                    404: "model not found at the provider", 429: "rate limited"}.get(r.status_code, f"HTTP {r.status_code}")
+            raise _Skip(code, f"{hint}: {text[:160]}")
+        sse = "text/event-stream" in r.headers.get("content-type", "")
+        sniff = _Sniffer(sse)
+        status = r.status_code
+
+        async def relay():
+            try:
+                async for chunk in r.aiter_bytes():
+                    sniff.feed(chunk)
+                    yield chunk
+            finally:
+                await r.aclose()
+                if scope:
+                    await scope.__aexit__(None, None, None)
+                self.record(role, target, info, 200 <= status < 300, status, sniff.usage(), t0, tag)
+
+        out_headers = {k: v for k, v in r.headers.items() if k.lower() not in HOP}
+        out_headers["X-Vellur-Target"] = target
+        return RouterResponse(status, out_headers, None, relay(), r.headers.get("content-type"))
+
+    async def probe(self, target: str) -> dict:
+        """One tiny real request to a target (used by the "Test" button). Costs a few tokens on paid models."""
+        info = self.info(target)
+        if info is None or info["kind"] != "api":
+            raise RouterError("invalid", "test works for provider:model targets")
+        ok, code, why = self.usable(target, fallback=False)
+        if not ok:
+            return {"ok": False, "code": code, "message": why}
+        t0 = time.monotonic()
+        try:
+            resp = await self._send(target, "vellur-chat", "chat/completions", "", {},
+                                    {"messages": [{"role": "user", "content": "Reply with the single word: ready"}],
+                                     "max_tokens": 400}, "probe")
+        except _Skip as e:
+            return {"ok": False, "code": e.code, "message": e.message}
+        data = b"".join([c async for c in resp.stream])
+        ms = int((time.monotonic() - t0) * 1000)
+        try:
+            j = json.loads(data)
+            msg = j["choices"][0]["message"]
+            return {"ok": resp.status == 200, "latency_ms": ms, "usage": j.get("usage"),
+                    "answer": (msg.get("content") or "").strip()[:200] or "(empty; reasoning only)"}
+        except (ValueError, KeyError, IndexError, TypeError):
+            return {"ok": False, "code": "provider", "latency_ms": ms, "message": data.decode(errors="replace")[:300]}
