@@ -12,7 +12,8 @@
 #   vac gpu up | down | status | test
 #   vac ui enable | disable          optional Open WebUI (~1 GB RAM)
 #   vac autopilot enable|disable|status|password|live on|off|limits <monthly> <hourly>
-#                                    GPU Autopilot (dry-run until "live on"; dashboard at /autopilot/)
+#                                    GPU Autopilot (dry-run until "live on"; dashboard at /autopilot/,
+#                                    "password" sets a temporary login password that must be changed on the page)
 #   vac backup | restore <file>
 #
 # Touches only: the vellur-ai-core compose project and volume, /etc/caddy/vellur-ai-core.caddy,
@@ -132,32 +133,16 @@ $ai {
 	import vellur_ai_gateway
 EOF
 	if has_profile autopilot; then
-		local ap auth directive secret
-		ap=$(envval AUTOPILOT_PORT); secret=$(envval AUTOPILOT_ADMIN_SECRET)
-		auth=$(head -1 "$VAC_HOME/secrets/autopilot-auth" 2>/dev/null) || true
-		[ -n "$auth" ] && [ ${#secret} -ge 32 ] || die "Autopilot credentials missing: sudo vac autopilot enable"
-		directive=$(caddy_basic_auth_directive)
+		local ap
+		ap=$(envval AUTOPILOT_PORT)
 		cat <<EOF
-	# GPU Autopilot. Public, read-only: the page and a filtered status (no secret header; a client-sent one is
-	# removed). Everything else: browser login (basic auth), then Caddy adds the secret header the controller
-	# checks on every call. The secret never reaches the browser.
+	# GPU Autopilot: public read-only view + in-page login (cookie session) handled by the controller.
+	# The server-side secret header is removed from every request coming from the internet.
 	redir /autopilot /autopilot/ 308
 	handle /autopilot/* {
-		@vellur_ap_public path /autopilot/ /autopilot/api/public/status /autopilot/api/public/events
-		handle @vellur_ap_public {
-			reverse_proxy 127.0.0.1:$ap {
-				header_up -X-Vellur-Admin
-				flush_interval -1
-			}
-		}
-		handle {
-			$directive {
-				$auth
-			}
-			reverse_proxy 127.0.0.1:$ap {
-				header_up X-Vellur-Admin "$secret"
-				flush_interval -1
-			}
+		reverse_proxy 127.0.0.1:$ap {
+			header_up -X-Vellur-Admin
+			flush_interval -1
 		}
 	}
 EOF
@@ -236,11 +221,6 @@ caddy_apply() {   # $1 = with-import | without-import
 	return 1
 }
 refresh_caddy() { if is_exposed; then caddy_apply with-import; fi; }
-CADDY_BIN="${CADDY_BIN:-caddy}"
-caddy_basic_auth_directive() {   # Caddy >= 2.8 spells it basic_auth; older versions only know basicauth
-	local v; v=$($CADDY_BIN version 2>/dev/null | grep -oE 'v2\.[0-9]+' | head -1 | cut -d. -f2)
-	if [ -n "$v" ] && [ "$v" -lt 8 ]; then echo basicauth; else echo basic_auth; fi
-}
 
 # ── DNS ────────────────────────────────────────────────────────────────────────────
 server_ips() { { hostname -I 2>/dev/null || true; ip -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 || true; } | tr ' ' '\n' | sed '/^$/d' | sort -u || true; }
@@ -475,16 +455,14 @@ ap_api() {   # ap_api METHOD path [json]  — local admin API (127.0.0.1 only), 
 		${body:+-d "$body"} "http://127.0.0.1:$port/autopilot/api/$path" || die "Autopilot API call failed ($m $path). Logs: sudo vac logs autopilot"
 }
 
-new_password() { openssl rand -base64 30 | tr -d '/+=' | cut -c1-24; }
-
-set_dashboard_password() {
-	local pw hash
-	pw=$(new_password)
-	hash=$($CADDY_BIN hash-password --plaintext "$pw" 2>/dev/null | tail -1)
-	[[ $hash == \$2* ]] || die "Could not hash the dashboard password with Caddy."
-	umask 077; echo "vellur $hash" > "$VAC_HOME/secrets/autopilot-auth"; umask 022
-	echo; echo "  GPU Autopilot login — user: vellur   password (shown ONCE, save it in your password manager):"
+set_temp_password() {   # $1 = chosen temporary password (optional; generated if empty)
+	local body out pw
+	body=$( [ -n "$1" ] && printf '{"password": "%s"}' "$1" || printf '{}' )
+	out=$(ap_api POST auth/reset "$body")
+	pw=$(echo "$out" | python3 -c 'import json,sys; print(json.load(sys.stdin)["temporary_password"])')
+	echo; echo "  GPU Autopilot temporary password (you must change it at the first login on the page):"
 	echo; echo "    $pw"; echo
+	echo "  Log in at https://$(envval AI_DOMAIN)/autopilot/ → \"Log in for controls\". All earlier sessions were signed out."
 }
 
 cmd_autopilot() {
@@ -498,7 +476,7 @@ cmd_autopilot() {
 		[ -n "$(envval AUTOPILOT_LIVE)" ] || setenv AUTOPILOT_LIVE 0
 		[ -n "$(envval AUTOPILOT_HARD_MAX_MONTHLY_USD)" ] || setenv AUTOPILOT_HARD_MAX_MONTHLY_USD 50
 		[ -n "$(envval AUTOPILOT_HARD_MAX_HOURLY_USD)" ] || setenv AUTOPILOT_HARD_MAX_HOURLY_USD 0.50
-		[ -s "$VAC_HOME/secrets/autopilot-auth" ] || set_dashboard_password
+		rm -f "$VAC_HOME/secrets/autopilot-auth"     # basic auth from earlier versions is no longer used
 		ensure_gpu_models
 		setenv VELLUR_GPU_API_BASE "http://gpu-backend:8000/v1"
 		set_profiles -gpu; dc stop gpu-tunnel >/dev/null 2>&1 || true
@@ -508,6 +486,7 @@ cmd_autopilot() {
 		dc up -d gateway
 		wait_healthy vellur-ai-autopilot 90 || die "Autopilot not healthy. Logs: sudo vac logs autopilot"
 		wait_healthy vellur-ai-gateway 120 || warn "gateway not healthy yet: sudo vac logs gateway"
+		if ap_api GET auth/me | grep -q '"password_set":false'; then set_temp_password ""; fi
 		refresh_caddy || true
 		ok "GPU Autopilot is on ($( [ "$(envval AUTOPILOT_LIVE)" = 1 ] && echo LIVE || echo 'DRY RUN: no paid actions')): https://$(envval AI_DOMAIN)/autopilot/" ;;
 	disable)
@@ -516,7 +495,7 @@ cmd_autopilot() {
 		dc stop autopilot >/dev/null 2>&1 || true; dc up -d gateway >/dev/null
 		ok "Autopilot off (its data volume is kept). A GPU it started may still run: check the provider console." ;;
 	password)
-		set_dashboard_password; refresh_caddy ;;
+		set_temp_password "${2:-}" ;;
 	forget-host)
 		local h=${2:?usage: vac autopilot forget-host <ssh-host>}
 		[[ $h =~ ^[A-Za-z0-9.-]+$ ]] || die "invalid host"
@@ -548,7 +527,7 @@ import json,sys; d=json.load(sys.stdin); b=d["budget"]; s=d["session"] or {}
 print("phase:", d["phase"], "| live:", d["live_mode"], "| enabled:", d["enabled"])
 print("provider:", (d["provider"] or {}).get("display"), "| session:", s.get("id"), s.get("state"), s.get("reason",""))
 print("budget %s: total $%s of $%s (confirmed $%s, estimated $%s)" % (b["month"], b["total_usd"], b["budget_usd"], b["confirmed_usd"], b["estimated_unconfirmed_usd"]))' ;;
-	*) die "usage: vac autopilot enable|disable|status|password|forget-host <host>|live on|off|limits <monthly> <hourly>" ;;
+	*) die "usage: vac autopilot enable|disable|status|password [temporary]|forget-host <host>|live on|off|limits <monthly> <hourly>" ;;
 	esac
 }
 
@@ -648,8 +627,9 @@ cmd_verify() {
 		if is_exposed; then
 			t "public view: page answers (200)"      "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 https://$ai/autopilot/)\" = 200 ]"
 			t "public view: status hides settings"   "curl -fsS -m 15 https://$ai/autopilot/api/public/status | grep -q '\"public\": *true' && ! curl -fsS -m 15 https://$ai/autopilot/api/public/status | grep -qE 'hyperai_ssh|instance_id|settings'"
-			t "controls need a login (401)"          "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 -H 'X-Vellur-Admin: $asec' https://$ai/autopilot/api/status)\" = 401 ]"
-			t "login page needs a login (401)"       "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 https://$ai/autopilot/login)\" = 401 ]"
+			t "controls need a login (401)"          "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 https://$ai/autopilot/api/status)\" = 401 ]"
+			t "secret header from internet ignored"  "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 -H 'X-Vellur-Admin: $asec' https://$ai/autopilot/api/status)\" = 401 ]"
+			t "password reset only from the server"  "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 -X POST -H 'X-Vellur-Admin: $asec' -H 'content-type: application/json' -d '{}' https://$ai/autopilot/api/auth/reset)\" = 401 ]"
 		fi
 		[ "$(envval AUTOPILOT_LIVE)" = 1 ] && warn "Autopilot LIVE mode: real provider actions allowed" || ok "Autopilot in DRY RUN (no paid actions possible)"
 	fi
@@ -680,5 +660,5 @@ case "${1:-help}" in
 	backup) cmd_backup ;;
 	restore) shift; cmd_restore "$@" ;;
 	render-snippet) render_snippet ;;   # for tests / review
-	*) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//' ;;
+	*) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

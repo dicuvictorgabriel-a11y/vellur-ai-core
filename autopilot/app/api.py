@@ -15,9 +15,10 @@ from typing import Optional
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
+from .auth import COOKIE, SESSION_SECONDS, Auth, AuthError, temp_password
 from .lifecycle import ControlError, Controller
 from .settings import SettingsError
 
@@ -37,6 +38,19 @@ class ProtectBody(BaseModel):
     minutes: float
 
 
+class LoginBody(BaseModel):
+    password: str
+
+
+class ChangeBody(BaseModel):
+    current: str
+    new: str
+
+
+class ResetBody(BaseModel):
+    password: Optional[str] = None
+
+
 class ChatBody(BaseModel):
     messages: list[dict]
     max_tokens: int = 2048
@@ -47,16 +61,24 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     env = ctrl.env
     gw = httpx.AsyncClient(transport=gateway_transport, timeout=httpx.Timeout(connect=10, read=960, write=60, pool=10))
 
-    def admin(request: Request) -> None:
+    auth = Auth(ctrl.db)
+    ALLOWED_DURING_CHANGE = {"/autopilot/api/auth/change", "/autopilot/api/auth/logout", "/autopilot/api/auth/me"}
+
+    def via_secret(request: Request) -> bool:
+        """The server-side secret header: only `vac` on the VPS (Caddy strips it from every public request)."""
         secret = env.admin_header_secret
         got = request.headers.get("x-vellur-admin", "")
-        if not secret or len(secret) < 24:
-            raise HTTPException(503, "admin secret not configured on the server")
-        if not hmac.compare_digest(got.encode(), secret.encode()):
-            raise HTTPException(401, "not authorized")
+        return bool(secret) and len(secret) >= 24 and hmac.compare_digest(got.encode(), secret.encode())
 
-    def admin_write(request: Request) -> None:
-        admin(request)
+    def admin(request: Request) -> None:
+        if via_secret(request):
+            return
+        if not auth.session_valid(request.cookies.get(COOKIE)):
+            raise HTTPException(401, "login required")
+        if auth.must_change() and request.url.path not in ALLOWED_DURING_CHANGE:
+            raise HTTPException(403, "password_change_required")
+
+    def same_origin(request: Request) -> None:
         if request.headers.get("x-vellur-request") != "1":
             raise HTTPException(403, "missing request header")
         origin = request.headers.get("origin")
@@ -65,6 +87,14 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
                                    f"http://{request.headers.get('host', '')}") if o}
             if origin not in allowed:
                 raise HTTPException(403, "cross-origin request refused")
+
+    def admin_write(request: Request) -> None:
+        admin(request)
+        same_origin(request)
+
+    def client_ip(request: Request) -> str:
+        xff = request.headers.get("x-forwarded-for", "")
+        return xff.split(",")[-1].strip() if xff else (request.client.host if request.client else "?")
 
     def fail(e: Exception) -> JSONResponse:
         code = getattr(e, "code", "error")
@@ -104,10 +134,51 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
         return StreamingResponse(gen(), media_type="text/event-stream",
                                  headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
 
-    # ── login: a protected URL; the browser asks for the password, then comes back with controls ───
-    @app.get("/autopilot/login", dependencies=[Depends(admin)])
-    async def login():
-        return RedirectResponse("/autopilot/?admin=1", status_code=303)
+    # ── login (in-page form; no browser popup) ──────────────────────────────────────────────────
+    def set_cookie(resp: JSONResponse, token: str) -> JSONResponse:
+        resp.set_cookie(COOKIE, token, max_age=SESSION_SECONDS, path="/autopilot/", secure=True, httponly=True,
+                        samesite="strict")
+        return resp
+
+    @app.get("/autopilot/api/auth/me")
+    async def me(request: Request):
+        logged = via_secret(request) or auth.session_valid(request.cookies.get(COOKIE))
+        return {"logged_in": logged, "must_change": logged and auth.must_change(), "password_set": auth.has_password()}
+
+    @app.post("/autopilot/api/auth/login", dependencies=[Depends(same_origin)])
+    async def login(body: LoginBody, request: Request):
+        try:
+            token = await auth.login(body.password, client_ip(request))
+        except AuthError as e:
+            return JSONResponse(status_code=e.status, content={"error": e.code, "message": e.message})
+        return set_cookie(JSONResponse({"ok": True, "must_change": auth.must_change()}), token)
+
+    @app.post("/autopilot/api/auth/change", dependencies=[Depends(admin_write)])
+    async def change(body: ChangeBody, request: Request):
+        try:
+            await auth.change(body.current, body.new)
+        except AuthError as e:
+            return JSONResponse(status_code=e.status, content={"error": e.code, "message": e.message})
+        token = await auth.login(body.new, client_ip(request))   # fresh session (all old ones were revoked)
+        return set_cookie(JSONResponse({"ok": True}), token)
+
+    @app.post("/autopilot/api/auth/logout", dependencies=[Depends(same_origin)])
+    async def logout(request: Request):
+        auth.logout(request.cookies.get(COOKIE))
+        resp = JSONResponse({"ok": True})
+        resp.delete_cookie(COOKIE, path="/autopilot/")
+        return resp
+
+    @app.post("/autopilot/api/auth/reset")
+    async def reset(body: ResetBody, request: Request):
+        """Server only (secret header, i.e. `sudo vac autopilot password`): set a temporary password."""
+        if not via_secret(request):
+            raise HTTPException(401, "server only")
+        pw = (body.password or "").strip() or temp_password()
+        if len(pw) < 8:
+            return JSONResponse(status_code=400, content={"error": "weak_password", "message": "at least 8 characters"})
+        await asyncio.to_thread(auth.set_password, pw, True)
+        return {"temporary_password": pw, "must_change": True}
 
     @app.get("/autopilot/api/status", dependencies=[Depends(admin)])
     async def status():

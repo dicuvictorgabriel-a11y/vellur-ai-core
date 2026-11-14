@@ -29,7 +29,7 @@ async def test_admin_requires_secret_header(rig):
 async def test_admin_refuses_when_secret_unset(rig):
     ctrl = rig(admin_header_secret="")
     async with client(build_admin(ctrl)) as c:
-        assert (await c.get("/autopilot/api/status", headers={"X-Vellur-Admin": ""})).status_code == 503
+        assert (await c.get("/autopilot/api/status", headers={"X-Vellur-Admin": ""})).status_code == 401
 
 
 async def test_writes_need_csrf_header_and_same_origin(rig):
@@ -154,6 +154,63 @@ async def test_public_view_is_readonly_and_redacted(rig):
         assert (await c.post("/autopilot/api/stop", headers={"X-Vellur-Request": "1"})).status_code == 401
         assert (await c.put("/autopilot/api/settings", json={"enabled": False})).status_code == 401
         assert (await c.post("/autopilot/api/chat", json={"messages": []})).status_code == 401
-        assert (await c.get("/autopilot/login")).status_code == 401
-        r = await c.get("/autopilot/login", headers=ADMIN, follow_redirects=False)
-        assert r.status_code == 303 and r.headers["location"] == "/autopilot/?admin=1"
+
+
+def https_client(app):
+    return httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="https://ai.example")
+
+
+FORM = {"X-Vellur-Request": "1", "Origin": "https://ai.example"}
+
+
+async def test_login_flow_with_forced_password_change(rig):
+    ctrl = rig()
+    async with https_client(build_admin(ctrl)) as c:
+        # only the server (secret header) can set a temporary password
+        assert (await c.post("/autopilot/api/auth/reset", json={"password": "Temp-Pass-1234"})).status_code == 401
+        r = await c.post("/autopilot/api/auth/reset", headers=ADMIN, json={"password": "Temp-Pass-1234"})
+        assert r.json() == {"temporary_password": "Temp-Pass-1234", "must_change": True}
+        assert (await c.get("/autopilot/api/auth/me")).json()["logged_in"] is False
+        assert (await c.post("/autopilot/api/auth/login", headers=FORM, json={"password": "nope"})).status_code == 401
+        assert (await c.post("/autopilot/api/auth/login", json={"password": "Temp-Pass-1234"})).status_code == 403  # CSRF
+        r = await c.post("/autopilot/api/auth/login", headers=FORM, json={"password": "Temp-Pass-1234"})
+        assert r.status_code == 200 and r.json()["must_change"] is True
+        sc = r.headers["set-cookie"].lower()
+        assert "httponly" in sc and "secure" in sc and "samesite=strict" in sc and "path=/autopilot/" in sc
+        assert (await c.get("/autopilot/api/auth/me")).json() == {"logged_in": True, "must_change": True, "password_set": True}
+        assert (await c.get("/autopilot/api/status")).status_code == 403          # must change first
+        bad = await c.post("/autopilot/api/auth/change", headers=FORM, json={"current": "Temp-Pass-1234", "new": "short"})
+        assert bad.json()["error"] == "weak_password"
+        same = await c.post("/autopilot/api/auth/change", headers=FORM, json={"current": "Temp-Pass-1234", "new": "Temp-Pass-1234"})
+        assert same.json()["error"] == "same_password"
+        ok = await c.post("/autopilot/api/auth/change", headers=FORM, json={"current": "Temp-Pass-1234", "new": "my own long passphrase"})
+        assert ok.status_code == 200
+        assert (await c.get("/autopilot/api/status")).status_code == 200
+        assert (await c.post("/autopilot/api/stop", headers=FORM)).status_code == 200
+        assert (await c.post("/autopilot/api/stop", headers={"Origin": "https://evil.example", "X-Vellur-Request": "1"})).status_code == 403
+        await c.post("/autopilot/api/auth/logout", headers=FORM)
+        assert (await c.get("/autopilot/api/status")).status_code == 401
+        # old password no longer works, new one does
+        assert (await c.post("/autopilot/api/auth/login", headers=FORM, json={"password": "Temp-Pass-1234"})).status_code == 401
+        assert (await c.post("/autopilot/api/auth/login", headers=FORM, json={"password": "my own long passphrase"})).status_code == 200
+        # a server reset revokes every session
+        await c.post("/autopilot/api/auth/reset", headers=ADMIN, json={})
+        assert (await c.get("/autopilot/api/status")).status_code == 401
+
+
+async def test_login_is_throttled(rig):
+    ctrl = rig()
+    async with https_client(build_admin(ctrl)) as c:
+        await c.post("/autopilot/api/auth/reset", headers=ADMIN, json={"password": "Temp-Pass-1234"})
+        for _ in range(5):
+            assert (await c.post("/autopilot/api/auth/login", headers=FORM, json={"password": "x"})).status_code == 401
+        r = await c.post("/autopilot/api/auth/login", headers=FORM, json={"password": "Temp-Pass-1234"})
+        assert r.status_code == 429
+
+
+async def test_generated_temporary_password(rig):
+    ctrl = rig()
+    async with https_client(build_admin(ctrl)) as c:
+        pw = (await c.post("/autopilot/api/auth/reset", headers=ADMIN, json={})).json()["temporary_password"]
+        assert len(pw) == 23 and pw.count("-") == 3
+        assert "hash" not in ctrl.db.kv_get("admin_password") or pw not in str(ctrl.db.kv_get("admin_password"))

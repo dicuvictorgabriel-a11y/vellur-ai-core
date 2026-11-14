@@ -4,9 +4,10 @@ Autopilotul pornește un GPU când AI-ul are nevoie, îl păstrează cât lucrez
 în limita bugetului. Panoul e la **https://ai.vellurdigital.com/autopilot/**:
 - **public, doar vizualizare:** oricine vede starea GPU-ului, furnizorul și bugetul (fără adrese, porturi, ID-uri de
   instanță, setări sau mesaje de eroare detaliate);
-- **„Log in for controls”:** utilizatorul `vellur` și parola afișată o singură dată la instalare
-  (`sudo vac autopilot password` creează alta) deblochează pornire/oprire, setări, chat și istoric. Login-ul e ținut
-  minte în browser; „Log out” revine la vizualizare (pentru delogare completă închizi browserul).
+- **„Log in for controls”:** formular în pagină (fără fereastra browserului). Prima parolă e **temporară** și se
+  setează pe server cu `sudo vac autopilot password [parola]`; la primul login panoul te obligă să alegi una proprie
+  (minim 12 caractere). Sesiunea ține 30 de zile; „Log out” o închide. O parolă nouă setată pe server deconectează
+  toate sesiunile.
 
 > **Limită importantă.** Un controller de pe VPS **nu poate garanta un plafon strict de cheltuieli**: un furnizor poate
 > continua să factureze, poate raporta cu întârziere sau poate deveni inaccesibil exact când trebuie oprit GPU-ul.
@@ -69,9 +70,10 @@ mai rapide. **Netestat cu un cont real** (nu exista cheie).
 - **DRY RUN implicit:** nu se poate crea, porni sau opri nimic plătit. Se activează doar pe server:
   `sudo vac autopilot live on` (cere să tastezi LIVE). Citirile (oferte, sold) merg și în dry run.
 - Panoul: pagina și `/autopilot/api/public/*` sunt publice și filtrate (maxim 20 de fluxuri live publice simultan).
-  Orice altă cale cere login în browser (Caddy basic auth); doar după login Caddy adaugă antetul secret pe care
-  controllerul îl verifică la fiecare apel (un antet trimis de client pe calea publică e șters). Scrierile cer și
-  antet anti-CSRF + aceeași origine. Cheile furnizorilor nu ajung în browser.
+  Restul cere login: parola e stocată doar ca hash PBKDF2-SHA256; sesiunea e un cookie HttpOnly, Secure,
+  SameSite=Strict, limitat la /autopilot/; 5 încercări greșite pe IP (30 în total) în 15 min = blocare temporară.
+  Antetul secret al serverului e folosit doar de `vac` local; Caddy îl șterge din orice cerere venită din internet.
+  Scrierile cer și antet anti-CSRF + aceeași origine. Cheile furnizorilor nu ajung în browser.
 - Container: utilizator neprivilegiat (10001), sistem de fișiere doar-citire, fără capabilități, 256 MB, 0,5 CPU,
   fără socket Docker, port doar pe 127.0.0.1. Măsurat: ~51 MB RAM, ~0,2 % CPU.
 - SSH: cheie dedicată (`secrets/gpu_ed25519`), GPU-ul nu primește nicio cheie a VPS-ului; cheia serverului SSH e
@@ -84,7 +86,7 @@ mai rapide. **Netestat cu un cont real** (nu exista cheie).
 ```bash
 sudo vac autopilot status                  # faza, sesiunea, bugetul
 sudo vac autopilot enable | disable        # pornește/oprește controllerul (installerul îl pornește în dry run)
-sudo vac autopilot password                # parolă nouă pentru panou
+sudo vac autopilot password [temporară]    # parolă temporară pentru panou (o schimbi la primul login)
 sudo vac autopilot live on | off           # acțiuni reale la furnizori (doar pe server)
 sudo vac autopilot limits 50 0.50          # plafoane pe server: lunar, orar
 sudo vac autopilot forget-host ssh.hyper.ai
