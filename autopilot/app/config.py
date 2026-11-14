@@ -1,0 +1,95 @@
+"""Configuration.
+
+Two layers:
+  * Env (from /opt/vellur-ai-core/.env, set by vac): secrets, hard ceilings, live/dry-run. Never editable from the web.
+  * Settings (SQLite, editable from the dashboard): limited by the hard ceilings above.
+"""
+from __future__ import annotations
+
+import os
+from dataclasses import dataclass, field
+
+
+def _b(name: str, default: bool) -> bool:
+    v = os.environ.get(name)
+    return default if v is None or v == "" else v.strip().lower() in ("1", "true", "yes", "on")
+
+
+def _f(name: str, default: float) -> float:
+    try:
+        return float(os.environ.get(name, "") or default)
+    except ValueError:
+        return default
+
+
+@dataclass(frozen=True)
+class Env:
+    # Live mode: only then may a provider be asked to create/start/stop/destroy anything billable.
+    live: bool = field(default_factory=lambda: _b("AUTOPILOT_LIVE", False))
+    hard_max_monthly_usd: float = field(default_factory=lambda: _f("AUTOPILOT_HARD_MAX_MONTHLY_USD", 50.0))
+    hard_max_hourly_usd: float = field(default_factory=lambda: _f("AUTOPILOT_HARD_MAX_HOURLY_USD", 0.50))
+    admin_header_secret: str = field(default_factory=lambda: os.environ.get("AUTOPILOT_ADMIN_SECRET", ""))
+    data_dir: str = field(default_factory=lambda: os.environ.get("AUTOPILOT_DATA_DIR", "/data"))
+    ssh_key_path: str = field(default_factory=lambda: os.environ.get("AUTOPILOT_SSH_KEY", "/run/vellur/gpu_ed25519"))
+    ssh_known_hosts_seed: str = field(default_factory=lambda: os.environ.get("AUTOPILOT_KNOWN_HOSTS_SEED", "/run/vellur/gpu_known_hosts"))
+    vllm_api_key: str = field(default_factory=lambda: os.environ.get("VELLUR_GPU_API_KEY", ""))
+    gateway_url: str = field(default_factory=lambda: os.environ.get("AUTOPILOT_GATEWAY_URL", "http://gateway:4000"))
+    gateway_master_key: str = field(default_factory=lambda: os.environ.get("LITELLM_MASTER_KEY", ""))
+    vast_api_key: str = field(default_factory=lambda: os.environ.get("VAST_API_KEY", ""))
+    vast_api_url: str = field(default_factory=lambda: os.environ.get("VAST_API_URL", "https://console.vast.ai"))
+    notify_url: str = field(default_factory=lambda: os.environ.get("AUTOPILOT_NOTIFY_URL", ""))
+    public_origin: str = field(default_factory=lambda: os.environ.get("AUTOPILOT_PUBLIC_ORIGIN", ""))
+    # Seconds; test suites shorten these.
+    tick_seconds: float = field(default_factory=lambda: _f("AUTOPILOT_TICK_SECONDS", 15.0))
+    billing_sync_seconds: float = field(default_factory=lambda: _f("AUTOPILOT_BILLING_SYNC_SECONDS", 600.0))
+    request_hold_seconds: float = field(default_factory=lambda: _f("AUTOPILOT_REQUEST_HOLD_SECONDS", 900.0))
+    provision_timeout_seconds: float = field(default_factory=lambda: _f("AUTOPILOT_PROVISION_TIMEOUT", 1500.0))
+    model_load_timeout_seconds: float = field(default_factory=lambda: _f("AUTOPILOT_MODEL_LOAD_TIMEOUT", 2400.0))
+    poll_seconds: float = field(default_factory=lambda: _f("AUTOPILOT_POLL_SECONDS", 10.0))
+
+
+# Defaults for the dashboard-editable settings. Values are clamped by Env ceilings in Settings.validate().
+DEFAULT_SETTINGS: dict = {
+    "enabled": True,                 # Autopilot reacts to requests and runs its watchdog
+    "preferred_provider": "hyperai",
+    "profile": "coding",
+    "idle_timeout_min": 20,
+    "monthly_budget_usd": 50.0,
+    "max_hourly_usd": 0.50,
+    "max_session_hours": 3.0,
+    "auto_start_paid": False,        # a GPU request may start a paid provider by itself
+    "paid_fallback": False,          # if the preferred provider fails, try the next one
+    "hyperai_ssh_host": "ssh.hyper.ai",
+    "hyperai_ssh_port": 0,
+    "hyperai_included_hours": 30.0,  # HyperAI Pro: RTX 5090 hours included per month (advertised)
+    "hyperai_hourly_after_usd": 0.35,
+    "vast_min_reliability": 0.98,
+    "vast_geo_preference": "NL,DE,BE,FR,PL,RO,SE,FI,GB",
+    "vast_idle_action": "destroy",   # destroy = no storage charges; stop = keeps disk (billed) for faster restart
+    "vast_disk_gb": 60,
+}
+
+# Model profiles. The served name is always "vellur-coder" so LiteLLM and clients never change.
+PROFILES: dict = {
+    "fast": {
+        "label": "Fast chat",
+        "model_repo": "RedHatAI/Qwen3.8-27B-INT4",
+        "min_vram_gb": 24, "max_model_len": 32768, "download_gb": 19,
+        "verified": "RedHatAI/Qwen3.8-27B-INT4 ran on HyperAI H100 with vLLM 0.27.1 (owner output, 2026-11-13)",
+    },
+    "coding": {
+        "label": "General coding",
+        "model_repo": "RedHatAI/Qwen3.8-27B-INT4",
+        "min_vram_gb": 32, "max_model_len": 131072, "download_gb": 19,
+        "verified": "RedHatAI/Qwen3.8-27B-INT4 ran on HyperAI H100 with vLLM 0.27.1 (owner output, 2026-11-13)",
+    },
+    "advanced": {
+        "label": "Advanced coding (FP8, ≥48 GB)",
+        "model_repo": "Qwen/Qwen3.8-27B-FP8",
+        "min_vram_gb": 48, "max_model_len": 131072, "download_gb": 30,
+        "verified": "not verified: repository name and fit must be checked before use",
+    },
+}
+
+VLLM_IMAGE = os.environ.get("AUTOPILOT_VLLM_IMAGE", "vllm/vllm-openai:v0.27.1")
+MANAGED_LABEL = "vellur-autopilot"

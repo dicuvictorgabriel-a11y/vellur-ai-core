@@ -11,6 +11,8 @@
 #   vac gpu connect [<host>] <port>  point the tunnel at a running GPU workspace, then start it
 #   vac gpu up | down | status | test
 #   vac ui enable | disable          optional Open WebUI (~1 GB RAM)
+#   vac autopilot enable|disable|status|password|live on|off|limits <monthly> <hourly>
+#                                    GPU Autopilot (dry-run until "live on"; dashboard at /autopilot/)
 #   vac backup | restore <file>
 #
 # Touches only: the vellur-ai-core compose project and volume, /etc/caddy/vellur-ai-core.caddy,
@@ -90,7 +92,7 @@ render_snippet() {
 				header_up -X-Api-Key
 				flush_interval -1
 				transport http {
-					read_timeout 15m
+					read_timeout 30m
 				}
 			}
 		}
@@ -129,6 +131,27 @@ $ai {
 	import vellur_ai_common
 	import vellur_ai_gateway
 EOF
+	if has_profile autopilot; then
+		local ap auth directive secret
+		ap=$(envval AUTOPILOT_PORT); secret=$(envval AUTOPILOT_ADMIN_SECRET)
+		auth=$(head -1 "$VAC_HOME/secrets/autopilot-auth" 2>/dev/null) || true
+		[ -n "$auth" ] && [ ${#secret} -ge 32 ] || die "Autopilot credentials missing: sudo vac autopilot enable"
+		directive=$(caddy_basic_auth_directive)
+		cat <<EOF
+	# GPU Autopilot dashboard + API: browser login (basic auth), then Caddy adds the secret header the
+	# controller checks on every call. The secret never reaches the browser.
+	redir /autopilot /autopilot/ 308
+	handle /autopilot/* {
+		$directive {
+			$auth
+		}
+		reverse_proxy 127.0.0.1:$ap {
+			header_up X-Vellur-Admin "$secret"
+			flush_interval -1
+		}
+	}
+EOF
+	fi
 	if has_profile ui; then
 		cat <<EOF
 	# Open WebUI (own login; signup disabled)
@@ -203,6 +226,11 @@ caddy_apply() {   # $1 = with-import | without-import
 	return 1
 }
 refresh_caddy() { if is_exposed; then caddy_apply with-import; fi; }
+CADDY_BIN="${CADDY_BIN:-caddy}"
+caddy_basic_auth_directive() {   # Caddy >= 2.8 spells it basic_auth; older versions only know basicauth
+	local v; v=$($CADDY_BIN version 2>/dev/null | grep -oE 'v2\.[0-9]+' | head -1 | cut -d. -f2)
+	if [ -n "$v" ] && [ "$v" -lt 8 ]; then echo basicauth; else echo basic_auth; fi
+}
 
 # ── DNS ────────────────────────────────────────────────────────────────────────────
 server_ips() { { hostname -I 2>/dev/null || true; ip -o addr show scope global 2>/dev/null | awk '{print $4}' | cut -d/ -f1 || true; } | tr ' ' '\n' | sed '/^$/d' | sort -u || true; }
@@ -224,6 +252,7 @@ cmd_status() {
 	docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.PIDs}}' $(dc ps -q) 2>/dev/null || true
 	echo
 	if is_exposed; then ok "public: https://$(envval AI_DOMAIN)  (gateway: https://$(envval AI_DOMAIN)/v1)"; else warn "not public yet (sudo vac expose)"; fi
+	if has_profile autopilot; then cmd_autopilot status 2>/dev/null || warn "Autopilot API not answering"; fi
 	echo "${c_dim}profiles: ${c_off}$(profiles)${c_dim}   client keys: $(awk 'NF==2 && $1 !~ /^#/' "$CLIENTS" 2>/dev/null | wc -l)${c_off}"
 	local m; m=$(grep -cE '^\s*- model_name:' "$VAC_HOME/litellm/models.yaml" || true)
 	if [ "$m" -gt 0 ]; then ok "models configured: $m"; else warn "no inference backend configured (expected until the GPU is activated)"; fi
@@ -324,6 +353,20 @@ ensure_admin() {   # create the single admin account on 127.0.0.1 before anyone 
 cmd_gpu() {
 	need_root gpu
 	local s="$VAC_HOME/secrets"
+	if has_profile autopilot; then
+		case "${1:-status}" in
+		connect)
+			local port host=""
+			if [[ ${2:-} =~ ^[0-9]+$ ]]; then port=$2; else host=${2:-}; port=${3:-}; fi
+			[[ $port =~ ^[0-9]+$ ]] || die "usage: vac gpu connect [<host>] <port>"
+			ap_api POST hyperai/connect "{\"port\": $port${host:+, \"host\": \"$host\"}}" >/dev/null && \
+				ok "Autopilot is connecting to the HyperAI workspace (port $port). Progress: https://$(envval AI_DOMAIN)/autopilot/"
+			return ;;
+		up) die "Autopilot manages the GPU connection: use the dashboard or sudo vac gpu connect <port>" ;;
+		down) ap_api POST stop '{}' >/dev/null && ok "Autopilot is releasing the GPU. For HyperAI also press Stop execution in its console."; return ;;
+		status) ap_api GET status | python3 -c 'import json,sys; d=json.load(sys.stdin); print("phase:", d["phase"], "| live:", d["live_mode"], "| budget:", d["budget"]["total_usd"], "/", d["budget"]["budget_usd"], "USD")'; return ;;
+		esac
+	fi
 	case "${1:-status}" in
 	init)
 		command -v ssh-keygen >/dev/null || die "ssh-keygen missing: sudo apt-get install -y openssh-client"
@@ -403,11 +446,95 @@ same_host_key() {   # $1 host, $2 new scan, $3 known_hosts
 
 ensure_gpu_models() {   # activate the GPU model entries once (keeps any custom models.yaml)
 	local m="$VAC_HOME/litellm/models.yaml"
+	# An unmodified older default (single vellur-coder entry, 180 s stream timeout) is replaced by the current one.
+	if [ "$(grep -cE '^\s*- model_name:' "$m")" = 1 ] && grep -q 'stream_timeout: 180' "$m" && grep -q 'VELLUR_GPU_API_BASE' "$m"; then
+		cp -p "$m" "$m.bak-$(date +%Y%m%d-%H%M%S)"; cp "$VAC_HOME/litellm/models.gpu.yaml" "$m"
+		ok "Updated litellm/models.yaml to the current defaults (previous file backed up)."
+	fi
 	if ! grep -qE '^\s*- model_name:' "$m"; then
 		cp -p "$m" "$m.bak-$(date +%Y%m%d-%H%M%S)"
 		cp "$VAC_HOME/litellm/models.gpu.yaml" "$m"
 		ok "Activated model 'vellur-coder' (litellm/models.yaml; previous file backed up)."
 	fi
+}
+
+ap_api() {   # ap_api METHOD path [json]  — local admin API (127.0.0.1 only), with the server-side secret
+	local m=$1 path=$2 body=${3:-} port secret
+	port=$(envval AUTOPILOT_PORT); secret=$(envval AUTOPILOT_ADMIN_SECRET)
+	curl -fsS -m 60 -X "$m" -H "X-Vellur-Admin: $secret" -H "X-Vellur-Request: 1" -H 'content-type: application/json' \
+		${body:+-d "$body"} "http://127.0.0.1:$port/autopilot/api/$path" || die "Autopilot API call failed ($m $path). Logs: sudo vac logs autopilot"
+}
+
+new_password() { openssl rand -base64 30 | tr -d '/+=' | cut -c1-24; }
+
+set_dashboard_password() {
+	local pw hash
+	pw=$(new_password)
+	hash=$($CADDY_BIN hash-password --plaintext "$pw" 2>/dev/null | tail -1)
+	[[ $hash == \$2* ]] || die "Could not hash the dashboard password with Caddy."
+	umask 077; echo "vellur $hash" > "$VAC_HOME/secrets/autopilot-auth"; umask 022
+	echo; echo "  GPU Autopilot login — user: vellur   password (shown ONCE, save it in your password manager):"
+	echo; echo "    $pw"; echo
+}
+
+cmd_autopilot() {
+	need_root autopilot
+	case "${1:-status}" in
+	enable)
+		[ -f "$VAC_HOME/secrets/gpu_ed25519" ] || cmd_gpu init
+		local p
+		if [ -z "$(envval AUTOPILOT_PORT)" ]; then p=3312; while (exec 3<>"/dev/tcp/127.0.0.1/$p") 2>/dev/null; do p=$((p + 2)); done; setenv AUTOPILOT_PORT "$p"; fi
+		[ "$(envval AUTOPILOT_ADMIN_SECRET | wc -c)" -gt 32 ] || setenv AUTOPILOT_ADMIN_SECRET "$(openssl rand -hex 32)"
+		[ -n "$(envval AUTOPILOT_LIVE)" ] || setenv AUTOPILOT_LIVE 0
+		[ -n "$(envval AUTOPILOT_HARD_MAX_MONTHLY_USD)" ] || setenv AUTOPILOT_HARD_MAX_MONTHLY_USD 50
+		[ -n "$(envval AUTOPILOT_HARD_MAX_HOURLY_USD)" ] || setenv AUTOPILOT_HARD_MAX_HOURLY_USD 0.50
+		[ -s "$VAC_HOME/secrets/autopilot-auth" ] || set_dashboard_password
+		ensure_gpu_models
+		setenv VELLUR_GPU_API_BASE "http://gpu-backend:8000/v1"
+		set_profiles -gpu; dc stop gpu-tunnel >/dev/null 2>&1 || true
+		set_profiles +autopilot
+		dc build autopilot
+		dc up -d autopilot
+		dc up -d gateway
+		wait_healthy vellur-ai-autopilot 90 || die "Autopilot not healthy. Logs: sudo vac logs autopilot"
+		wait_healthy vellur-ai-gateway 120 || warn "gateway not healthy yet: sudo vac logs gateway"
+		refresh_caddy || true
+		ok "GPU Autopilot is on ($( [ "$(envval AUTOPILOT_LIVE)" = 1 ] && echo LIVE || echo 'DRY RUN: no paid actions')): https://$(envval AI_DOMAIN)/autopilot/" ;;
+	disable)
+		set_profiles -autopilot; setenv VELLUR_GPU_API_BASE ""
+		refresh_caddy || true
+		dc stop autopilot >/dev/null 2>&1 || true; dc up -d gateway >/dev/null
+		ok "Autopilot off (its data volume is kept). A GPU it started may still run: check the provider console." ;;
+	password)
+		set_dashboard_password; refresh_caddy ;;
+	live)
+		case "${2:-}" in
+		on)
+			echo "LIVE mode lets Autopilot create, start and stop paid GPU instances within these server-side ceilings:"
+			echo "  monthly budget ≤ \$$(envval AUTOPILOT_HARD_MAX_MONTHLY_USD), GPU rate ≤ \$$(envval AUTOPILOT_HARD_MAX_HOURLY_USD)/h"
+			echo "A local controller cannot guarantee a hard cap if a provider keeps billing or reports late:"
+			echo "keep provider balances prepaid and automatic top-up OFF."
+			local a; read -r -p "Type LIVE to enable real provider actions: " a || a=""
+			[ "$a" = LIVE ] || die "Cancelled; still dry-run."
+			setenv AUTOPILOT_LIVE 1 ;;
+		off) setenv AUTOPILOT_LIVE 0 ;;
+		*) die "usage: vac autopilot live on|off" ;;
+		esac
+		dc up -d autopilot; ok "Autopilot live mode: $(envval AUTOPILOT_LIVE)" ;;
+	limits)
+		local mo=${2:?usage: vac autopilot limits <monthly_usd> <max_hourly_usd>} hr=${3:?usage: vac autopilot limits <monthly_usd> <max_hourly_usd>}
+		[[ $mo =~ ^[0-9]+([.][0-9]+)?$ && $hr =~ ^[0-9]+([.][0-9]+)?$ ]] || die "numbers only"
+		setenv AUTOPILOT_HARD_MAX_MONTHLY_USD "$mo"; setenv AUTOPILOT_HARD_MAX_HOURLY_USD "$hr"
+		dc up -d autopilot; ok "Server-side ceilings: \$$mo/month, \$$hr/hour (the dashboard cannot exceed them)." ;;
+	status)
+		has_profile autopilot || { warn "Autopilot is off (sudo vac autopilot enable)"; return 0; }
+		ap_api GET status | python3 -c '
+import json,sys; d=json.load(sys.stdin); b=d["budget"]; s=d["session"] or {}
+print("phase:", d["phase"], "| live:", d["live_mode"], "| enabled:", d["enabled"])
+print("provider:", (d["provider"] or {}).get("display"), "| session:", s.get("id"), s.get("state"), s.get("reason",""))
+print("budget %s: total $%s of $%s (confirmed $%s, estimated $%s)" % (b["month"], b["total_usd"], b["budget_usd"], b["confirmed_usd"], b["estimated_unconfirmed_usd"]))' ;;
+	*) die "usage: vac autopilot enable|disable|status|password|live on|off|limits <monthly> <hourly>" ;;
+	esac
 }
 
 cmd_backup() {
@@ -495,9 +622,24 @@ cmd_verify() {
 	else
 		warn "public checks skipped: not exposed yet (sudo vac expose)"
 	fi
+	if has_profile autopilot; then
+		local app asec
+		app=$(envval AUTOPILOT_PORT); asec=$(envval AUTOPILOT_ADMIN_SECRET)
+		echo "── GPU Autopilot"
+		t "container healthy"                 "wait_healthy vellur-ai-autopilot 90"
+		t "admin API refuses without secret"  "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 5 http://127.0.0.1:$app/autopilot/api/status)\" = 401 ]"
+		t "admin API answers with secret"     "curl -fsS -m 5 -H 'X-Vellur-Admin: $asec' http://127.0.0.1:$app/autopilot/api/status | grep -q '\"phase\"'"
+		t "LiteLLM routes the model via Autopilot" "[ \"\$(envval VELLUR_GPU_API_BASE)\" = http://gpu-backend:8000/v1 ]"
+		if is_exposed; then
+			t "public dashboard needs a login (401)" "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 https://$ai/autopilot/)\" = 401 ]"
+			t "public API needs a login (401)"       "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 -H 'X-Vellur-Admin: $asec' https://$ai/autopilot/api/status)\" = 401 ]"
+		fi
+		[ "$(envval AUTOPILOT_LIVE)" = 1 ] && warn "Autopilot LIVE mode: real provider actions allowed" || ok "Autopilot in DRY RUN (no paid actions possible)"
+	fi
 	echo "── inference"
 	if curl -fsS -m 5 -H "Authorization: Bearer $master" "http://127.0.0.1:$gp/v1/models" 2>/dev/null | grep -q '"data":\[\]'; then
 		warn "no inference backend configured — requests get \"invalid model\" (expected until the GPU is activated)"
+	elif has_profile autopilot; then warn "inference is started on demand by Autopilot (not tested here, to avoid starting a GPU)"
 	elif has_profile gpu; then cmd_gpu test || fails=$((fails + 1))
 	else warn "models configured but the GPU tunnel is off (sudo vac gpu up when the workspace runs)"; fi
 	echo
@@ -517,8 +659,9 @@ case "${1:-help}" in
 	unexpose) cmd_unexpose ;;
 	gpu) shift; cmd_gpu "$@" ;;
 	ui) shift; cmd_ui "$@" ;;
+	autopilot) shift; cmd_autopilot "$@" ;;
 	backup) cmd_backup ;;
 	restore) shift; cmd_restore "$@" ;;
 	render-snippet) render_snippet ;;   # for tests / review
-	*) sed -n '2,19p' "$0" | sed 's/^# \{0,1\}//' ;;
+	*) sed -n '2,21p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

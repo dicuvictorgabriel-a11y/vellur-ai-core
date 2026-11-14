@@ -11,6 +11,7 @@
 #   5. publishes https://ai.vellurdigital.com through the EXISTING Caddy — only if DNS already
 #      points here — with backup, validation and automatic restore (sudo vac expose)
 #   6. runs the checks (sudo vac verify)
+#   4b. starts the GPU Autopilot controller in DRY RUN (dashboard https://<domain>/autopilot/, login shown once)
 # It never stops, restarts or edits other projects, containers, firewall rules or DNS.
 set -euo pipefail
 
@@ -30,7 +31,7 @@ ask()  { local a; read -r -p "$1 [y/N] " a || a=""; [[ $a =~ ^[Yy]$ ]]; }
 port_busy() { (exec 3<>"/dev/tcp/127.0.0.1/$1") 2>/dev/null; }
 
 # Files checked out on Windows may carry CRLF line endings; bash needs LF.
-find "$SRC" -type f \( -name '*.sh' -o -name 'vac' -o -name '*.yaml' -o -name '*.example' \) -exec sed -i 's/\r$//' {} +
+find "$SRC" -type f \( -name '*.sh' -o -name 'vac' -o -name '*.yaml' -o -name '*.example' -o -name '*.py' -o -name 'Dockerfile' -o -name '*.txt' \) -exec sed -i 's/\r$//' {} +
 
 step "1/6 Discovery (read-only)"
 mkdir -p /var/backups/vellur-ai-core; chmod 700 /var/backups/vellur-ai-core
@@ -87,7 +88,8 @@ if [ -d "$DEST" ]; then
 	PRE="/var/backups/vellur-ai-core/pre-update-$(date +%Y%m%d-%H%M%S).tar.gz"
 	tar -C "$DEST" -czf "$PRE" . && chmod 600 "$PRE" && ok "Previous installation backed up: $PRE"
 fi
-install -d -m 755 "$DEST" "$DEST/litellm" "$DEST/bin" "$DEST/www" "$DEST/tunnel" "$DEST/gpu" "$DEST/docs" "$DEST/opencode"
+install -d -m 755 "$DEST" "$DEST/litellm" "$DEST/bin" "$DEST/www" "$DEST/tunnel" "$DEST/gpu" "$DEST/docs" "$DEST/opencode" \
+	"$DEST/autopilot" "$DEST/autopilot/app" "$DEST/autopilot/app/providers" "$DEST/autopilot/app/static"
 install -d -m 700 "$DEST/secrets"
 install -m 644 "$SRC/compose.yaml" "$SRC/env.example" "$DEST/"
 install -m 644 "$SRC/litellm/config.yaml" "$SRC/litellm/models.gpu.yaml" "$SRC/litellm/models.example.yaml" "$DEST/litellm/"
@@ -98,6 +100,10 @@ install -m 644 "$SRC/www/"* "$DEST/www/"
 install -m 755 "$SRC/gpu/"*.sh "$DEST/gpu/"
 install -m 644 "$SRC/README.md" "$DEST/"; [ -d "$SRC/docs" ] && install -m 644 "$SRC/docs/"* "$DEST/docs/"
 install -m 644 "$SRC/opencode/"* "$DEST/opencode/"
+install -m 644 "$SRC/autopilot/Dockerfile" "$SRC/autopilot/requirements.txt" "$SRC/autopilot/.dockerignore" "$DEST/autopilot/"
+install -m 644 "$SRC/autopilot/app/"*.py "$DEST/autopilot/app/"
+install -m 644 "$SRC/autopilot/app/providers/"*.py "$DEST/autopilot/app/providers/"
+install -m 644 "$SRC/autopilot/app/static/"* "$DEST/autopilot/app/static/"
 ln -sf "$DEST/bin/vac" /usr/local/bin/vac
 ok "Installed; command: sudo vac"
 
@@ -121,6 +127,13 @@ for i in $(seq 1 40); do [ "$(docker inspect -f '{{.State.Health.Status}}' vellu
 ok "Gateway healthy"
 if [ -z "$(awk 'NF==2 && $1 !~ /^#/' "$DEST/secrets/gateway-clients" 2>/dev/null)" ]; then
 	vac keys add opencode
+fi
+
+step "4b GPU Autopilot (dry run: no paid action possible)"
+if [ "${VAC_SKIP_AUTOPILOT:-0}" != 1 ]; then
+	MEM_NOW=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
+	if [ "$MEM_NOW" -ge 500 ]; then vac autopilot enable || warn "Autopilot did not start; the gateway still works. Logs: sudo vac logs autopilot"
+	else warn "Skipped Autopilot: less than 500 MB RAM free."; fi
 fi
 
 step "5/6 Publish (HTTPS)"

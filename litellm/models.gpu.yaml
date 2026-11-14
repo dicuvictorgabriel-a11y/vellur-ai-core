@@ -5,10 +5,10 @@ model_list:
   - model_name: vellur-coder
     litellm_params:
       model: hosted_vllm/vellur-coder          # = --served-model-name on the GPU (gpu/hyperai-serve.sh)
-      api_base: os.environ/VELLUR_GPU_API_BASE  # default http://gpu-tunnel:8000/v1 (SSH tunnel)
+      api_base: os.environ/VELLUR_GPU_API_BASE  # tunnel: http://gpu-tunnel:8000/v1 · Autopilot: http://gpu-backend:8000/v1
       api_key: os.environ/VELLUR_GPU_API_KEY    # = VLLM_API_KEY on the GPU
-      timeout: 900
-      stream_timeout: 180
+      timeout: 1800          # Autopilot may hold a request up to ~14 min while a GPU boots
+      stream_timeout: 960
     model_info:
       mode: chat
       supports_function_calling: true

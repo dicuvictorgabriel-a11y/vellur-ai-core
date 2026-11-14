@@ -9,7 +9,7 @@ include:
 
 litellm_settings:
   drop_params: true          # ignore OpenAI params a backend does not support instead of failing
-  request_timeout: 600       # long coding generations
+  request_timeout: 1800      # long generations + a GPU cold start held by Autopilot
   num_retries: 1
   telemetry: false
 
