@@ -273,11 +273,24 @@ class Controller:
             await self._fail(sid, "provider", f"{e.__class__.__name__}: {e}")
 
     async def _attach_assisted(self, sid: int, p: GPUProvider) -> None:
+        from .providers.hyperai import START_HELP
         host, port = p.endpoint()  # type: ignore[attr-defined]
-        await self.tunnel.open(host, port)
+        trigger = self._row(sid)["trigger"]
+        try:
+            await self.tunnel.open(host, port)
+        except ProviderError as e:
+            if e.code == "auth":
+                raise
+            raise ProviderError("manual", f"HyperAI workspace not reachable at {host}:{port} ({e.message}). {START_HELP}")
         self.backend_url = self.tunnel.url
         await self._set_state(sid, "loading_model", billing_started_at=self.clock())
-        await self._wait_model(min(self.env.model_load_timeout_seconds, 900))
+        # A message must not wait long for a workspace that is not serving; a manual connect may wait for loading.
+        wait = 60.0 if trigger == "request" else min(self.env.model_load_timeout_seconds, 900)
+        try:
+            await self._wait_model(min(wait, self.env.model_load_timeout_seconds))
+        except ProviderError as e:
+            raise ProviderError("manual", "The HyperAI workspace is reachable but the model is not answering. "
+                                "Run the hyperai-serve.sh script in the workspace terminal and wait for READY.") from e
 
     async def _wait_running(self, p: GPUProvider, iid: str):
         deadline = time.monotonic() + self.env.provision_timeout_seconds

@@ -87,7 +87,7 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
         <dt>Compute termination</dt><dd id="pTerm">—</dd>
         <dt>HyperAI hours left</dt><dd id="pHours">—</dd>
         <dt>Requests</dt><dd id="pReq">—</dd>
-        <dt>Idle shutdown in</dt><dd id="pIdle">—</dd>
+        <dt id="pIdleLabel">Idle shutdown in</dt><dd id="pIdle">—</dd>
       </dl>
     </section>
 
@@ -173,7 +173,7 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
     $("phaseNote").textContent = s.explain || (ph === "offline" ? "No GPU running. Requests will start one if policy allows." : "");
     $("mode").textContent = s.live_mode ? "LIVE — real provider actions" : "DRY RUN — no paid actions";
     $("mode").className = "pill " + (s.live_mode ? "live" : "dry");
-    const idx = STEPS.indexOf(ses.state); const automated = s.provider && s.provider.automated;
+    const idx = STEPS.indexOf(ses.state); const automated = s.provider ? s.provider.automated : null;
     $("steps").innerHTML = STEPS.filter(x => automated ? x !== "attaching" : !["searching","provisioning","starting"].includes(x))
       .map(x => `<span class="step ${x === ses.state ? "on" : (idx > STEPS.indexOf(x) || ["ready"].includes(ses.state) && x !== "ready") && ses.state ? "done" : ""}">${LABEL[x]}</span>`).join("");
     const live = ["searching","attaching","provisioning","starting","loading_model","ready"].includes(ses.state);
@@ -186,6 +186,7 @@ th{color:var(--muted);font-weight:500}td.m{font-family:ui-monospace,Menlo,monosp
     $("pTerm").textContent = s.termination || "—";
     $("pHours").textContent = s.budget.hyperai_hours_left_estimate + " h (estimate)";
     $("pReq").textContent = s.inflight + " active, " + s.queued + " waiting";
+    $("pIdleLabel").textContent = automated === false ? "Idle alert in (stop it in HyperAI)" : "Idle shutdown in";
     $("pIdle").textContent = s.idle_shutdown_in_s == null ? "—" : Math.ceil(s.idle_shutdown_in_s / 60) + " min";
     const b = s.budget; $("bMonth").textContent = b.month;
     $("bTotal").textContent = money(b.total_usd); $("bBudget").textContent = money(b.budget_usd);

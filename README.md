@@ -40,6 +40,16 @@ Fiecare container: rețea proprie `vellur-ai-core`, porturi doar pe 127.0.0.1, f
 capabilități eliminate, sistem de fișiere doar-citire (gateway, tunel), limite de memorie/CPU/procese, jurnale rotite
 (3 × 10 MB), repornire automată.
 
+## GPU Autopilot
+
+Panou: **https://ai.vellurdigital.com/autopilot/** (login). Pornește și eliberează GPU-ul automat, cu buget lunar,
+plafoane pe server și dry run implicit. HyperAI e asistat (fără API de pornire/oprire), Vast.ai e automat (după ce
+pui o cheie). Detalii, limite și ce e testat: [`docs/AUTOPILOT.md`](docs/AUTOPILOT.md).
+
+| Serviciu | Container | Port | RAM (limită) | Măsurat |
+|---|---|---|---|---|
+| GPU Autopilot | `vellur-ai-autopilot` | 127.0.0.1:3312 (+ intern `gpu-backend:8000`) | 256 MB | ~51 MB, ~0,2 % CPU |
+
 ## Domenii
 
 - `ai.vellurdigital.com` — un singur nume pentru tot: pagina (sau Open WebUI) la `/`, gateway-ul la `/v1`.
@@ -84,6 +94,7 @@ sudo vac keys add laptop   # cheie nouă (afișată o dată); sudo vac keys revo
 sudo vac expose            # după ce ai adăugat DNS-ul
 sudo vac gpu up | down     # tunelul către GPU (vezi docs/GPU-AND-MODELS.md)
 sudo vac ui enable         # Open WebUI, doar dacă ajunge memoria
+sudo vac autopilot status  # GPU Autopilot (panou: /autopilot/)
 ```
 
 ## OpenCode

@@ -14,8 +14,8 @@ import os
 from .base import GPUProvider, InstanceStatus, ProviderError
 
 START_HELP = ("HyperAI cannot be started automatically (no documented API). Start a workspace in the HyperAI "
-              "console (RTX 5090 or 3090, vllm image), run `bash /hyperai/home/hyperai-serve.sh`, then enter the SSH "
-              "port shown in its SSH panel on the Autopilot page.")
+              "console (RTX 5090 or 3090, vllm image), run the hyperai-serve.sh script in its terminal, then enter the "
+              "SSH port shown in its SSH panel on the Autopilot page.")
 STOP_HELP = ("Stop the workspace in the HyperAI console (Stop execution). HyperAI keeps billing until it is "
              "stopped there; Autopilot only disconnected.")
 

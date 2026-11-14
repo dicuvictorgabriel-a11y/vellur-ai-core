@@ -10,7 +10,7 @@ include:
 litellm_settings:
   drop_params: true          # ignore OpenAI params a backend does not support instead of failing
   request_timeout: 1800      # long generations + a GPU cold start held by Autopilot
-  num_retries: 1
+  num_retries: 0            # GPU Autopilot already holds/retries; a gateway retry would double every wait
   telemetry: false
 
 router_settings:

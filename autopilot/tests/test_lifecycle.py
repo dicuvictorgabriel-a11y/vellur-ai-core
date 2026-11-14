@@ -313,3 +313,19 @@ async def test_request_waits_while_starting_then_times_out_cleanly(rig):
         await ctrl.ensure_ready()
     assert e.value.code == "starting" and "Starting your AI environment" in e.value.message
     assert ctrl.queued == 0
+
+
+async def test_assisted_request_fails_fast_with_instructions(rig):
+    ctrl = rig(manual=True, model_load_timeout_seconds=0.2)
+    ctrl.backend.up = False
+    with pytest.raises(ControlError) as e:
+        await ctrl.ensure_ready()
+    assert e.value.code == "manual" and "hyperai-serve.sh" in e.value.message
+
+
+async def test_assisted_unreachable_workspace_explains(rig):
+    ctrl = rig(manual=True)
+    ctrl.fake_tunnel.fail = "Connection refused"
+    with pytest.raises(ControlError) as e:
+        await ctrl.ensure_ready()
+    assert e.value.code == "manual" and "not reachable" in e.value.message and "Start a workspace" in e.value.message

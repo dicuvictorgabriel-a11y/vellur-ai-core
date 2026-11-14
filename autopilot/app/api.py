@@ -140,6 +140,17 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
             return JSONResponse(status_code=400, content={"error": "invalid", "message": "1–240 minutes"})
         return {"protected_until": ctrl.protect(body.minutes)}
 
+    @app.post("/autopilot/api/hostkeys/forget", dependencies=[Depends(admin_write)])
+    async def forget_host(body: ConnectBody):
+        """Forget the trusted SSH host key of a host (after a legitimate key change). Server-only via vac."""
+        host = (body.host or "").strip()
+        keys = ctrl.db.kv_get("host_keys", {}) or {}
+        removed = keys.pop(host, None) is not None
+        ctrl.db.kv_set("host_keys", keys)
+        ctrl.db.event("alert" if removed else "info", "security", f"SSH host key for {host} forgotten" if removed
+                      else f"no trusted SSH host key for {host}")
+        return {"removed": removed}
+
     @app.post("/autopilot/api/billing/sync", dependencies=[Depends(admin_write)])
     async def billing_sync():
         return await ctrl.sync_billing()

@@ -493,7 +493,7 @@ cmd_autopilot() {
 		setenv VELLUR_GPU_API_BASE "http://gpu-backend:8000/v1"
 		set_profiles -gpu; dc stop gpu-tunnel >/dev/null 2>&1 || true
 		set_profiles +autopilot
-		dc build autopilot
+		[ "${VAC_SKIP_BUILD:-0}" = 1 ] || dc build autopilot     # VAC_SKIP_BUILD: test sandboxes with a prebuilt image
 		dc up -d autopilot
 		dc up -d gateway
 		wait_healthy vellur-ai-autopilot 90 || die "Autopilot not healthy. Logs: sudo vac logs autopilot"
@@ -507,6 +507,11 @@ cmd_autopilot() {
 		ok "Autopilot off (its data volume is kept). A GPU it started may still run: check the provider console." ;;
 	password)
 		set_dashboard_password; refresh_caddy ;;
+	forget-host)
+		local h=${2:?usage: vac autopilot forget-host <ssh-host>}
+		[[ $h =~ ^[A-Za-z0-9.-]+$ ]] || die "invalid host"
+		ap_api POST hostkeys/forget "{\"port\": 0, \"host\": \"$h\"}" && echo
+		ok "The next connection to $h trusts its current key (first use)." ;;
 	live)
 		case "${2:-}" in
 		on)
@@ -533,7 +538,7 @@ import json,sys; d=json.load(sys.stdin); b=d["budget"]; s=d["session"] or {}
 print("phase:", d["phase"], "| live:", d["live_mode"], "| enabled:", d["enabled"])
 print("provider:", (d["provider"] or {}).get("display"), "| session:", s.get("id"), s.get("state"), s.get("reason",""))
 print("budget %s: total $%s of $%s (confirmed $%s, estimated $%s)" % (b["month"], b["total_usd"], b["budget_usd"], b["confirmed_usd"], b["estimated_unconfirmed_usd"]))' ;;
-	*) die "usage: vac autopilot enable|disable|status|password|live on|off|limits <monthly> <hourly>" ;;
+	*) die "usage: vac autopilot enable|disable|status|password|forget-host <host>|live on|off|limits <monthly> <hourly>" ;;
 	esac
 }
 
@@ -586,7 +591,7 @@ cmd_verify() {
 	local fails=0 master gp wp ai key cs=(vellur-ai-gateway)
 	t() { if eval "$2" >/dev/null 2>&1; then ok "$1"; else bad "$1"; fails=$((fails + 1)); fi; }
 	master=$(envval LITELLM_MASTER_KEY); gp=$(envval GATEWAY_PORT); wp=$(envval WEBUI_PORT); ai=$(envval AI_DOMAIN)
-	has_profile ui && cs+=(vellur-ai-webui); has_profile gpu && cs+=(vellur-ai-gpu-tunnel)
+	has_profile ui && cs+=(vellur-ai-webui); has_profile gpu && cs+=(vellur-ai-gpu-tunnel); has_profile autopilot && cs+=(vellur-ai-autopilot)
 	echo "── containers (${cs[*]})"
 	t "gateway healthy"                    "wait_healthy vellur-ai-gateway 90"
 	t "restart policy unless-stopped"      "[ \"\$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' ${cs[*]} | sort -u)\" = unless-stopped ]"

@@ -118,3 +118,12 @@ async def test_proxy_backend_error_releases_activity(rig):
         r = await c.post("/v1/chat/completions", json={})
         assert r.status_code == 502 and r.json()["error"]["code"] == "provider"
     assert ctrl.inflight == 0
+
+
+async def test_forget_host_key(rig):
+    ctrl = rig()
+    ctrl.db.kv_set("host_keys", {"ssh.hyper.ai": ["SHA256:old"]})
+    async with client(build_admin(ctrl)) as c:
+        r = await c.post("/autopilot/api/hostkeys/forget", headers=WRITE, json={"port": 0, "host": "ssh.hyper.ai"})
+        assert r.json() == {"removed": True}
+    assert ctrl.db.kv_get("host_keys") == {}

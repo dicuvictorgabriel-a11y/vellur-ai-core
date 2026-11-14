@@ -68,12 +68,23 @@ in its network namespace; `vac verify` must pass. Validate Caddy output on 2.6�
   `wrap json` in the log filter; Ubuntu's default awk is mawk (no `{n,m}` intervals); the reasoning model needs
   max_tokens ≥ ~300 or the answer is empty.
 
+## GPU Autopilot (autopilot/, docs/AUTOPILOT.md)
+
+FastAPI + SQLite controller in its own container (profile `autopilot`, 256 MB). LiteLLM's `vellur-coder` points to its
+inference proxy `gpu-backend:8000`; it ensures a GPU (start/attach, hold the request), streams, counts activity, and a
+watchdog handles idle / session limit / budget / unverified stops / orphans / billing sync. Providers: HyperAI
+**assisted** (no documented start/stop API — do not invent one), Vast.ai automated (endpoints copied from the official
+`vastai` SDK 1.11.0; untested with a real account), mock for tests. DRY RUN unless `AUTOPILOT_LIVE=1`
+(`sudo vac autopilot live on`). Dashboard behind Caddy basic auth + secret header checked server-side + CSRF header.
+Tests: `cd autopilot && pytest -q` (60, no network: guarded). Never let tests reach a real provider.
+
 ## Open work (priority order)
 
-1. Owner runs `deploy-from-pc.ps1` (VPS still has an older `vac`), rotates the vLLM key, creates `vellur.env`.
+1. Owner runs `deploy-from-pc.ps1` (installs Autopilot in dry run; prints the dashboard password once), rotates the
+   vLLM key, creates `vellur.env` on HyperAI. First real Autopilot test: attach a HyperAI workspace from the dashboard.
 2. Test OpenCode end to end with the real model (tool calling: create/edit a file).
-3. Check whether the `bayes` CLI works with HyperAI (`bayes gear restart|stop`); if yes, add `vac gpu start|stop`
-   (the owner logs in on the VPS; a low prepaid balance limits the risk).
+3. Check whether the `bayes` CLI or an official HyperAI API can start/stop workspaces; if yes, make
+   `providers/hyperai.py` automated. Vast.ai: first live rental test once the owner adds a key and approves.
 4. Verify `gpu/autostart.sh` (`/hyperai/home/dependencies.sh`) on a workspace.
 5. Decide Open WebUI on the 4 GB VPS (`sudo vac ui enable` checks RAM) vs. a lighter chat UI.
 6. Add CI for this folder (shellcheck, `bash -n`, compose config, Caddy validate on 2.6/2.8/latest, stub e2e).
