@@ -104,6 +104,9 @@ install -m 644 "$SRC/autopilot/Dockerfile" "$SRC/autopilot/requirements.txt" "$S
 install -m 644 "$SRC/autopilot/app/"*.py "$DEST/autopilot/app/"
 install -m 644 "$SRC/autopilot/app/providers/"*.py "$DEST/autopilot/app/providers/"
 install -m 644 "$SRC/autopilot/app/static/"* "$DEST/autopilot/app/static/"
+install -d -m 755 "$DEST/agent"
+install -m 644 "$SRC/agent/Dockerfile" "$SRC/agent/runner.py" "$DEST/agent/"
+install -m 644 "$SRC/litellm/models.gpu.yaml" "$DEST/litellm/"
 ln -sf "$DEST/bin/vac" /usr/local/bin/vac
 ok "Installed; command: sudo vac"
 
@@ -134,6 +137,11 @@ if [ "${VAC_SKIP_AUTOPILOT:-0}" != 1 ]; then
 	MEM_NOW=$(awk '/MemAvailable/ {print int($2/1024)}' /proc/meminfo)
 	if [ "$MEM_NOW" -ge 500 ]; then vac autopilot enable || warn "Autopilot did not start; the gateway still works. Logs: sudo vac logs autopilot"
 	else warn "Skipped Autopilot: less than 500 MB RAM free."; fi
+	# Coding-agent workspace: an isolated container (image ≈ 1.5 GB on disk, ≤ 2 GB RAM only while a task runs).
+	DISK_NOW=$(df -Pm / | awk 'NR==2 {print $4}')
+	if [ "$MEM_NOW" -ge 2500 ] && [ "$DISK_NOW" -ge 8000 ]; then
+		vac agent enable || warn "The agent workspace did not start; everything else works. Logs: sudo vac logs agent"
+	else warn "Skipped the agent workspace (needs 2.5 GB free RAM and 8 GB disk): sudo vac agent enable"; fi
 fi
 
 step "5/6 Publish (HTTPS)"

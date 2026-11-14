@@ -14,6 +14,7 @@
 #   vac autopilot enable|disable|status|password|live on|off|limits <monthly> <hourly>
 #                                    GPU Autopilot (dry-run until "live on"; dashboard at /autopilot/,
 #                                    "password" sets a temporary login password that must be changed on the page)
+#   vac agent enable | disable | status   isolated coding-agent workspace (OpenCode)
 #   vac backup | restore <file>
 #
 # Touches only: the vellur-ai-core compose project and volume, /etc/caddy/vellur-ai-core.caddy,
@@ -436,8 +437,8 @@ same_host_key() {   # $1 host, $2 new scan, $3 known_hosts
 
 ensure_gpu_models() {   # activate the GPU model entries once (keeps any custom models.yaml)
 	local m="$VAC_HOME/litellm/models.yaml"
-	# An unmodified older default (single vellur-coder entry, 180 s stream timeout) is replaced by the current one.
-	if [ "$(grep -cE '^\s*- model_name:' "$m")" = 1 ] && grep -q 'stream_timeout: 180' "$m" && grep -q 'VELLUR_GPU_API_BASE' "$m"; then
+	# An unmodified older default (single vellur-coder entry) is replaced by the current one (three public names).
+	if [ "$(grep -cE '^\s*- model_name:' "$m")" = 1 ] && grep -q 'model_name: vellur-coder' "$m" && grep -q 'VELLUR_GPU_API_BASE' "$m"; then
 		cp -p "$m" "$m.bak-$(date +%Y%m%d-%H%M%S)"; cp "$VAC_HOME/litellm/models.gpu.yaml" "$m"
 		ok "Updated litellm/models.yaml to the current defaults (previous file backed up)."
 	fi
@@ -476,6 +477,8 @@ cmd_autopilot() {
 		[ -n "$(envval AUTOPILOT_LIVE)" ] || setenv AUTOPILOT_LIVE 0
 		[ -n "$(envval AUTOPILOT_HARD_MAX_MONTHLY_USD)" ] || setenv AUTOPILOT_HARD_MAX_MONTHLY_USD 50
 		[ -n "$(envval AUTOPILOT_HARD_MAX_HOURLY_USD)" ] || setenv AUTOPILOT_HARD_MAX_HOURLY_USD 0.50
+		[ "$(envval AGENT_RUNNER_SECRET | wc -c)" -gt 32 ] || setenv AGENT_RUNNER_SECRET "$(openssl rand -hex 32)"
+		[ -n "$(envval VELLUR_GPU_API_KEY)" ] || setenv VELLUR_GPU_API_KEY "vllm-$(openssl rand -hex 24)"   # also the internal router key
 		rm -f "$VAC_HOME/secrets/autopilot-auth"     # basic auth from earlier versions is no longer used
 		ensure_gpu_models
 		setenv VELLUR_GPU_API_BASE "http://gpu-backend:8000/v1"
@@ -531,6 +534,29 @@ print("budget %s: total $%s of $%s (confirmed $%s, estimated $%s)" % (b["month"]
 	esac
 }
 
+cmd_agent() {
+	need_root agent
+	case "${1:-status}" in
+	enable)
+		has_profile autopilot || die "Enable Autopilot first: sudo vac autopilot enable"
+		[ "$(envval AGENT_RUNNER_SECRET | wc -c)" -gt 32 ] || setenv AGENT_RUNNER_SECRET "$(openssl rand -hex 32)"
+		setenv AGENT_RUNNER_URL "http://agent:7070"
+		set_profiles +agent
+		[ "${VAC_SKIP_BUILD:-0}" = 1 ] || dc build agent
+		dc up -d agent autopilot
+		wait_healthy vellur-ai-agent 90 || die "Agent workspace not healthy. Logs: sudo vac logs agent"
+		wait_healthy vellur-ai-autopilot 90 || warn "Autopilot not healthy yet"
+		ok "Agent workspace is on (isolated container; tasks start from the workspace → Agent)." ;;
+	disable)
+		set_profiles -agent; setenv AGENT_RUNNER_URL ""
+		dc stop agent >/dev/null 2>&1 || true; dc up -d autopilot >/dev/null
+		ok "Agent workspace off (its work volume is kept)." ;;
+	status)
+		echo "agent: $(docker inspect -f '{{.State.Status}} {{if .State.Health}}{{.State.Health.Status}}{{end}}' vellur-ai-agent 2>/dev/null || echo 'not created')" ;;
+	*) die "usage: vac agent enable|disable|status" ;;
+	esac
+}
+
 cmd_backup() {
 	need_root backup
 	mkdir -p "$BACKUP_DIR"; chmod 700 "$BACKUP_DIR"
@@ -580,7 +606,7 @@ cmd_verify() {
 	local fails=0 master gp wp ai key cs=(vellur-ai-gateway)
 	t() { if eval "$2" >/dev/null 2>&1; then ok "$1"; else bad "$1"; fails=$((fails + 1)); fi; }
 	master=$(envval LITELLM_MASTER_KEY); gp=$(envval GATEWAY_PORT); wp=$(envval WEBUI_PORT); ai=$(envval AI_DOMAIN)
-	has_profile ui && cs+=(vellur-ai-webui); has_profile gpu && cs+=(vellur-ai-gpu-tunnel); has_profile autopilot && cs+=(vellur-ai-autopilot)
+	has_profile ui && cs+=(vellur-ai-webui); has_profile gpu && cs+=(vellur-ai-gpu-tunnel); has_profile autopilot && cs+=(vellur-ai-autopilot); has_profile agent && cs+=(vellur-ai-agent)
 	echo "── containers (${cs[*]})"
 	t "gateway healthy"                    "wait_healthy vellur-ai-gateway 90"
 	t "restart policy unless-stopped"      "[ \"\$(docker inspect -f '{{.HostConfig.RestartPolicy.Name}}' ${cs[*]} | sort -u)\" = unless-stopped ]"
@@ -631,6 +657,14 @@ cmd_verify() {
 			t "secret header from internet ignored"  "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 -H 'X-Vellur-Admin: $asec' https://$ai/autopilot/api/status)\" = 401 ]"
 			t "password reset only from the server"  "[ \"\$(curl -s -o /dev/null -w '%{http_code}' -m 15 -X POST -H 'X-Vellur-Admin: $asec' -H 'content-type: application/json' -d '{}' https://$ai/autopilot/api/auth/reset)\" = 401 ]"
 		fi
+		t "model router needs the internal key"  "[ \"\$(docker exec vellur-ai-autopilot python -c \"import urllib.request,urllib.error
+try: print(urllib.request.urlopen('http://127.0.0.1:8000/v1/models', timeout=4).status)
+except urllib.error.HTTPError as e: print(e.code)\")\" = 401 ]"
+		if has_profile agent; then
+			t "agent workspace healthy"              "wait_healthy vellur-ai-agent 60"
+			t "agent has no Docker socket, no secrets" "! docker inspect -f '{{range .Mounts}}{{.Source}} {{end}}{{range .Config.Env}}{{.}} {{end}}' vellur-ai-agent | grep -qE 'docker.sock|LITELLM|VAST_API|ADMIN_SECRET|VELLUR_GPU_API_KEY'"
+			t "agent cannot reach the gateway network" "! docker inspect -f '{{range \$k,\$v := .NetworkSettings.Networks}}{{\$k}} {{end}}' vellur-ai-agent | grep -qw vellur-ai-core"
+		fi
 		[ "$(envval AUTOPILOT_LIVE)" = 1 ] && warn "Autopilot LIVE mode: real provider actions allowed" || ok "Autopilot in DRY RUN (no paid actions possible)"
 	fi
 	echo "── inference"
@@ -657,8 +691,9 @@ case "${1:-help}" in
 	gpu) shift; cmd_gpu "$@" ;;
 	ui) shift; cmd_ui "$@" ;;
 	autopilot) shift; cmd_autopilot "$@" ;;
+	agent) shift; cmd_agent "$@" ;;
 	backup) cmd_backup ;;
 	restore) shift; cmd_restore "$@" ;;
 	render-snippet) render_snippet ;;   # for tests / review
-	*) sed -n '2,22p' "$0" | sed 's/^# \{0,1\}//' ;;
+	*) sed -n '2,23p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

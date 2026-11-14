@@ -1,14 +1,24 @@
-# VELLUR AI CORE — models served by the GPU workspace (activated by `sudo vac gpu connect`).
-# Clients only see the public names (vellur-coder …). Changing the GPU provider or the model
-# behind a name changes this file and .env only; OpenCode and apps keep working unchanged.
+# VELLUR AI CORE — public model names. LiteLLM hands every request to the VELLUR model router
+# (Autopilot, http://gpu-backend:8000/v1), which picks a model API or the GPU backend according to the routes set in
+# the workspace (Models tab) and records usage and cost. Clients only ever see these names.
 model_list:
   - model_name: vellur-coder
-    litellm_params:
-      model: hosted_vllm/vellur-coder          # = --served-model-name on the GPU (gpu/hyperai-serve.sh)
-      api_base: os.environ/VELLUR_GPU_API_BASE  # tunnel: http://gpu-tunnel:8000/v1 · Autopilot: http://gpu-backend:8000/v1
-      api_key: os.environ/VELLUR_GPU_API_KEY    # = VLLM_API_KEY on the GPU
-      timeout: 1800          # Autopilot may hold a request up to ~14 min while a GPU boots
+    litellm_params: &router
+      model: hosted_vllm/vellur-coder
+      api_base: os.environ/VELLUR_GPU_API_BASE
+      api_key: os.environ/VELLUR_GPU_API_KEY
+      timeout: 1800          # a GPU cold start may hold a request up to ~14 min
       stream_timeout: 960
-    model_info:
+    model_info: &info
       mode: chat
       supports_function_calling: true
+  - model_name: vellur-chat
+    litellm_params:
+      <<: *router
+      model: hosted_vllm/vellur-chat
+    model_info: *info
+  - model_name: vellur-max
+    litellm_params:
+      <<: *router
+      model: hosted_vllm/vellur-max
+    model_info: *info

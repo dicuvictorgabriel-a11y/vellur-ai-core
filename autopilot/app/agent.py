@@ -21,6 +21,7 @@ from .router import Router
 
 REPO_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}$")
 BRANCH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,100}$")
+ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 FINAL = ("done", "failed", "cancelled", "timeout", "over_budget")
 MAX_TARBALL = 400 * 1024 * 1024
 
@@ -203,7 +204,7 @@ class AgentManager:
             while final is None:
                 await asyncio.sleep(self.poll)
                 info = (await self._runner("GET", f"/tasks/{tid}")).json()
-                self.db.kv_set(f"task_log_{tid}", info.get("log", "")[-40000:])
+                self.db.kv_set(f"task_log_{tid}", ANSI_RE.sub("", info.get("log", ""))[-40000:])
                 if info["state"] in ("done", "failed", "cancelled", "timeout"):
                     final = info["state"]
                     break

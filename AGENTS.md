@@ -68,6 +68,16 @@ in its network namespace; `vac verify` must pass. Validate Caddy output on 2.6�
   `wrap json` in the log filter; Ubuntu's default awk is mawk (no `{n,m}` intervals); the reasoning model needs
   max_tokens ≥ ~300 or the answer is empty.
 
+## API-first architecture (2026-11-14, docs/ARCHITECTURE.md)
+
+Inference goes through `autopilot/app/router.py`: public names (vellur-coder/chat/max) → ordered targets
+(`provider:model` OpenAI-compatible APIs, or `gpu`). Keys are write-only on the server. Usage and cost are recorded per
+request; paid targets obey the monthly budget; paid fallback is opt-in. HyperAI is optional, not the foundation.
+Workspace (chat with history, models, costs, agent) lives in `workspace.py` + `static/dashboard.html`, all behind the
+existing login. Coding agent: `agent.py` (controller, keeps the GitHub token) + `agent/` (isolated OpenCode runner).
+**`app/auth.py` and the login/change-password forms are frozen by the owner** (tests/test_auth_frozen.py): do not
+change them without explicit approval. No automatic request-type routing (no measured benefit yet).
+
 ## GPU Autopilot (autopilot/, docs/AUTOPILOT.md)
 
 FastAPI + SQLite controller in its own container (profile `autopilot`, 256 MB). LiteLLM's `vellur-coder` points to its
@@ -78,7 +88,7 @@ watchdog handles idle / session limit / budget / unverified stops / orphans / bi
 (`sudo vac autopilot live on`). Dashboard: public read-only view (page + /autopilot/api/public/*, redacted); controls behind an in-page login
 (app/auth.py: PBKDF2 hash, cookie sessions, forced change of the temporary password, throttling) + CSRF header.
 The X-Vellur-Admin secret header is for local `vac` only; Caddy strips it from internet requests. No basic auth.
-Tests: `cd autopilot && pytest -q` (60, no network: guarded). Never let tests reach a real provider.
+Tests: `cd autopilot && pytest -q` (no network: guarded). Never let tests reach a real provider.
 
 ## Open work (priority order)
 

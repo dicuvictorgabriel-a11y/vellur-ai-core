@@ -1,20 +1,16 @@
 # VELLUR AI CORE
 
-Infrastructura AI privată VELLUR. **VPS-ul existent coordonează** (gateway, chei, HTTPS, rutare), **GPU-ul închiriat
-la nevoie (HyperAI, RTX 5090) face inferența**, iar **OpenCode / VS Code** sunt interfața de lucru.
+Platforma AI privată VELLUR, la **https://ai.vellurdigital.com/autopilot/**: chat cu istoric, agent de cod izolat,
+rutare între modele, control al costurilor. Din 14.11.2026 e **API-first**: modelele open-weight vin prin API-uri
+(OpenRouter, Groq, DeepSeek etc.), iar GPU-ul închiriat e opțional. Decizia, comparația și prețurile:
+[`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md). GPU Autopilot: [`docs/AUTOPILOT.md`](docs/AUTOPILOT.md).
 
-```
-PC: OpenCode / VS Code
-   │ HTTPS + cheie client (sk-vellur-…)
-   ▼
-ai.vellurdigital.com  ── Caddy existent pe VPS (certificat automat)
-   ├─ /        pagina de stare (sau Open WebUI, opțional)
-   ├─ /healthz „gateway online”
-   └─ /v1/*    doar endpoint-uri de inferență → LiteLLM (127.0.0.1)
-                                             │ tunel SSH deschis de VPS (pornit doar când GPU-ul e pornit)
-                                             ▼
-                               HyperAI: vLLM + Qwen3.8-27B (4 biți) pe RTX 5090, ascultă doar pe 127.0.0.1
-```
+Pornire rapidă după instalare: login → **Models** → salvezi o cheie de furnizor → „Models” (lista live) → pui o țintă
+`furnizor:model` la `vellur-coder` → **Chat**. Pentru agent: **Agent** (opțional un token GitHub limitat la
+repo-urile alese).
+
+> Secțiunile de mai jos descriu instalarea și infrastructura de bază; părțile despre HyperAI ca furnizor principal
+> sunt istorice.
 
 ## Stare (13.11.2026)
 

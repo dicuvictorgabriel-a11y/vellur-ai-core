@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>VELLUR GPU Autopilot</title>
+<title>VELLUR AI Core</title>
 <style>
 :root{--bg:#050508;--panel:#0d0d12;--line:#1d1d26;--text:#f4f4f6;--muted:#8a8a98;--lime:#c6ff00;--orange:#ff5a24;--cyan:#00c9db}
 *{box-sizing:border-box}html,body{margin:0;background:var(--bg);color:var(--text)}
@@ -55,13 +55,26 @@ a.btn{display:inline-block;background:var(--lime);color:var(--bg);border-radius:
 body:not(.is-admin) .admin-only{display:none!important}
 @media(min-width:861px){body:not(.is-admin) .c4{grid-column:span 6}}body.is-admin .public-only{display:none!important}
 .viewnote{color:var(--muted);font-size:12.5px;margin-top:10px}
+nav.tabs{display:flex;gap:6px;flex-wrap:wrap;margin-top:14px}
+nav.tabs button{background:transparent;color:var(--muted);border:1px solid var(--line);padding:7px 14px;border-radius:99px;font-weight:500}
+nav.tabs button.on{color:var(--bg);background:var(--lime);border-color:var(--lime);font-weight:600}
+.msgs{height:46vh;min-height:260px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:14px;background:var(--bg);font-size:14px}
+.m{margin:0 0 14px}.m .who{font-size:11.5px;color:var(--muted);letter-spacing:.06em;text-transform:uppercase;margin-bottom:3px}
+.m .txt{white-space:pre-wrap;overflow-wrap:anywhere}.m.user .txt{color:#d9d9e2}
+.m pre,pre.box{background:#0a0a0f;border:1px solid var(--line);border-radius:8px;padding:10px;overflow:auto;font:12.5px/1.45 ui-monospace,Menlo,monospace;white-space:pre;margin:8px 0}
+pre.box{max-height:360px;white-space:pre-wrap;overflow-wrap:anywhere}
+.m code{font:12.5px ui-monospace,Menlo,monospace;background:#14141c;padding:1px 4px;border-radius:4px}
+.good{color:var(--lime)}.warnc{color:#ffd23f}.badc{color:#ffb39a}
+textarea{resize:vertical;font:13px/1.45 ui-monospace,Menlo,monospace}
+td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
+.sub2{color:var(--muted);font-size:12.5px;margin:-6px 0 12px}
 </style>
 </head>
 <body>
 <main>
   <div class="brand">VELLUR</div>
-  <h1>GPU Autopilot</h1>
-  <p class="sub">Starts a GPU when your AI needs one, keeps it while you work, and releases it after real inactivity — within your budget. <a href="/" style="color:var(--muted)">Status page</a></p>
+  <h1>AI Core</h1>
+  <p class="sub">Your private AI workspace: chat, coding agent, model routing and cost control. <a href="/" style="color:var(--muted)">Status page</a></p>
 
   <div class="grid">
     <section class="card c12">
@@ -79,6 +92,10 @@ body:not(.is-admin) .admin-only{display:none!important}
         </div>
       </div>
       <div class="steps" id="steps"></div>
+      <nav class="tabs admin-only" id="tabs">
+        <button data-view="chat">Chat</button><button data-view="agent">Agent</button><button data-view="models">Models</button>
+        <button data-view="costs">Costs</button><button data-view="gpu">GPU</button><button data-view="activity">Activity</button>
+      </nav>
       <div class="viewnote public-only">Public view: status and budget only. Starting, stopping, settings and chat need a login.</div>
       <div class="msg" id="msg"></div>
     </section>
@@ -106,8 +123,8 @@ body:not(.is-admin) .admin-only{display:none!important}
       <div class="msg" id="changeMsg"></div>
     </section>
 
-    <section class="card c4">
-      <h2>Provider</h2>
+    <section class="card c4" data-tab="gpu">
+      <h2>GPU provider (optional)</h2>
       <dl class="kv">
         <dt>Active</dt><dd id="pName">—</dd>
         <dt>GPU</dt><dd id="pGpu">—</dd>
@@ -121,7 +138,7 @@ body:not(.is-admin) .admin-only{display:none!important}
       </dl>
     </section>
 
-    <section class="card c4">
+    <section class="card c4" data-tab="gpu costs">
       <h2>Budget — <span id="bMonth"></span></h2>
       <div style="font-size:22px;font-weight:600"><span id="bTotal">$0.00</span> <span style="color:var(--muted);font-size:14px">of <span id="bBudget">$0</span></span></div>
       <div class="bar" id="bBar"><i></i></div>
@@ -136,8 +153,8 @@ body:not(.is-admin) .admin-only{display:none!important}
       <div class="note">Estimates are not charges. A local controller cannot enforce a hard cap if a provider keeps billing or reports late — keep provider balances prepaid and auto top-up off.</div>
     </section>
 
-    <section class="card c4 admin-only">
-      <h2>HyperAI (assisted)</h2>
+    <section class="card c4 admin-only" data-tab="gpu">
+      <h2>HyperAI (assisted, optional)</h2>
       <p class="note" style="margin-top:0">HyperAI has no documented start/stop API. Start a workspace in its console, run <code>hyperai-serve.sh</code>, then connect here with the SSH port from its SSH panel.</p>
       <div class="f2">
         <div><label for="hHost">SSH host</label><input id="hHost" autocomplete="off"></div>
@@ -150,30 +167,95 @@ body:not(.is-admin) .admin-only{display:none!important}
       <div class="note" id="vastOffer"></div>
     </section>
 
-    <section class="card c6 admin-only">
-      <h2>Settings</h2>
+    <section class="card c12 admin-only" data-tab="gpu">
+      <h2>Budget and GPU settings</h2>
       <div class="toggle"><span>Autopilot<small>react to AI requests and run the watchdog</small></span><label class="sw"><input type="checkbox" data-k="enabled"><b></b></label></div>
       <div class="toggle"><span>Automatic start of paid GPUs<small>a message may rent a GPU by itself</small></span><label class="sw"><input type="checkbox" data-k="auto_start_paid"><b></b></label></div>
-      <div class="toggle"><span>Paid fallback<small>if the preferred provider fails, try another</small></span><label class="sw"><input type="checkbox" data-k="paid_fallback"><b></b></label></div>
+      <div class="toggle"><span>Paid fallback<small>if a model backend fails, allow switching to the next paid one</small></span><label class="sw"><input type="checkbox" data-k="paid_fallback"><b></b></label></div>
       <div class="f2">
-        <div><label>Preferred provider</label><select data-k="preferred_provider"><option value="hyperai">HyperAI (assisted)</option><option value="vastai">Vast.ai</option></select></div>
+        <div><label>Preferred provider</label><select data-k="preferred_provider"><option value="vastai">Vast.ai</option><option value="hyperai">HyperAI (assisted)</option></select></div>
         <div><label>Model profile</label><select data-k="profile" id="selProfile"></select></div>
         <div><label>Idle timeout (min)</label><input data-k="idle_timeout_min" type="number" min="5" max="240"></div>
         <div><label>Max session (hours)</label><input data-k="max_session_hours" type="number" step="0.25" min="0.25" max="24"></div>
         <div><label>Monthly GPU budget (USD)</label><input data-k="monthly_budget_usd" type="number" step="1" min="0"></div>
         <div><label>Max GPU rate (USD/h)</label><input data-k="max_hourly_usd" type="number" step="0.01" min="0"></div>
+        <div><label>Max cost per GPU session (USD)</label><input data-k="max_session_usd" type="number" step="0.5" min="0.1"></div>
+        <div><label>Agent task limits: minutes</label><input data-k="agent_max_minutes" type="number" min="1" max="240"></div>
+        <div><label>Agent task limits: USD per task</label><input data-k="agent_max_usd" type="number" step="0.1" min="0"></div>
       </div>
       <div class="row" style="margin-top:14px"><button id="btnSave">Save settings</button><span class="note" id="saveNote"></span></div>
       <div class="note" id="profileNote"></div>
     </section>
 
-    <section class="card c6 admin-only">
-      <h2>Chat</h2>
-      <div class="chat" id="chat"><div class="note">Messages go through the gateway like any client. If no GPU is running, Autopilot starts one when policy allows, otherwise it tells you why.</div></div>
-      <div class="row" style="margin-top:10px;flex-wrap:nowrap"><textarea id="chatIn" rows="2" placeholder="Ask your VELLUR AI…"></textarea><button id="btnSend">Send</button></div>
+    <section class="card c12 admin-only" data-tab="chat">
+      <div class="row" style="justify-content:space-between;margin-bottom:12px">
+        <div class="row"><select id="convSel" style="width:auto;max-width:320px"></select><button class="ghost" id="convNew">New chat</button><button class="ghost" id="convDel">Delete</button></div>
+        <div class="row"><label style="margin:0">Model</label><select id="chatModel" style="width:auto"></select></div>
+      </div>
+      <div class="msgs" id="msgs"></div>
+      <div class="row" style="margin-top:10px;flex-wrap:nowrap;align-items:flex-end"><textarea id="chatIn" rows="3" placeholder="Ask your VELLUR AI…  (Enter = send, Shift+Enter = new line)"></textarea><button id="btnSend">Send</button></div>
+      <div class="row" style="margin-top:8px"><input type="file" id="chatFile" multiple style="width:auto"><span class="note" id="chatFileNote" style="margin:0">Attach text or code files (added to your message; up to 200 KB in total).</span></div>
+      <label for="memory" style="margin-top:14px">Project memory — notes added to every chat and agent task</label>
+      <textarea id="memory" rows="3" placeholder="e.g. Answer in Romanian. COMMON is a Next.js app with SQLite; never touch the production database."></textarea>
+      <div class="row" style="margin-top:8px"><button class="ghost" id="memSave">Save memory</button><span class="note" id="memNote" style="margin:0"></span></div>
     </section>
 
-    <section class="card c12 admin-only">
+    <section class="card c12 admin-only" data-tab="agent">
+      <h2>Coding agent</h2>
+      <p class="sub2">Runs OpenCode in an isolated container on a snapshot of the repository: edits files, runs tests, fixes errors. Nothing reaches GitHub until you press “Create pull request”. One task at a time.</p>
+      <div class="msg" id="agentMsg"></div>
+      <div class="f2">
+        <div><label>GitHub repository (owner/name) — empty for an empty scratch workspace</label><input id="tRepo" placeholder="dicuvictorgabriel-a11y/bloom-vellur-studio" autocomplete="off"></div>
+        <div><label>Base branch (empty = default branch)</label><input id="tBase" autocomplete="off"></div>
+      </div>
+      <label>Task</label><textarea id="tPrompt" rows="4" placeholder="Implement … in common/, run the tests, fix what fails."></textarea>
+      <div class="row" style="margin-top:10px"><select id="tModel" style="width:auto"></select><button id="tStart">Start task</button><span class="note" id="tLimits" style="margin:0"></span></div>
+      <div class="row" style="margin-top:14px"><input id="ghToken" type="password" autocomplete="off" placeholder="GitHub fine-grained token (stored on the server, never shown again)" style="max-width:460px"><button class="ghost" id="ghSave">Save token</button><span class="note" id="ghNote" style="margin:0"></span></div>
+      <div style="overflow:auto;margin-top:14px"><table><thead><tr><th>#</th><th>State</th><th>Repository</th><th>Task</th><th>Files</th><th>Cost</th><th></th></tr></thead><tbody id="tList"></tbody></table></div>
+      <div id="tDetail" style="display:none;margin-top:14px">
+        <h2 id="tTitle"></h2>
+        <div class="row"><button class="danger" id="tCancel">Cancel task</button><button id="tPublish">Create pull request</button><a id="tPr" target="_blank" rel="noopener" style="color:var(--lime)"></a></div>
+        <div class="note" id="tErr"></div>
+        <label>Changes</label><pre class="box" id="tStat"></pre><pre class="box" id="tDiff"></pre>
+        <label>Agent log</label><pre class="box" id="tLog"></pre>
+      </div>
+    </section>
+
+    <section class="card c12 admin-only" data-tab="models">
+      <h2>Model routing</h2>
+      <p class="sub2">Each public model name tries its targets in order: <code>provider:model-id</code> or <code>gpu</code>. Empty chat/max lists use the coder list. A later <em>paid</em> target is used only if “Paid fallback” is on (GPU tab).</p>
+      <div id="routes"></div>
+      <div class="row" style="margin-top:10px"><button id="routesSave">Save routing</button><span class="note" id="routesNote" style="margin:0"></span></div>
+      <div id="effective" class="note"></div>
+      <label style="margin-top:14px">Manual prices, one per line: <code>provider:model-id  input  output</code> (USD per million tokens; needed for paid models when the provider does not publish prices)</label>
+      <textarea id="prices" rows="3"></textarea>
+      <div class="row" style="margin-top:8px"><button class="ghost" id="pricesSave">Save prices</button></div>
+    </section>
+    <section class="card c12 admin-only" data-tab="models">
+      <h2>Model providers</h2>
+      <p class="sub2">Keys are stored on the server and never shown again. Plan “free” = free tier (cost 0), “subscription” = flat monthly fee (counted in the budget), “per token” = pay as you go (tracked and capped by the budget).</p>
+      <div style="overflow:auto"><table><thead><tr><th>Provider</th><th>Plan</th><th>$/month</th><th>API key</th><th>Base URL</th><th></th></tr></thead><tbody id="provs"></tbody></table></div>
+      <div class="row" style="margin-top:10px"><input id="newProv" placeholder="custom provider name" style="max-width:200px"><input id="newProvUrl" placeholder="https://…/v1" style="max-width:320px"><button class="ghost" id="provAdd">Add custom provider</button></div>
+      <div class="msg" id="provMsg"></div>
+      <datalist id="modelIds"></datalist>
+      <pre class="box" id="catalogBox" style="display:none"></pre>
+    </section>
+
+    <section class="card c8 admin-only" data-tab="costs">
+      <h2>This month by model</h2>
+      <div style="overflow:auto"><table><thead><tr><th>Target</th><th>Requests</th><th>Failed</th><th>Tokens in / out</th><th>Cost</th><th>Source</th><th>Avg time</th></tr></thead><tbody id="cTargets"></tbody></table></div>
+      <h2 style="margin-top:18px">By use</h2>
+      <table><tbody id="cUse"></tbody></table>
+    </section>
+    <section class="card c12 admin-only" data-tab="costs">
+      <h2>Fixed monthly costs</h2>
+      <p class="sub2">One per line: <code>name | USD per month | yes/no</code> (yes = counts against the monthly budget). Shown in the total so you see the real cost of the platform.</p>
+      <textarea id="fixed" rows="4"></textarea>
+      <div class="row" style="margin-top:8px"><button class="ghost" id="fixedSave">Save</button><span class="note" id="fixedNote" style="margin:0"></span></div>
+      <dl class="kv" style="margin-top:12px;max-width:460px"><dt>Variable + in-budget fixed</dt><dd id="cTotal">—</dd><dt>Other fixed (outside budget)</dt><dd id="cFixedOut">—</dd><dt>All-in monthly total</dt><dd id="cAll">—</dd></dl>
+    </section>
+
+    <section class="card c12 admin-only" data-tab="activity">
       <h2>Activity</h2>
       <div style="overflow:auto;max-height:340px"><table><thead><tr><th>Time</th><th>Level</th><th>Kind</th><th>Message</th></tr></thead><tbody id="ev"></tbody></table></div>
     </section>
@@ -254,26 +336,153 @@ body:not(.is-admin) .admin-only{display:none!important}
       $("vastOffer").textContent = r.offer ? `Cheapest match: ${r.offer.gpu} ${r.offer.vram_gb} GB, $${r.offer.usd_per_hour}/h, ${r.offer.location} (download ≈ $${r.offer.download_cost_estimate})` : (r.offer_error || r.detail);
     } catch (e) { $("vastOffer").textContent = e.message; }
   };
-  const chatLog = [];
-  $("btnSend").onclick = async () => {
-    const text = $("chatIn").value.trim(); if (!text) return;
-    $("chatIn").value = ""; chatLog.push({ role: "user", content: text });
-    const box = $("chat"); const u = document.createElement("div"); u.className = "u"; u.textContent = "You: " + text; box.appendChild(u);
-    const a = document.createElement("div"); a.className = "a"; a.textContent = "…"; box.appendChild(a); box.scrollTop = box.scrollHeight;
-    $("btnSend").disabled = true; let out = "";
-    try {
-      const r = await fetch("/autopilot/api/chat", { method: "POST", credentials: "same-origin", headers: { "Content-Type": "application/json", "X-Vellur-Request": "1" }, body: JSON.stringify({ messages: chatLog }) });
-      const reader = r.body.getReader(); const dec = new TextDecoder(); let buf = "";
-      for (;;) { const { value, done } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true });
-        let i; while ((i = buf.indexOf("\n\n")) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 2);
-          if (!line.startsWith("data:")) continue; const d = line.slice(5).trim(); if (d === "[DONE]") continue;
-          try { const j = JSON.parse(d); if (j.vellur_error) { out = "⚠ " + j.vellur_error; continue; }
-            const delta = (j.choices && j.choices[0] && j.choices[0].delta) || {}; out += delta.content || ""; } catch (e) {}
-          a.textContent = out || "…"; box.scrollTop = box.scrollHeight; } }
-      if (!out.startsWith("⚠")) chatLog.push({ role: "assistant", content: out }); a.textContent = out || "(empty answer)";
-    } catch (e) { a.textContent = "⚠ " + e.message; } finally { $("btnSend").disabled = false; }
+  // ── workspace (after login) ──────────────────────────────────────────────────────────────────
+  const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const md = (t) => esc(t).split(/```/).map((part, i) => i % 2 ? "<pre>" + part.replace(/^[a-zA-Z0-9_+-]*\n/, "") + "</pre>"
+    : part.replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")).join("");
+  const send = (path, method, body) => api(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
+  const ROLE_NAMES = ["vellur-coder", "vellur-chat", "vellur-max"];
+  function fillModels(sel, value) { sel.innerHTML = ""; ROLE_NAMES.forEach(r => sel.add(new Option(r, r))); if (value) sel.value = value; }
+  let VIEW = "chat";
+  function setView(v) {
+    VIEW = v; try { sessionStorage.setItem("vellurView", v); } catch (e) {}
+    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
+    document.querySelectorAll("section[data-tab]").forEach(sec => { sec.hidden = !sec.dataset.tab.split(" ").includes(v); });
+    ({ chat: loadConvs, agent: loadAgent, models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {} })[v]();
+  }
+  document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => setView(b.dataset.view));
+
+  // chat
+  let CONV = null, attached = [];
+  function addMsg(role, text) {
+    const d = document.createElement("div"); d.className = "m " + role;
+    d.innerHTML = '<div class="who">' + (role === "user" ? "You" : "VELLUR AI") + '</div><div class="txt"></div>';
+    d.querySelector(".txt").innerHTML = md(text); $("msgs").appendChild(d); $("msgs").scrollTop = $("msgs").scrollHeight; return d.querySelector(".txt");
+  }
+  async function loadConvs(selectId) {
+    const list = (await send("conversations", "GET")).conversations; const sel = $("convSel"); sel.innerHTML = "";
+    list.forEach(c => sel.add(new Option(c.title, c.id)));
+    if (!list.length) { CONV = null; $("msgs").innerHTML = '<div class="note">No conversation yet. Write a message to start one.</div>'; fillModels($("chatModel"), "vellur-chat"); return; }
+    await openConv(selectId || CONV || list[0].id);
+  }
+  async function openConv(id) {
+    const c = await send("conversations/" + id, "GET"); CONV = c.id; $("convSel").value = c.id; fillModels($("chatModel"), c.model);
+    $("msgs").innerHTML = ""; c.messages.forEach(m => addMsg(m.role, m.content));
+    if (!c.messages.length) $("msgs").innerHTML = '<div class="note">Empty conversation.</div>';
+  }
+  $("convSel").onchange = () => openConv($("convSel").value);
+  $("convNew").onclick = async () => { const c = await send("conversations", "POST", { model: $("chatModel").value }); await loadConvs(c.id); $("chatIn").focus(); };
+  $("convDel").onclick = async () => { if (CONV && confirm("Delete this conversation?")) { await send("conversations/" + CONV, "DELETE"); CONV = null; await loadConvs(); } };
+  $("chatFile").onchange = async () => {
+    attached = []; let total = 0;
+    for (const f of $("chatFile").files) { const t = await f.text(); total += t.length; if (total > 200000) { $("chatFileNote").textContent = "Too large: 200 KB in total."; attached = []; $("chatFile").value = ""; return; } attached.push({ name: f.name, text: t }); }
+    $("chatFileNote").textContent = attached.length ? attached.length + " file(s) attached to the next message." : "";
   };
+  $("btnSend").onclick = async () => {
+    let text = $("chatIn").value.trim(); if (!text) return;
+    attached.forEach(f => { text += "\n\nFile `" + f.name + "`:\n```\n" + f.text + "\n```"; });
+    $("btnSend").disabled = true;
+    try {
+      if (!CONV) { const c = await send("conversations", "POST", { model: $("chatModel").value }); CONV = c.id; $("msgs").innerHTML = ""; }
+      if ($("msgs").querySelector(".note")) $("msgs").innerHTML = "";
+      $("chatIn").value = ""; attached = []; $("chatFile").value = ""; $("chatFileNote").textContent = "";
+      addMsg("user", text); const out = addMsg("assistant", "…"); let acc = "", errText = "";
+      const r = await fetch("/autopilot/api/conversations/" + CONV + "/messages", { method: "POST", credentials: "same-origin",
+        headers: { "Content-Type": "application/json", "X-Vellur-Request": "1" }, body: JSON.stringify({ content: text, model: $("chatModel").value }) });
+      if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || ("HTTP " + r.status)); }
+      const reader = r.body.getReader(), dec = new TextDecoder(); let buf = "", thinking = false;
+      for (;;) { const { value, done } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true });
+        let i; while ((i = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
+          if (!line.startsWith("data:")) continue; const d = line.slice(5).trim(); if (d === "[DONE]") continue;
+          try { const j = JSON.parse(d); if (j.vellur_error) { errText = j.vellur_error; continue; } if (j.vellur_done) continue;
+            const delta = (j.choices && j.choices[0] && j.choices[0].delta) || {};
+            if (delta.content) acc += delta.content; else if (delta.reasoning_content || delta.reasoning) thinking = true; } catch (e) {}
+          out.innerHTML = acc ? md(acc) : (thinking ? "<span class='note'>thinking…</span>" : "…"); $("msgs").scrollTop = $("msgs").scrollHeight; } }
+      if (errText) out.innerHTML = '<span class="badc">⚠ ' + esc(errText) + "</span>"; else if (!acc) out.textContent = "(empty answer)";
+      const cur = $("convSel").selectedOptions[0]; if (!cur || cur.text === "New conversation" || String(cur.value) !== String(CONV)) await loadConvsQuiet();
+    } catch (e) { addMsg("assistant", "⚠ " + e.message); } finally { $("btnSend").disabled = false; }
+  };
+  async function loadConvsQuiet() { const list = (await send("conversations", "GET")).conversations; const sel = $("convSel"); sel.innerHTML = ""; list.forEach(c => sel.add(new Option(c.title, c.id))); sel.value = CONV; }
   $("chatIn").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); $("btnSend").click(); } });
+  $("memSave").onclick = async () => { try { await send("settings", "PUT", { memory: $("memory").value }); $("memNote").textContent = "saved"; } catch (e) { $("memNote").textContent = e.message; } };
+
+  // agent
+  let TASK = null, taskTimer = null;
+  const tnote = (text, kind) => { const m = $("agentMsg"); m.textContent = text || ""; m.className = "msg" + (text ? " show " + (kind || "bad") : ""); };
+  async function loadAgent() {
+    const a = await send("agent", "GET"); fillModels($("tModel"), $("tModel").value || "vellur-coder");
+    tnote(a.available ? "" : a.why, "info"); $("tStart").disabled = !a.available;
+    $("ghNote").textContent = a.github_token_set ? "A GitHub token is saved." : "No GitHub token: only public repositories, no pull requests.";
+    $("tLimits").textContent = "Limits per task: " + a.max_minutes + " min, $" + a.max_usd + " (GPU tab → settings).";
+    $("tList").innerHTML = a.tasks.map(t => `<tr><td class="m">${t.id}</td><td class="${t.state === "done" ? "good" : ["failed", "timeout", "over_budget"].includes(t.state) ? "badc" : "warnc"}">${esc(t.state)}</td><td>${esc(t.repo || "scratch")}</td><td>${esc(t.prompt.slice(0, 90))}</td><td class="m">${t.files_changed}</td><td class="m">$${Number(t.cost_usd).toFixed(4)}</td><td><button class="ghost" data-task="${t.id}">Open</button></td></tr>`).join("");
+    document.querySelectorAll("[data-task]").forEach(b => b.onclick = () => openTask(Number(b.dataset.task)));
+    if (TASK) await showTask();
+  }
+  async function showTask() {
+    const t = await send("agent/tasks/" + TASK, "GET"); const live = !["done", "failed", "cancelled", "timeout", "over_budget"].includes(t.state);
+    $("tDetail").style.display = ""; $("tTitle").textContent = "Task " + t.id + " — " + t.state + " — $" + Number(t.cost_usd).toFixed(4);
+    $("tErr").textContent = t.error || ""; $("tStat").textContent = t.diff_stat || "(no changes yet)"; $("tDiff").textContent = t.diff || ""; $("tDiff").style.display = t.diff ? "" : "none";
+    $("tLog").textContent = t.log || "(no output yet)"; $("tLog").scrollTop = $("tLog").scrollHeight;
+    $("tCancel").style.display = live ? "" : "none"; $("tPublish").style.display = t.can_publish ? "" : "none";
+    $("tPr").textContent = t.pr_url || ""; $("tPr").href = t.pr_url || "#";
+    clearTimeout(taskTimer); if (live && VIEW === "agent") taskTimer = setTimeout(loadAgent, 3000);
+  }
+  function openTask(id) { TASK = id; showTask(); }
+  $("tStart").onclick = async () => { tnote("");
+    try { const t = await send("agent/tasks", "POST", { prompt: $("tPrompt").value, model: $("tModel").value, repo: $("tRepo").value.trim(), base: $("tBase").value.trim() }); TASK = t.id; await loadAgent(); }
+    catch (e) { tnote(e.message); } };
+  $("tCancel").onclick = async () => { await send("agent/tasks/" + TASK + "/cancel", "POST", {}); await loadAgent(); };
+  $("tPublish").onclick = async () => { if (!confirm("Create a branch and a draft pull request on GitHub with these changes?")) return;
+    try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await loadAgent(); } catch (e) { $("tErr").textContent = e.message; } };
+  $("ghSave").onclick = async () => { try { await send("agent/github", "PUT", { token: $("ghToken").value }); $("ghToken").value = ""; await loadAgent(); } catch (e) { $("ghNote").textContent = e.message; } };
+
+  // models
+  const pnote = (text, kind) => { const m = $("provMsg"); m.textContent = text || ""; m.className = "msg" + (text ? " show " + (kind || "bad") : ""); };
+  function renderLLM(l) {
+    $("routes").innerHTML = Object.entries(l.roles).map(([r, label]) => `<label>${esc(r)} — ${esc(label)}</label><textarea data-route="${r}" rows="2" placeholder="one target per line, e.g. openrouter:deepseek/deepseek-v4.1-flash">${esc((l.routes[r] || []).join("\n"))}</textarea>`).join("");
+    $("effective").innerHTML = Object.entries(l.effective).map(([r, rows]) => "<b>" + esc(r) + "</b>: " + rows.map(x => `<span class="${x.usable ? "good" : "badc"}">${esc(x.target)}${x.usable ? (x.price ? " ($" + x.price[0] + " / $" + x.price[1] + " per M)" : "") : " — " + esc(x.why)}</span>`).join(" → ")).join("<br>");
+    $("prices").value = Object.entries(l.prices).map(([t, p]) => t + "  " + p[0] + "  " + p[1]).join("\n");
+    $("provs").innerHTML = l.providers.map(p => `<tr data-prov="${esc(p.name)}"><td><b>${esc(p.display)}</b><div class="note" style="margin:2px 0 0;max-width:260px">${esc(p.note || (p.custom ? "custom provider" : ""))}</div></td>
+      <td><select data-f="plan"><option value="per_token">per token</option><option value="free">free tier</option><option value="subscription">subscription</option></select></td>
+      <td><input data-f="monthly_usd" type="number" step="1" min="0" style="width:80px" value="${p.monthly_usd}"></td>
+      <td><input data-f="api_key" type="password" autocomplete="off" placeholder="${p.key_set ? "saved " + esc(p.key_hint) : "not set"}" style="min-width:150px"></td>
+      <td><input data-f="base_url" value="${esc(p.base_url)}" style="min-width:230px"></td>
+      <td style="white-space:nowrap"><button class="ghost" data-a="save">Save</button> <button class="ghost" data-a="models" ${p.key_set ? "" : "disabled"}>Models${p.catalog_models ? " (" + p.catalog_models + ")" : ""}</button> <button class="ghost" data-a="reset">${p.custom ? "Remove" : "Reset"}</button></td></tr>`).join("");
+    l.providers.forEach(p => { const row = document.querySelector(`tr[data-prov="${p.name}"]`); row.querySelector('[data-f="plan"]').value = p.plan; });
+    document.querySelectorAll("#provs button").forEach(b => b.onclick = () => provAction(b.closest("tr"), b.dataset.a));
+  }
+  async function loadLLM() { renderLLM(await send("llm", "GET")); }
+  async function provAction(row, action) {
+    const name = row.dataset.prov; pnote("");
+    try {
+      if (action === "save") {
+        const ch = { plan: row.querySelector('[data-f="plan"]').value, monthly_usd: Number(row.querySelector('[data-f="monthly_usd"]').value || 0), base_url: row.querySelector('[data-f="base_url"]').value.trim() };
+        const key = row.querySelector('[data-f="api_key"]').value.trim(); if (key) ch.api_key = key;
+        renderLLM(await send("llm/providers/" + name, "PUT", ch)); pnote("Saved " + name + ".", "info");
+      } else if (action === "reset") { if (!confirm("Remove the saved key and settings of " + name + "?")) return; renderLLM(await send("llm/providers/" + name, "DELETE"));
+      } else if (action === "models") {
+        pnote("Loading the model list of " + name + "…", "info"); const r = await send("llm/providers/" + name + "/catalog", "POST", {});
+        $("catalogBox").style.display = ""; $("catalogBox").textContent = r.models.map(m => name + ":" + m.id + (m.in != null ? "   $" + (+m.in.toFixed(4)) + " in / $" + (+m.out.toFixed(4)) + " out per M" : "") + (m.ctx ? "   ctx " + m.ctx : "")).join("\n") || "(empty list)";
+        pnote(r.models.length + " models. Copy a line start (provider:model-id) into a route above.", "info"); await loadLLM();
+      }
+    } catch (e) { pnote(e.message); }
+  }
+  $("provAdd").onclick = async () => { try { renderLLM(await send("llm/providers/" + $("newProv").value.trim(), "PUT", { base_url: $("newProvUrl").value.trim() })); $("newProv").value = ""; $("newProvUrl").value = ""; } catch (e) { pnote(e.message); } };
+  $("routesSave").onclick = async () => { const routes = {}; document.querySelectorAll("[data-route]").forEach(t => routes[t.dataset.route] = t.value.split("\n").map(x => x.trim()).filter(Boolean));
+    try { renderLLM(await send("llm/routes", "PUT", routes)); $("routesNote").textContent = "saved"; } catch (e) { $("routesNote").textContent = e.message; } };
+  $("pricesSave").onclick = async () => { const prices = {}; try { $("prices").value.split("\n").map(x => x.trim()).filter(Boolean).forEach(l => { const p = l.split(/\s+/); if (p.length !== 3) throw new Error("each line: provider:model input output"); prices[p[0]] = [Number(p[1]), Number(p[2])]; });
+      await send("settings", "PUT", { prices }); await loadLLM(); $("routesNote").textContent = "prices saved"; } catch (e) { $("routesNote").textContent = e.message; } };
+
+  // costs
+  async function loadCosts() {
+    const c = await send("costs", "GET"), b = c.budget;
+    $("cTargets").innerHTML = c.by_target.map(r => `<tr><td>${esc(r.target)}</td><td class="m">${r.requests}</td><td class="m">${r.requests - r.ok}</td><td class="m">${r.in_tokens} / ${r.out_tokens}</td><td class="m">$${Number(r.cost_usd).toFixed(4)}</td><td>${esc({ provider: "provider-reported", estimate: "estimate", plan: "free / flat plan", gpu: "GPU session", unpriced: "no price!", "": "—" }[r.cost_source] || r.cost_source)}</td><td class="m">${r.avg_ms} ms</td></tr>`).join("") || '<tr><td colspan="7" class="note">No requests this month.</td></tr>';
+    $("cUse").innerHTML = c.by_use.map(r => `<tr><td>${esc(r.use)}</td><td class="m">${r.requests} requests</td><td class="m">$${Number(r.cost_usd).toFixed(4)}</td></tr>`).join("");
+    $("fixed").value = c.fixed_costs.map(f => f.name + " | " + f.usd + " | " + (f.in_budget ? "yes" : "no")).join("\n");
+    $("cTotal").textContent = money(b.total_usd) + " of " + money(b.budget_usd); $("cFixedOut").textContent = money(b.fixed_outside_budget_usd) + (c.subscriptions.length ? "" : ""); $("cAll").textContent = money(b.all_in_total_usd);
+  }
+  $("fixedSave").onclick = async () => { try { const rows = $("fixed").value.split("\n").map(x => x.trim()).filter(Boolean).map(l => { const p = l.split("|").map(x => x.trim()); return { name: p[0], usd: Number(p[1] || 0), in_budget: /^y/i.test(p[2] || "") }; });
+      await send("settings", "PUT", { fixed_costs: rows }); $("fixedNote").textContent = "saved"; await loadCosts(); } catch (e) { $("fixedNote").textContent = e.message; } };
   async function loadHistory() {
     try { const h = await api("history?limit=80", { method: "GET", headers: {} });
       $("ev").innerHTML = h.events.map(e => `<tr><td class="m">${new Date(e.ts * 1000).toLocaleString()}</td><td class="lv-${e.level}">${e.level}</td><td>${e.kind}</td><td></td></tr>`).join("");
@@ -320,7 +529,11 @@ body:not(.is-admin) .admin-only{display:none!important}
       catch (e) { show("Cannot load status: " + e.message, "bad"); }
     }
     connect();
-    if (ADMIN) { loadHistory(); setInterval(loadHistory, 15000); }
+    if (ADMIN) {
+      let v = "chat"; try { v = sessionStorage.getItem("vellurView") || "chat"; } catch (e) {}
+      $("memory").value = (S && S.settings && S.settings.memory) || "";
+      setView(v); setInterval(() => { if (VIEW === "activity") loadHistory(); }, 15000);
+    }
   })();
 })();
 </script>
