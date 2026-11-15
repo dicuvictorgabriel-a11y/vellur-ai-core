@@ -6,8 +6,10 @@ import json
 import time
 from typing import Optional
 
-from fastapi import Depends, FastAPI
-from fastapi.responses import JSONResponse, StreamingResponse
+import asyncio
+
+from fastapi import Depends, FastAPI, Request
+from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .agent import AgentError, AgentManager
@@ -42,8 +44,17 @@ class TaskBody(BaseModel):
     base: str = ""
 
 
+class FollowBody(BaseModel):
+    text: str
+    model: Optional[str] = None
+
+
 class TokenBody(BaseModel):
     token: str = ""
+
+
+def _brief(t: dict) -> dict:
+    return {k: t.get(k) for k in ("id", "state", "outcome", "runs", "files_changed", "pr_url", "cost_usd", "error", "updated")}
 
 
 def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager, admin, admin_write) -> None:
@@ -250,6 +261,69 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
             return agent.detail(tid)
         except AgentError as e:
             return err(e)
+
+    @app.post("/autopilot/api/agent/tasks/{tid}/messages", dependencies=[Depends(admin_write)])
+    async def task_message(tid: int, body: FollowBody):
+        try:
+            return await agent.message(tid, body.text, body.model)
+        except AgentError as e:
+            return err(e)
+
+    @app.get("/autopilot/api/agent/tasks/{tid}/events", dependencies=[Depends(admin)])
+    async def task_events(tid: int, after: int = 0):
+        t = agent.task(tid)
+        if not t:
+            return JSONResponse({"error": "not_found", "message": "unknown task"}, status_code=404)
+        return {"events": agent.events(tid, after), "task": _brief(t)}
+
+    @app.get("/autopilot/api/agent/tasks/{tid}/stream", dependencies=[Depends(admin)])
+    async def task_stream(tid: int, request: Request, after: int = 0):
+        """Server-sent events: the task's timeline as it happens. Reconnects resume from Last-Event-ID."""
+        if not agent.task(tid):
+            return JSONResponse({"error": "not_found", "message": "unknown task"}, status_code=404)
+        last = request.headers.get("last-event-id", "")
+        cursor = int(last) if last.isdigit() else after
+
+        async def gen():
+            nonlocal cursor
+            brief, quiet, t0, beat = None, 0, time.monotonic(), time.monotonic()
+            yield "retry: 2000\n\n"
+            while time.monotonic() - t0 < 600:
+                if await request.is_disconnected():
+                    return
+                for e in agent.events(tid, cursor, 200):
+                    cursor = e["id"]
+                    yield f"id: {e['id']}\nevent: ev\ndata: {json.dumps(e)}\n\n"
+                t = agent.task(tid)
+                b = _brief(t)
+                if b != brief:
+                    brief = b
+                    yield f"event: task\ndata: {json.dumps(b)}\n\n"
+                if t["state"] in ("done", "failed", "cancelled", "timeout", "over_budget"):
+                    quiet += 1
+                    if quiet > 3:
+                        yield "event: end\ndata: {}\n\n"
+                        return
+                if time.monotonic() - beat > 15:
+                    beat = time.monotonic()
+                    yield ": keep-alive\n\n"
+                await asyncio.sleep(0.8)
+        return StreamingResponse(gen(), media_type="text/event-stream",
+                                 headers={"Cache-Control": "no-store", "X-Accel-Buffering": "no"})
+
+    @app.get("/autopilot/api/agent/tasks/{tid}/diff", dependencies=[Depends(admin)])
+    async def task_diff(tid: int):
+        try:
+            return agent.diff(tid)
+        except AgentError as e:
+            return err(e)
+
+    @app.get("/autopilot/api/agent/tasks/{tid}/shots/{name}", dependencies=[Depends(admin)])
+    async def task_shot(tid: int, name: str):
+        p = agent.shot_path(tid, name)
+        if not p:
+            return JSONResponse({"error": "not_found", "message": "no such screenshot"}, status_code=404)
+        return FileResponse(p, media_type="image/png", headers={"Cache-Control": "private, max-age=86400"})
 
     @app.post("/autopilot/api/agent/tasks/{tid}/cancel", dependencies=[Depends(admin_write)])
     async def cancel_task(tid: int):

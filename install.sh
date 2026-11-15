@@ -106,6 +106,7 @@ install -m 644 "$SRC/autopilot/app/providers/"*.py "$DEST/autopilot/app/provider
 install -m 644 "$SRC/autopilot/app/static/"* "$DEST/autopilot/app/static/"
 install -d -m 755 "$DEST/agent"
 install -m 644 "$SRC/agent/Dockerfile" "$SRC/agent/runner.py" "$DEST/agent/"
+install -m 755 "$SRC/agent/vellur-screenshot" "$DEST/agent/"
 install -m 644 "$SRC/litellm/models.gpu.yaml" "$DEST/litellm/"
 ln -sf "$DEST/bin/vac" /usr/local/bin/vac
 ok "Installed; command: sudo vac"

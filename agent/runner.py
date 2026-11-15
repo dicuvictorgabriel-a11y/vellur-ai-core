@@ -2,7 +2,10 @@
 """VELLUR agent runner — runs INSIDE the isolated agent container, never on the host.
 
 It receives one coding task at a time from the Autopilot controller (shared secret, private Docker network), unpacks
-the repository snapshot, runs a headless OpenCode session in it and reports the log and the resulting changes.
+the repository snapshot, runs a headless OpenCode session in it (`opencode run --format json`) and reports the live
+event stream, screenshots and the resulting changes. Follow-up messages continue the same OpenCode session in the same
+workspace (`--session`), so the agent keeps its context. Task state is saved next to the workspace and survives a
+container restart.
 The container holds no production secret, no GitHub token and no Docker socket: the only credential a task gets is a
 short-lived inference token for the VELLUR model router. Standard library only.
 """
@@ -21,7 +24,9 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 WORK = os.environ.get("AGENT_WORK", "/work")
 SECRET = os.environ.get("AGENT_RUNNER_SECRET", "")
 OPENCODE = os.environ.get("OPENCODE_BIN", "opencode")
-KEEP_TASKS = 5
+KEEP_TASKS = 8
+MAX_EVENT = 6000          # characters kept per string field of an event (tool output, file contents)
+MAX_SHOT = 4 * 1024 * 1024
 MAX_SOURCE = 400 * 1024 * 1024
 MAX_DIFF = 2 * 1024 * 1024
 MAX_FILE = 5 * 1024 * 1024
@@ -93,27 +98,97 @@ def opencode_config(meta):
     }
 
 
+def clip(v):
+    """Shrink one OpenCode event: long strings (file contents, command output) are cut so events stay small."""
+    if isinstance(v, str):
+        return v if len(v) <= MAX_EVENT else v[:MAX_EVENT] + f"\n… [{len(v) - MAX_EVENT} more characters]"
+    if isinstance(v, dict):
+        return {k: clip(x) for k, x in v.items() if k not in ("responseHeaders", "snapshot")}
+    if isinstance(v, list):
+        return [clip(x) for x in v[:200]]
+    return v
+
+
+def save_state(t):
+    keep = {k: t[k] for k in ("state", "started", "ended", "exit", "changed", "error", "session", "run")}
+    keep["meta"] = {k: v for k, v in t["meta"].items() if k != "proxy_token"}
+    tmp = os.path.join(t["dir"], "state.json.tmp")
+    with open(tmp, "w") as f:
+        json.dump(keep, f)
+    os.replace(tmp, os.path.join(t["dir"], "state.json"))
+
+
+def load_state():
+    """After a container restart: reload saved tasks so follow-ups can continue; interrupted runs are failed."""
+    if not os.path.isdir(WORK):
+        return
+    for name in os.listdir(WORK):
+        f = os.path.join(WORK, name, "state.json")
+        if not (name.startswith("t") and name[1:].isdigit() and os.path.exists(f)):
+            continue
+        try:
+            st = json.load(open(f))
+        except (OSError, ValueError):
+            continue
+        t = dict(st, dir=os.path.join(WORK, name), proc=None)
+        if t["state"] in ("created", "running"):
+            t["state"], t["error"], t["ended"] = "failed", "the agent workspace restarted during this run", time.time()
+        tasks[int(name[1:])] = t
+
+
+def pump(t, stream, path):
+    """Copy OpenCode's JSON event lines into events.jsonl, tagged with the run number and clipped."""
+    with open(path, "ab", buffering=0) as out:
+        for raw in iter(stream.readline, b""):
+            line = raw.decode(errors="replace").strip()
+            if not line:
+                continue
+            try:
+                ev = json.loads(line)
+                if not isinstance(ev, dict):
+                    raise ValueError
+            except ValueError:
+                ev = {"type": "raw", "text": line}
+            ev = clip(ev)
+            ev["run"] = t["run"]
+            if not t.get("session") and isinstance(ev.get("sessionID"), str):
+                t["session"] = ev["sessionID"]
+            out.write((json.dumps(ev) + "\n").encode())
+
+
 def run_task(tid):
     t = tasks[tid]
     d, repo, home = t["dir"], os.path.join(t["dir"], "repo"), os.path.join(t["dir"], "home")
     log = open(os.path.join(d, "log"), "ab", buffering=0)
     try:
-        git(repo, "init", "-q", "-b", "main")
-        git(repo, "add", "-A")
-        git(repo, "commit", "-q", "--allow-empty", "-m", "baseline")
+        if not os.path.isdir(os.path.join(repo, ".git")):
+            git(repo, "init", "-q", "-b", "main")
+            # build caches and installed dependencies are never part of the result (only untracked files are affected)
+            with open(os.path.join(repo, ".git", "info", "exclude"), "a") as f:
+                f.write("\n__pycache__/\n*.pyc\nnode_modules/\n.pytest_cache/\n.mypy_cache/\n.ruff_cache/\n.venv/\n"
+                        ".next/\n.turbo/\n.cache/\n.DS_Store\n")
+            git(repo, "add", "-A")
+            git(repo, "commit", "-q", "--allow-empty", "-m", "baseline")
         cfg = os.path.join(home, "opencode.json")
         with open(cfg, "w") as f:
             json.dump(opencode_config(t["meta"]), f)
+        shots = os.path.join(d, "shots")
+        os.makedirs(shots, exist_ok=True)
         env = {k: os.environ[k] for k in PASS_ENV if k in os.environ}
         env.update(GIT_ID)
         env.update({"HOME": home, "XDG_CONFIG_HOME": os.path.join(home, ".config"),
                     "XDG_DATA_HOME": os.path.join(home, ".local/share"), "XDG_CACHE_HOME": os.path.join(home, ".cache"),
-                    "OPENCODE_CONFIG": cfg, "CI": "1", "TERM": "dumb", "NO_COLOR": "1"})
-        cmd = [OPENCODE, "run", "--auto", "-m", f"vellur/{t['meta']['model']}", "--", t["meta"]["prompt"]]
-        log.write(f"[runner] starting OpenCode with model {t['meta']['model']}\n".encode())
-        p = subprocess.Popen(cmd, cwd=repo, env=env, stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT,
+                    "OPENCODE_CONFIG": cfg, "CI": "1", "TERM": "dumb", "NO_COLOR": "1", "VELLUR_SHOTS": shots})
+        cmd = [OPENCODE, "run", "--auto", "--format", "json", "-m", f"vellur/{t['meta']['model']}"]
+        if t.get("session"):
+            cmd += ["--session", t["session"]]
+        cmd += ["--", t["meta"]["prompt"]]
+        log.write(f"[runner] run {t['run']}: starting OpenCode with model {t['meta']['model']}\n".encode())
+        p = subprocess.Popen(cmd, cwd=repo, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE, stderr=log,
                              start_new_session=True)
         t["proc"] = p
+        reader = threading.Thread(target=pump, args=(t, p.stdout, os.path.join(d, "events.jsonl")), daemon=True)
+        reader.start()
         limit = time.time() + 60 * float(t["meta"].get("max_minutes", 30)) + 60
         while p.poll() is None:
             if time.time() > limit or t.get("cancel"):
@@ -129,6 +204,7 @@ def run_task(tid):
                 break
             time.sleep(0.5)
         p.wait()
+        reader.join(timeout=10)
         t["exit"] = p.returncode
         git(repo, "add", "-A", check=False)
         names = git(repo, "diff", "--cached", "--no-renames", "--name-status", "-z", "HEAD", check=False).decode(errors="replace")
@@ -141,7 +217,23 @@ def run_task(tid):
         t["error"] = str(e)[:300]
     finally:
         t["ended"] = time.time()
+        t["proc"] = None
         log.close()
+        save_state(t)
+
+
+def file_summary(repo):
+    """[{path, status, added, removed}] of the changes against the baseline (binary files: added/removed = None)."""
+    git(repo, "add", "-A", check=False)
+    st = git(repo, "diff", "--cached", "--no-renames", "--name-status", "-z", "HEAD", check=False).decode(errors="replace")
+    parts = [x for x in st.split("\0") if x]
+    status = dict(zip(parts[1::2], parts[0::2]))
+    nums = {}
+    for line in git(repo, "diff", "--cached", "--no-renames", "--numstat", "HEAD", check=False).decode(errors="replace").splitlines():
+        a, r, path = (line.split("\t", 2) + ["", ""])[:3]
+        nums[path] = (None if a == "-" else int(a or 0), None if r == "-" else int(r or 0))
+    return [{"path": p, "status": status[p][:1], "added": nums.get(p, (None, None))[0],
+             "removed": nums.get(p, (None, None))[1]} for p in sorted(status)][:500]
 
 
 def changed_files(repo):
@@ -211,7 +303,7 @@ class H(BaseHTTPRequestHandler):
                 os.makedirs(os.path.join(d, "repo"))
                 os.makedirs(os.path.join(d, "home"))
                 tasks[tid] = {"state": "created", "dir": d, "meta": meta, "proc": None, "started": None, "ended": None,
-                              "exit": None, "changed": 0, "error": ""}
+                              "exit": None, "changed": 0, "error": "", "session": "", "run": 1}
             return self.send(200, {"ok": True})
         tid = int(parts[1])
         t = tasks.get(tid)
@@ -228,8 +320,48 @@ class H(BaseHTTPRequestHandler):
             if t["state"] != "created":
                 return self.send(409, {"error": "already started"})
             t["state"], t["started"] = "running", time.time()
+            save_state(t)
             threading.Thread(target=run_task, args=(tid,), daemon=True).start()
             return self.send(200, {"ok": True})
+        if method == "POST" and action == "message":
+            # Follow-up in the same workspace and the same OpenCode session (the agent keeps its context).
+            body = json.loads(self.body(1_000_000))
+            with lock:
+                if any(x["state"] in ("created", "running") for x in tasks.values()):
+                    return self.send(409, {"error": "busy"})
+                if not t.get("session"):
+                    return self.send(410, {"error": "this task has no agent session to continue"})
+                t["meta"].update({k: body[k] for k in ("prompt", "proxy_token", "proxy_url", "model", "max_minutes") if k in body})
+                t.update(state="running", started=time.time(), ended=None, exit=None, error="", cancel=False,
+                         run=int(t.get("run") or 1) + 1)
+            threading.Thread(target=run_task, args=(tid,), daemon=True).start()
+            return self.send(200, {"ok": True, "run": t["run"]})
+        if method == "GET" and action == "events":
+            q = dict(x.split("=", 1) for x in (self.path.split("?", 1) + [""])[1].split("&") if "=" in x)
+            after, out = int(q.get("after", "0") or 0), []
+            try:
+                with open(os.path.join(t["dir"], "events.jsonl"), "rb") as f:
+                    for i, line in enumerate(f):
+                        if i >= after and len(out) < 400:
+                            try:
+                                out.append(json.loads(line))
+                            except ValueError:
+                                out.append({"type": "raw", "text": "(unreadable event)"})
+            except FileNotFoundError:
+                pass
+            return self.send(200, {"after": after, "events": out, "state": t["state"]})
+        if method == "GET" and action == "shots":
+            sd = os.path.join(t["dir"], "shots")
+            names = sorted(n for n in (os.listdir(sd) if os.path.isdir(sd) else []) if n.endswith(".png"))
+            if len(parts) == 3:
+                return self.send(200, {"shots": names[:40]})
+            name = parts[3]
+            if name not in names or os.path.getsize(os.path.join(sd, name)) > MAX_SHOT:
+                return self.send(404, {"error": "no such screenshot"})
+            with open(os.path.join(sd, name), "rb") as f:
+                return self.send(200, raw=f.read(), ctype="image/png")
+        if method == "GET" and action == "summary":
+            return self.send(200, {"files": file_summary(repo)})
         if method == "POST" and action == "cancel":
             t["cancel"] = True
             if t["state"] == "created":
@@ -245,7 +377,8 @@ class H(BaseHTTPRequestHandler):
             except FileNotFoundError:
                 pass
             return self.send(200, {"state": t["state"], "exit": t["exit"], "changed": t["changed"], "error": t["error"],
-                                   "started": t["started"], "ended": t["ended"], "log": tail.decode(errors="replace")})
+                                   "started": t["started"], "ended": t["ended"], "session": t.get("session", ""),
+                                   "run": t.get("run", 1), "log": tail.decode(errors="replace")})
         if method == "GET" and action == "diff":
             if t["state"] in ("created", "running"):
                 git(repo, "add", "-A", check=False)
@@ -292,4 +425,5 @@ if __name__ == "__main__":
     if len(SECRET) < 24:
         raise SystemExit("AGENT_RUNNER_SECRET missing or too short")
     os.makedirs(WORK, exist_ok=True)
+    load_state()
     ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("AGENT_PORT", "7070"))), H).serve_forever()

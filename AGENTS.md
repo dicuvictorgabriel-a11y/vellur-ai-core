@@ -75,6 +75,8 @@ Inference goes through `autopilot/app/router.py`: public names (vellur-coder/cha
 request; paid targets obey the monthly budget; paid fallback is opt-in. HyperAI is optional, not the foundation.
 Workspace (chat with history, models, costs, agent) lives in `workspace.py` + `static/dashboard.html`, all behind the
 existing login. Coding agent: `agent.py` (controller, keeps the GitHub token) + `agent/` (isolated OpenCode runner).
+Agent design, event log, outcomes and the failed-test investigation: `docs/AGENT.md`. A task's `state` is the process
+state; `outcome` is the judged result. Never report `completed` from an exit code alone.
 **`app/auth.py` and the login/change-password forms are frozen by the owner** (tests/test_auth_frozen.py): do not
 change them without explicit approval. No automatic request-type routing (no measured benefit yet).
 

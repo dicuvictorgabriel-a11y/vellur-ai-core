@@ -9,6 +9,8 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import json
+import os
 import re
 import time
 from typing import Optional
@@ -24,6 +26,117 @@ BRANCH_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._/-]{0,100}$")
 ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 FINAL = ("done", "failed", "cancelled", "timeout", "over_budget")
 MAX_TARBALL = 400 * 1024 * 1024
+OUTPUT_LIMIT = 16384          # max tokens per model reply, set in the runner's OpenCode config
+AUTO_CONTINUE = 2             # automatic "continue" runs when a reply was cut off at OUTPUT_LIMIT
+STATUS_RE = re.compile(r"STATUS:\s*\**\s*(COMPLETE|PARTIAL|BLOCKED)\b", re.I)
+TEST_RE = re.compile(r"\b(pytest|unittest|jest|vitest|mocha|playwright|cypress|tsc|eslint|ruff|mypy|flake8|go test|cargo test|"
+                     r"npm (run )?(test|check|lint|build|typecheck)|pnpm (run )?(test|check|lint|build)|yarn (test|check|lint|build)|"
+                     r"make (test|check)|node --check|python3? -m (pytest|unittest|py_compile))\b")
+SHOT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}\.png$")
+
+AGENT_GUIDE = """You are an autonomous AI developer working for the owner of this repository through VELLUR AI Core.
+You run unattended in an isolated copy of the repository: nobody can answer questions during the run, so make
+reasonable decisions and mention them in your report.
+
+How to work:
+- Explore the relevant files first, then write a short plan with the todo tool and keep it updated.
+- Before each group of actions write ONE short plain sentence saying what you are about to do; the owner reads these
+  as live progress updates.
+- Work in small steps. Never write a very large file in a single tool call (one reply is limited to about 16 000
+  tokens): create big files in several parts or edit existing files piece by piece.
+- After changing code, run the project's tests, type checks, linters or build, and fix what fails.
+- For visible (frontend) changes, build or start the app locally in the background and take REAL screenshots with
+  `vellur-screenshot <url-or-html-file> <name> [desktop|mobile]` (see `vellur-screenshot --help`), desktop and mobile.
+  Never describe screenshots you did not take. If a screenshot is impossible, say why in the report.
+- Do not commit, push or deploy. The owner reviews your changes and opens the pull request from VELLUR.
+
+Always finish with this report (in the owner's language when their notes ask for one):
+## Summary
+(two or three sentences)
+## Done
+(bullet list of what you actually changed)
+## Not done
+(what is still missing, or "nothing")
+## Tests
+(commands you ran and their results, or why none)
+STATUS: COMPLETE | PARTIAL | BLOCKED
+(write STATUS: COMPLETE only if everything requested is done and verified)"""
+CONTINUE_PROMPT = ("Your previous reply was cut off because it reached the output limit. Continue the task from where you "
+                   "stopped. Write large files in several smaller parts or edit them piece by piece.")
+FOLLOWUP_SUFFIX = ("\n\n(When you are done, finish again with the report: ## Summary, ## Done, ## Not done, ## Tests and the "
+                   "STATUS line.)")
+
+
+def _loads(v, default):
+    try:
+        return json.loads(v) if isinstance(v, str) and v else (v if v is not None else default)
+    except ValueError:
+        return default
+
+
+def _clip(v, n: int = 4000):
+    if isinstance(v, str):
+        return v if len(v) <= n else v[:n] + f"\n… [{len(v) - n} more characters]"
+    if isinstance(v, dict):
+        return {k: _clip(x, n) for k, x in v.items()}
+    if isinstance(v, list):
+        return [_clip(x, n) for x in v[:100]]
+    return v
+
+
+def normalize(ev: dict):
+    """OpenCode `run --format json` event -> (kind, data) for the conversation timeline, or (None, None) to skip."""
+    typ, part = ev.get("type"), ev.get("part") or {}
+    if typ == "text":
+        text = part.get("text") or ""
+        return ("text", {"text": text[:30000]}) if text.strip() else (None, None)
+    if typ == "reasoning":
+        text = part.get("text") or ""
+        return ("thinking", {"text": text[:6000]}) if text.strip() else (None, None)
+    if typ == "tool_use":
+        state = part.get("state") or {}
+        meta = state.get("metadata") or {}
+        inp = state.get("input") or {}
+        out = state.get("output") if isinstance(state.get("output"), str) else ""
+        data = {"tool": part.get("tool", "?"), "status": state.get("status", ""), "title": (state.get("title") or "")[:300],
+                "input": _clip(inp, 3000), "output": _clip(out or state.get("error") or "", 4000),
+                "exit": meta.get("exit") if isinstance(meta.get("exit"), int) else None}
+        if part.get("tool") == "todowrite" and isinstance(inp.get("todos"), list):
+            data["todos"] = [{"content": str(x.get("content", ""))[:200], "status": x.get("status", "")}
+                             for x in inp["todos"][:30] if isinstance(x, dict)]
+        return "tool", data
+    if typ == "step_finish":
+        return "step", {"reason": part.get("reason", ""), "tokens": part.get("tokens") or {}}
+    if typ == "error":
+        err = ev.get("error") or {}
+        msg = ((err.get("data") or {}).get("message") or err.get("name") or "error") if isinstance(err, dict) else str(err)
+        return "error", {"message": str(msg)[:2000]}
+    if typ == "raw":
+        return "raw", {"text": str(ev.get("text", ""))[:2000]}
+    return None, None
+
+
+def sections(text: str) -> dict:
+    """Split the agent's final report into its ## sections (summary, done, not_done, tests)."""
+    out, cur = {}, None
+    for line in (text or "").splitlines():
+        m = re.match(r"^\s*#{1,4}\s*(summary|done|not done|tests?)\s*:?\s*$", line, re.I)
+        if m:
+            key = m.group(1).lower()
+            cur = "tests" if key.startswith("test") else key.replace(" ", "_")
+            out[cur] = ""
+        elif cur and not STATUS_RE.search(line):
+            out[cur] += line + "\n"
+    return {k: v.strip()[:6000] for k, v in out.items()}
+
+
+def pr_body(t: dict, rep: dict) -> str:
+    files = "\n".join(f"- `{f['path']}`" for f in (rep.get("files") or [])[:60]) or "- (see the diff)"
+    tests = "\n".join(f"- `{c['command'][:120]}` → {'passed' if c.get('exit') == 0 else 'failed'}"
+                      for c in (rep.get("tests") or [])[:20]) or "- none recorded"
+    return (f"Prepared by the VELLUR AI Core agent (task {t['id']}, model `{t['model']}`). **Review before merging.**\n\n"
+            f"**Request**\n\n{t['prompt'][:3000]}\n\n**Agent report** (outcome: {rep.get('outcome', 'unknown')})\n\n"
+            f"{(rep.get('final_text') or '(no report)')[:6000]}\n\n**Files**\n\n{files}\n\n**Checks run by the agent**\n\n{tests}\n")
 
 
 class AgentError(Exception):
@@ -82,7 +195,7 @@ class GitHub:
             raise AgentError("too_large", "repository snapshot is larger than 400 MB")
         return r.content
 
-    async def publish(self, repo: str, base: str, branch: str, files: list, message: str) -> str:
+    async def publish(self, repo: str, base: str, branch: str, files: list, message: str, update: bool = False) -> str:
         base_sha = (await self._req("GET", f"/repos/{repo}/git/ref/heads/{base}")).json()["object"]["sha"]
         base_tree = (await self._req("GET", f"/repos/{repo}/git/commits/{base_sha}")).json()["tree"]["sha"]
         entries = []
@@ -96,7 +209,10 @@ class GitHub:
         tree = (await self._req("POST", f"/repos/{repo}/git/trees", json={"base_tree": base_tree, "tree": entries})).json()["sha"]
         commit = (await self._req("POST", f"/repos/{repo}/git/commits",
                                   json={"message": message, "tree": tree, "parents": [base_sha]})).json()["sha"]
-        await self._req("POST", f"/repos/{repo}/git/refs", json={"ref": f"refs/heads/{branch}", "sha": commit})
+        if update:   # our own task branch, already open as a pull request: move it to the new commit
+            await self._req("PATCH", f"/repos/{repo}/git/refs/heads/{branch}", json={"sha": commit, "force": True})
+        else:
+            await self._req("POST", f"/repos/{repo}/git/refs", json={"ref": f"refs/heads/{branch}", "sha": commit})
         return commit
 
     async def open_pr(self, repo: str, head: str, base: str, title: str, body: str) -> str:
@@ -163,19 +279,34 @@ class AgentManager:
         t = self.db.one("SELECT * FROM tasks WHERE id=?", (tid,))
         if t:
             t["cost_usd"] = round(self.router.tag_cost(f"task:{tid}"), 4)
+            t["report"] = _loads(t.get("report"), {})
         return t
 
-    def list(self, limit: int = 30) -> list:
-        rows = self.db.all("SELECT id,created,state,repo,base,branch,model,prompt,error,files_changed,pr_url,started,ended "
-                           "FROM tasks ORDER BY id DESC LIMIT ?", (limit,))
+    def list(self, limit: int = 40) -> list:
+        rows = self.db.all("SELECT id,created,updated,state,outcome,runs,repo,base,branch,model,prompt,error,files_changed,"
+                           "pr_url,started,ended FROM tasks ORDER BY id DESC LIMIT ?", (limit,))
         for r in rows:
             r["cost_usd"] = round(self.router.tag_cost(f"task:{r['id']}"), 4)
+            r["title"] = " ".join(r["prompt"].split())[:80]
         return rows
 
     def _set(self, tid: int, **fields) -> None:
         fields["updated"] = time.time()
         cols = ", ".join(f"{k}=?" for k in fields)
         self.db.x(f"UPDATE tasks SET {cols} WHERE id=?", tuple(fields.values()) + (tid,))
+
+    def _ev(self, _tid: int, _run: int, _kind: str, **data) -> None:
+        self.db.x("INSERT INTO task_events(task_id,ts,run,kind,data) VALUES(?,?,?,?,?)",
+                  (_tid, time.time(), _run, _kind, json.dumps(data)))
+        tid = _tid
+        self.db.x("UPDATE tasks SET updated=? WHERE id=?", (time.time(), tid))
+
+    def events(self, tid: int, after: int = 0, limit: int = 500) -> list:
+        rows = self.db.all("SELECT id,ts,run,kind,data FROM task_events WHERE task_id=? AND id>? ORDER BY id LIMIT ?",
+                           (tid, after, limit))
+        for r in rows:
+            r["data"] = _loads(r["data"], {})
+        return rows
 
     async def _runner(self, method: str, path: str, **kw) -> httpx.Response:
         try:
@@ -184,15 +315,24 @@ class AgentManager:
             raise AgentError("runner", f"agent workspace unreachable ({e.__class__.__name__})", 502)
         if r.status_code == 409:
             raise AgentError("busy", "the agent workspace is busy with another task", 409)
+        if r.status_code in (404, 410):
+            raise AgentError("expired", "the workspace of this task no longer exists on the server "
+                                        "(only the latest tasks are kept); start a new task", 410)
         if r.status_code >= 400:
             raise AgentError("runner", f"agent workspace error {r.status_code}: {r.text[:200]}", 502)
         return r
 
-    # ── API ─────────────────────────────────────────────────────────────────────────────────────
-    async def create(self, prompt: str, model: str, repo: str = "", base: str = "") -> dict:
+    def _check_can_run(self) -> None:
         ok, why = self.available()
         if not ok:
             raise AgentError("unavailable", why, 503)
+        if self.db.one("SELECT id FROM tasks WHERE state NOT IN ('done','failed','cancelled','timeout','over_budget')"):
+            raise AgentError("busy", "another task is still running; one at a time on this server", 409)
+        if self.ctrl.budget.status(self.ctrl.settings.get(), None, self.ctrl.clock())["exhausted"]:
+            raise AgentError("budget", "monthly budget is used up")
+
+    # ── API ─────────────────────────────────────────────────────────────────────────────────────
+    async def create(self, prompt: str, model: str, repo: str = "", base: str = "") -> dict:
         prompt, repo, base = (prompt or "").strip(), (repo or "").strip(), (base or "").strip()
         if not 5 <= len(prompt) <= 20000:
             raise AgentError("invalid", "describe the task (5–20000 characters)")
@@ -202,84 +342,254 @@ class AgentManager:
             raise AgentError("invalid", "repository must look like owner/name")
         if base and not BRANCH_RE.match(base):
             raise AgentError("invalid", "invalid branch name")
-        if self.db.one("SELECT id FROM tasks WHERE state NOT IN ('done','failed','cancelled','timeout','over_budget')"):
-            raise AgentError("busy", "another task is still running; one at a time on this server", 409)
-        if self.ctrl.budget.status(self.ctrl.settings.get(), None, self.ctrl.clock())["exhausted"]:
-            raise AgentError("budget", "monthly budget is used up")
+        self._check_can_run()
         now = time.time()
-        cur = self.db.x("INSERT INTO tasks(created,updated,state,repo,base,model,prompt) VALUES(?,?,?,?,?,?,?)",
-                        (now, now, "queued", repo, base, model, prompt))
+        cur = self.db.x("INSERT INTO tasks(created,updated,state,repo,base,model,prompt,outcome,runs) VALUES(?,?,?,?,?,?,?,?,?)",
+                        (now, now, "queued", repo, base, model, prompt, "", 1))
         tid = cur.lastrowid
+        self._ev(tid, 1, "user", text=prompt)
         self.db.event("info", "agent", f"task {tid} created", repo=repo, model=model)
-        self._jobs[tid] = asyncio.create_task(self._run(tid))
+        self._jobs[tid] = asyncio.create_task(self._drive(tid, prompt, first=True))
         return self.task(tid)
 
-    async def _run(self, tid: int) -> None:
+    async def message(self, tid: int, text: str, model: Optional[str] = None) -> dict:
+        """Follow-up: continue the same OpenCode session in the same workspace (the agent keeps its context)."""
+        t = self.task(tid)
+        if not t:
+            raise AgentError("not_found", "unknown task", 404)
+        text = (text or "").strip()
+        if not 1 <= len(text) <= 20000:
+            raise AgentError("invalid", "write a message (up to 20000 characters)")
+        if t["state"] not in FINAL:
+            raise AgentError("busy", "the agent is still working on this task; wait or stop it first", 409)
+        if model and model not in ROLES:
+            raise AgentError("invalid", "unknown model")
+        if not t["started"]:
+            raise AgentError("expired", "this task never started an agent session; start a new task", 410)
+        self._check_can_run()
+        run = int(t["runs"] or 1) + 1
+        self._set(tid, state="queued", runs=run, error="", outcome="", model=model or t["model"], ended=None)
+        self._ev(tid, run, "user", text=text)
+        self._jobs[tid] = asyncio.create_task(self._drive(tid, text, first=False))
+        return self.task(tid)
+
+    def _first_prompt(self, prompt: str) -> str:
+        memory = self.ctrl.settings.get()["memory"].strip()
+        notes = f"Notes from the owner (always follow them):\n{memory}\n\n" if memory else ""
+        return f"{AGENT_GUIDE}\n\n{notes}Task from the owner:\n{prompt}"
+
+    async def _drive(self, tid: int, prompt: str, first: bool) -> None:
+        """One run (first task message or follow-up), plus automatic continuations when the reply was cut off."""
+        tag = f"task:{tid}"
+        try:
+            await self._one_run(tid, prompt, first, tag)
+            for _ in range(AUTO_CONTINUE):
+                t = self.task(tid)
+                if not (t["state"] == "done" and t["report"].get("stop_reason") == "length"):
+                    break
+                run = int(t["runs"]) + 1
+                self._set(tid, state="queued", runs=run, outcome="")
+                self._ev(tid, run, "notice", text="The model's reply was cut off at its output limit. "
+                                                  "VELLUR asked it automatically to continue in smaller steps.")
+                await self._one_run(tid, CONTINUE_PROMPT, False, tag)
+        except asyncio.CancelledError:
+            raise
+        except Exception as e:  # noqa: BLE001
+            run = int((self.task(tid) or {}).get("runs") or 1)
+            self._set(tid, state="failed", outcome="failed", error=f"{e.__class__.__name__}: {e}", ended=time.time())
+            self._ev(tid, run, "error", message=f"{e.__class__.__name__}: {e}")
+        finally:
+            self._jobs.pop(tid, None)
+
+    async def _one_run(self, tid: int, prompt: str, first: bool, tag: str) -> None:
         t = self.task(tid)
         st = self.ctrl.settings.get()
-        tag = f"task:{tid}"
+        run = int(t["runs"] or 1)
         token = self.router.issue_token(tag)
+        cost0 = self.router.tag_cost(tag)
+        info: dict = {}
         try:
             self._set(tid, state="preparing")
-            source = None
-            base = t["base"]
-            if t["repo"]:
-                gh = GitHub(self.github_token(), self.github_transport)
-                base = base or await gh.default_branch(t["repo"])
-                source = await gh.tarball(t["repo"], base)
-                self._set(tid, base=base)
-            prompt = t["prompt"]
-            if st["memory"].strip():
-                prompt = f"Project notes from the owner:\n{st['memory'].strip()}\n\nTask:\n{prompt}"
-            await self._runner("POST", "/tasks", json={"id": tid, "prompt": prompt, "model": t["model"],
-                                                       "proxy_url": self.env.agent_proxy_url, "proxy_token": token,
-                                                       "max_minutes": st["agent_max_minutes"]})
-            if source is not None:
-                await self._runner("PUT", f"/tasks/{tid}/source", content=source)
-            await self._runner("POST", f"/tasks/{tid}/start")
+            if first:
+                source, base = None, t["base"]
+                if t["repo"]:
+                    self._ev(tid, run, "status", text=f"Downloading {t['repo']} from GitHub")
+                    gh = GitHub(self.github_token(), self.github_transport)
+                    try:
+                        base = base or await gh.default_branch(t["repo"])
+                        source = await gh.tarball(t["repo"], base)
+                    finally:
+                        await gh.c.aclose()
+                    self._set(tid, base=base)
+                await self._runner("POST", "/tasks", json={"id": tid, "prompt": self._first_prompt(prompt),
+                                                           "model": t["model"], "proxy_url": self.env.agent_proxy_url,
+                                                           "proxy_token": token, "max_minutes": st["agent_max_minutes"]})
+                if source is not None:
+                    await self._runner("PUT", f"/tasks/{tid}/source", content=source)
+                await self._runner("POST", f"/tasks/{tid}/start")
+            else:
+                await self._runner("POST", f"/tasks/{tid}/message", json={
+                    "prompt": prompt + FOLLOWUP_SUFFIX, "model": self.task(tid)["model"], "proxy_url": self.env.agent_proxy_url,
+                    "proxy_token": token, "max_minutes": st["agent_max_minutes"]})
             started = time.time()
-            self._set(tid, state="running", started=started)
-            final, info = None, {}
-            while final is None:
+            self._set(tid, state="running", started=t["started"] or started)
+            self._ev(tid, run, "status", text="Agent started" if first else "Agent continues", state="running")
+            limit_note = ""
+            while True:
                 await asyncio.sleep(self.poll)
                 info = (await self._runner("GET", f"/tasks/{tid}")).json()
                 self.db.kv_set(f"task_log_{tid}", ANSI_RE.sub("", info.get("log", ""))[-40000:])
+                await self._import_events(tid)
+                await self._import_shots(tid, run)
                 if info["state"] in ("done", "failed", "cancelled", "timeout"):
-                    final = info["state"]
                     break
                 state = self.task(tid)["state"]
                 if state == "cancelling":
                     await self._runner("POST", f"/tasks/{tid}/cancel")
                 elif time.time() - started > 60 * float(st["agent_max_minutes"]):
                     await self._runner("POST", f"/tasks/{tid}/cancel")
-                    self._set(tid, state="cancelling", error=f"time limit of {st['agent_max_minutes']} min reached")
-                elif float(st["agent_max_usd"]) > 0 and self.router.tag_cost(tag) >= float(st["agent_max_usd"]):
+                    limit_note = f"time limit of {st['agent_max_minutes']} min reached"
+                    self._set(tid, state="cancelling", error=limit_note)
+                elif float(st["agent_max_usd"]) > 0 and self.router.tag_cost(tag) - cost0 >= float(st["agent_max_usd"]):
                     await self._runner("POST", f"/tasks/{tid}/cancel")
-                    self._set(tid, state="cancelling", error=f"cost limit of ${st['agent_max_usd']:.2f} per task reached")
-            prior = self.task(tid)
-            if prior["error"].startswith("cost limit"):
+                    limit_note = f"cost limit of ${st['agent_max_usd']:.2f} per run reached"
+                    self._set(tid, state="cancelling", error=limit_note)
+            await self._import_events(tid)
+            await self._import_shots(tid, run)
+            final = info["state"]
+            if limit_note.startswith("cost limit"):
                 final = "over_budget"
-            elif prior["error"].startswith("time limit"):
+            elif limit_note.startswith("time limit"):
                 final = "timeout"
+            files = []
+            with contextlib.suppress(AgentError):
+                files = (await self._runner("GET", f"/tasks/{tid}/summary")).json().get("files", [])
             with contextlib.suppress(AgentError):
                 d = (await self._runner("GET", f"/tasks/{tid}/diff")).json()
                 self.db.kv_set(f"task_diff_{tid}", {"stat": d.get("stat", ""), "diff": d.get("diff", "")[:400000]})
-            error = prior["error"] or info.get("error", "")
+            error = limit_note or info.get("error", "")
             if final == "failed" and not error:
-                error = f"the agent exited with code {info.get('exit')} (see the log)"
-            self._set(tid, state=final, files_changed=int(info.get("changed") or 0), ended=time.time(), error=error)
-            self.db.event("info" if final == "done" else "warn", "agent", f"task {tid} {final}",
-                          files=info.get("changed"), cost=round(self.router.tag_cost(tag), 4))
+                error = f"the agent process exited with code {info.get('exit')}"
+            report = self._report(tid, run, final, error, files, self.router.tag_cost(tag) - cost0)
+            self._set(tid, state=final, outcome=report["outcome"], report=json.dumps(report),
+                      files_changed=len(files) or int(info.get("changed") or 0), ended=time.time(), error=error)
+            self._ev(tid, run, "report", **report)
+            self.db.event("info" if report["outcome"] == "completed" else "warn", "agent",
+                          f"task {tid} run {run}: {report['outcome']}", files=len(files),
+                          cost=round(self.router.tag_cost(tag), 4))
         except AgentError as e:
-            self._set(tid, state="failed", error=e.message, ended=time.time())
-            self.db.event("warn", "agent", f"task {tid} failed: {e.message}")
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:  # noqa: BLE001
-            self._set(tid, state="failed", error=f"{e.__class__.__name__}: {e}", ended=time.time())
+            self._set(tid, state="failed", outcome="failed", error=e.message, ended=time.time())
+            self._ev(tid, run, "error", message=e.message)
         finally:
             self.router.revoke_tag(tag)
-            self._jobs.pop(tid, None)
+
+    async def _import_events(self, tid: int) -> None:
+        cursor = int(self.task(tid)["cursor"] or 0)
+        while True:
+            r = (await self._runner("GET", f"/tasks/{tid}/events", params={"after": cursor})).json()
+            evs = r.get("events", [])
+            for ev in evs:
+                kind, data = normalize(ev)
+                if kind:
+                    self._ev(tid, int(ev.get("run") or 1), kind, **data)
+            cursor += len(evs)
+            self._set(tid, cursor=cursor)
+            if len(evs) < 400:
+                return
+
+    async def _import_shots(self, tid: int, run: int) -> None:
+        try:
+            names = (await self._runner("GET", f"/tasks/{tid}/shots")).json().get("shots", [])
+        except AgentError:
+            return
+        have = {e["data"].get("name") for e in self.events(tid, 0, 100000) if e["kind"] == "shot"}
+        folder = os.path.join(self.env.data_dir, "shots", f"t{tid}")
+        for n in names:
+            if n in have or not SHOT_RE.match(n):
+                continue
+            with contextlib.suppress(AgentError):
+                png = (await self._runner("GET", f"/tasks/{tid}/shots/{n}")).content
+                if not png.startswith(b"\x89PNG"):
+                    continue
+                os.makedirs(folder, exist_ok=True)
+                with open(os.path.join(folder, n), "wb") as f:
+                    f.write(png)
+                self._ev(tid, run, "shot", name=n)
+
+    def shot_path(self, tid: int, name: str) -> Optional[str]:
+        if not SHOT_RE.match(name or ""):
+            return None
+        p = os.path.join(self.env.data_dir, "shots", f"t{int(tid)}", name)
+        return p if os.path.isfile(p) else None
+
+    def _report(self, tid: int, run: int, final: str, error: str, files: list, run_cost: float) -> dict:
+        """What the owner reads at the end of a run. Built only from recorded facts; the outcome is judged, not assumed."""
+        evs = [e for e in self.events(tid, 0, 100000) if e["run"] == run or e["kind"] in ("user", "shot")]
+        run_evs = [e for e in evs if e["run"] == run]
+        texts = [e["data"]["text"] for e in run_evs if e["kind"] == "text" and e["data"].get("text", "").strip()]
+        final_text = texts[-1] if texts else ""
+        m = STATUS_RE.search(final_text)
+        claim = m.group(1).upper() if m else ""
+        requests = [e["data"]["text"] for e in evs if e["kind"] == "user"]
+        steps = [e["data"] for e in run_evs if e["kind"] == "step"]
+        stop_reason = steps[-1].get("reason", "") if steps else ""
+        commands, last_test = [], {}
+        for e in run_evs:
+            d = e["data"]
+            if e["kind"] == "tool" and d.get("tool") == "bash":
+                cmd = (d.get("input") or {}).get("command", "")
+                c = {"command": cmd[:300], "exit": d.get("exit"), "status": d.get("status"), "test": bool(TEST_RE.search(cmd))}
+                commands.append(c)
+                if c["test"]:
+                    last_test[cmd] = c
+        tests = list(last_test.values())
+        tests_failed = [c for c in tests if c["status"] == "error" or (c["exit"] not in (None, 0))]
+        errors = [e["data"].get("message", "") for e in run_evs if e["kind"] == "error"]
+        if error:
+            errors.append(error)
+        shots = [e["data"]["name"] for e in evs if e["kind"] == "shot"]
+        tokens_out = sum(int((s.get("tokens") or {}).get("output") or 0) for s in steps)
+        tokens_in = sum(int((s.get("tokens") or {}).get("input") or 0) for s in steps)
+        if final in ("timeout", "over_budget"):
+            outcome, why = "stopped", f"Stopped by the safety limit: {error}."
+        elif final == "cancelled":
+            outcome, why = "cancelled", "You stopped this run."
+        elif final == "failed":
+            outcome, why = "failed", "The agent process failed: " + (errors[-1] if errors else "unknown error") + "."
+        elif stop_reason == "length":
+            outcome, why = "incomplete", ("The model's reply was cut off at its output limit, so the agent stopped in the "
+                                          "middle of the work. Send a follow-up such as “continue” to resume.")
+        elif errors:
+            outcome, why = "failed", "The model provider returned an error: " + errors[-1]
+        elif tests_failed:
+            outcome, why = "needs_attention", f"{len(tests_failed)} of {len(tests)} checks failed in their last run."
+        elif claim == "COMPLETE":
+            outcome, why = "completed", ("The agent reports the task as complete" +
+                                         (" and the checks it ran passed." if tests else "; it ran no tests."))
+        elif claim == "PARTIAL":
+            outcome, why = "partial", "The agent reports that part of the task is still open (see “Not done”)."
+        elif claim == "BLOCKED":
+            outcome, why = "blocked", "The agent reports it could not continue (see its explanation)."
+        else:
+            outcome, why = "unverified", ("The agent stopped without its final report, so it is not confirmed that the "
+                                          "task is finished. Ask it to continue or to report what is left.")
+        return {"run": run, "requested": requests[-1] if requests else "", "final_text": final_text.strip()[:20000],
+                "claim": claim, "sections": sections(final_text), "outcome": outcome, "why": why,
+                "process": final, "stop_reason": stop_reason, "files": files, "commands": commands[-60:], "tests": tests[-30:],
+                "shots": shots, "errors": errors[-10:], "cost_run_usd": round(run_cost, 4),
+                "cost_total_usd": round(self.router.tag_cost(f"task:{tid}"), 4), "tokens": {"input": tokens_in, "output": tokens_out},
+                "tool_calls": sum(1 for e in run_evs if e["kind"] == "tool")}
+
+    def diagnostics(self, tid: int) -> dict:
+        """Facts from the model router about this task's requests (works for tasks from before the event log too)."""
+        rows = self.db.all("SELECT ok,status,in_tokens,out_tokens,cost_usd,model,provider,error FROM usage WHERE tag=? ORDER BY id",
+                           (f"task:{tid}",))
+        outs = [int(r["out_tokens"] or 0) for r in rows]
+        return {"requests": len(rows), "failed_requests": sum(1 for r in rows if not r["ok"]),
+                "input_tokens": sum(int(r["in_tokens"] or 0) for r in rows), "output_tokens": sum(outs),
+                "largest_reply_tokens": max(outs) if outs else 0, "last_reply_tokens": outs[-1] if outs else 0,
+                "models": sorted({f"{r['provider']}:{r['model']}" for r in rows}),
+                "errors": [r["error"] for r in rows if r["error"]][-5:], "output_limit_tokens": OUTPUT_LIMIT}
 
     async def cancel(self, tid: int) -> dict:
         t = self.task(tid)
@@ -294,37 +604,50 @@ class AgentManager:
         if not t:
             raise AgentError("not_found", "unknown task", 404)
         d = self.db.kv_get(f"task_diff_{tid}") or {}
-        return {**t, "log": self.db.kv_get(f"task_log_{tid}", "") or "", "diff_stat": d.get("stat", ""),
-                "diff": d.get("diff", ""), "can_publish": bool(t["state"] == "done" and t["repo"] and t["files_changed"]
-                                                               and not t["pr_url"] and self.github_token())}
+        has_events = bool(self.db.one("SELECT 1 AS x FROM task_events WHERE task_id=? LIMIT 1", (tid,)))
+        return {**t, "legacy": not has_events, "log": self.db.kv_get(f"task_log_{tid}", "") or "",
+                "diff_stat": d.get("stat", ""), "diagnostics": self.diagnostics(tid),
+                "can_publish": bool(t["state"] in FINAL and t["repo"] and t["files_changed"] and self.github_token()),
+                "can_message": bool(t["state"] in FINAL and t["started"] and has_events)}
+
+    def diff(self, tid: int) -> dict:
+        if not self.task(tid):
+            raise AgentError("not_found", "unknown task", 404)
+        d = self.db.kv_get(f"task_diff_{tid}") or {}
+        return {"stat": d.get("stat", ""), "diff": d.get("diff", "")}
 
     async def publish(self, tid: int) -> dict:
-        """Owner-initiated: push the result as a new branch and open a draft pull request."""
+        """Owner-initiated: push the result as a branch and open (or update) a draft pull request."""
         t = self.task(tid)
         if not t:
             raise AgentError("not_found", "unknown task", 404)
-        if t["state"] != "done" or not t["repo"] or not t["files_changed"]:
+        if t["state"] not in FINAL or not t["repo"] or not t["files_changed"]:
             raise AgentError("invalid", "only a finished task with changes in a GitHub repository can be published")
-        if t["pr_url"]:
-            return t
         if not self.github_token():
-            raise AgentError("github_auth", "save a GitHub token first (Agent → GitHub access)")
+            raise AgentError("github_auth", "save a GitHub token first (Agent → GitHub connection)")
         files = (await self._runner("GET", f"/tasks/{tid}/files")).json()["files"]
         gh = GitHub(self.github_token(), self.github_transport)
-        branch = f"vellur/task-{tid}"
+        branch = t["branch"] or f"vellur/task-{tid}"
         title = "VELLUR agent: " + " ".join(t["prompt"].split())[:70]
-        await gh.publish(t["repo"], t["base"], branch, files, title + f"\n\nTask {tid}, model {t['model']}.")
-        url = await gh.open_pr(t["repo"], branch, t["base"], title,
-                               f"Prepared by the VELLUR AI Core agent (task {tid}, model `{t['model']}`).\n\n"
-                               f"**Request**\n\n{t['prompt'][:3000]}\n\nReview before merging.")
+        rep = t["report"]
+        try:
+            await gh.publish(t["repo"], t["base"], branch, files, title + f"\n\nTask {tid}, model {t['model']}.",
+                             update=bool(t["pr_url"]))
+            url = t["pr_url"] or await gh.open_pr(t["repo"], branch, t["base"], title, pr_body(t, rep))
+        finally:
+            await gh.c.aclose()
         self._set(tid, branch=branch, pr_url=url)
+        self._ev(tid, int(t["runs"] or 1), "pr", url=url, updated=bool(t["pr_url"]))
         self.db.event("info", "agent", f"task {tid} published", url=url)
         return self.task(tid)
 
     async def recover(self) -> None:
         """After a controller restart, tasks that were in flight cannot be resumed: mark them and stop the runner."""
         for r in self.db.all("SELECT id FROM tasks WHERE state NOT IN ('done','failed','cancelled','timeout','over_budget')"):
-            self._set(r["id"], state="failed", error="the controller restarted while this task was running", ended=time.time())
+            self._set(r["id"], state="failed", outcome="failed", error="the controller restarted while this task was running",
+                      ended=time.time())
+            self._ev(r["id"], int(self.task(r["id"])["runs"] or 1), "error",
+                     message="The server restarted while this task was running. Send a follow-up to continue.")
             with contextlib.suppress(Exception):
                 await self._runner("POST", f"/tasks/{r['id']}/cancel")
 

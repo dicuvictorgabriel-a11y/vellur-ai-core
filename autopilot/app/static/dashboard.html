@@ -98,8 +98,8 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .m pre:before{content:"Copy";position:absolute;top:7px;right:10px;font:500 11.5px "Inter",system-ui,sans-serif;color:var(--muted)}
 .m pre.copied:before{content:"Copied";color:var(--accent)}
 .m code{font-size:13px;background:#202026;padding:1.5px 5px;border-radius:5px}
-.msgs .note{text-align:center;margin-top:18vh;font-size:15px;color:var(--muted)}
-.msgs .note:before{content:"VELLUR AI";display:block;font-size:24px;font-weight:600;color:var(--text);letter-spacing:-.01em;margin-bottom:6px}
+#msgs .note{text-align:center;margin-top:18vh;font-size:15px;color:var(--muted)}
+#msgs .note:before{content:"VELLUR AI";display:block;font-size:24px;font-weight:600;color:var(--text);letter-spacing:-.01em;margin-bottom:6px}
 .composer{max-width:800px;width:calc(100% - 32px);margin:0 auto 10px;background:var(--panel);border:1px solid var(--line2);border-radius:20px;padding:10px 12px 8px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
 .composer:focus-within{border-color:#4a4a55}
 .composer textarea{border:0;background:transparent;padding:4px 6px;font:15.5px/1.5 "Inter",-apple-system,system-ui,sans-serif;resize:none;max-height:200px;outline:0}
@@ -112,11 +112,76 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 #chatFile{display:none}
 .chatfoot{max-width:800px;width:calc(100% - 32px);margin:0 auto 12px;font-size:12px;color:var(--muted)}
 .chatfoot details summary{cursor:pointer;list-style:none;text-align:center}.chatfoot details[open] summary{text-align:left;margin-bottom:6px}
-/* agent */
-#tDetail{border-top:1px solid var(--line);padding-top:16px}
-#tTitle{font-size:15px}
-#tLog{max-height:260px;color:var(--soft)}
+/* agent: a conversation with an AI developer */
+body.is-admin[data-view="agent"] main{padding:0;overflow:hidden;display:flex;flex-direction:column}
+body.is-admin[data-view="agent"] .wrap,body.is-admin[data-view="agent"] .grid{display:contents}
+#agentCard{display:flex;flex-direction:column;flex:1;min-height:0}
+#agHead{display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--line);min-height:56px}
+#agHead .t{flex:1;min-width:0}#agHead .t b{display:block;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#agHead .t small{display:block;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.oc{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--line2);color:var(--soft);white-space:nowrap}
+.oc:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.oc.ok{color:var(--accent);border-color:#3d4d12}.oc.warn{color:#ffd76a;border-color:#5a4a16}.oc.bad{color:#ff9d8a;border-color:#5a2616}.oc.run{color:var(--cyan);border-color:#1d4a50}
+.oc.run:before{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.25}}
+@keyframes spin{to{transform:rotate(360deg)}}
+#agMsgs .m.assistant .txt h4{font-size:15px;margin:14px 0 4px;font-weight:600}
+.act{margin-top:6px;margin-bottom:6px;border:1px solid var(--line);border-radius:11px;background:var(--panel);overflow:hidden}
+.act summary{display:flex;align-items:center;gap:9px;padding:9px 12px;cursor:pointer;list-style:none;font-size:13.5px;color:var(--soft)}
+.act summary::-webkit-details-marker{display:none}
+.act summary .v{color:var(--text);font-weight:500;flex:none}.act summary .o{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12.5px;color:var(--muted)}
+.act summary .st{flex:none;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;border-radius:50%}
+.st.ok{color:var(--accent)}.st.bad{color:#ff9d8a}.st.run:after{content:"";width:12px;height:12px;border:2px solid #3a3a44;border-top-color:var(--cyan);border-radius:50%;animation:spin .8s linear infinite}
+.act summary:after{content:"›";color:var(--muted);font-size:16px;transition:transform .15s;flex:none}.act[open] summary:after{transform:rotate(90deg)}
+.act .body{border-top:1px solid var(--line);padding:10px 12px;font-size:12.5px}
+.act .body pre{margin:0;background:transparent;border:0;padding:0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;font:12px/1.55 "JetBrains Mono",ui-monospace,Menlo,monospace;color:var(--soft);cursor:text}
+.act .body pre:before{display:none}
+.act .body .cmd{color:var(--text);margin-bottom:6px}
+.act .files{display:flex;flex-direction:column;gap:3px;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12px;color:var(--soft)}
 .dadd{color:#b7f08a}.ddel{color:#ff9d8a}.dhdr{color:var(--muted)}
+.plan{margin-top:8px;margin-bottom:8px;padding:10px 14px;border:1px solid var(--line);border-radius:11px;font-size:13.5px}
+.plan b{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
+.plan div{padding:2px 0;color:var(--soft)}.plan .done{color:var(--muted);text-decoration:line-through}.plan .in_progress{color:var(--text);font-weight:500}
+.sysline{font-size:12.5px;color:var(--muted);margin-top:10px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
+.sysline:before,.sysline:after{content:"";flex:1;height:1px;background:var(--line)}
+.alert{margin-top:10px;margin-bottom:10px;padding:10px 14px;border-radius:11px;font-size:13.5px;border:1px solid #5a2616;background:#1c1210;color:#ffc4b3}
+.alert.info{border-color:#1d4a50;background:#0f191b;color:#a8eef5}
+.shot{margin-top:10px;margin-bottom:10px}.shot img{display:block;max-width:100%;max-height:520px;border-radius:10px;border:1px solid var(--line2);cursor:zoom-in;background:#fff}
+.shot figcaption{font-size:12px;color:var(--muted);margin-top:5px}
+.working{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13.5px;margin-top:12px;margin-bottom:12px}
+.working i{width:8px;height:8px;border-radius:50%;background:var(--cyan);animation:pulse 1.2s ease-in-out infinite;flex:none}
+.report{margin-top:14px;margin-bottom:22px;border:1px solid var(--line2);border-radius:14px;background:var(--panel);padding:16px 18px}
+.report .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:6px}.report .top .note{display:inline;margin:0}
+.report .why{color:var(--soft);font-size:14px;line-height:1.55;margin:0 0 6px}
+.report h5{font-size:12px;color:var(--muted);font-weight:500;text-transform:uppercase;letter-spacing:.04em;margin:16px 0 6px}
+.report .txt{white-space:pre-wrap;font-size:14px;line-height:1.6;color:var(--soft)}
+.report .flist{display:flex;flex-direction:column;gap:2px;font:12.5px/1.6 "JetBrains Mono",ui-monospace,Menlo,monospace}
+.report .flist span{display:flex;gap:10px}.report .flist em{font-style:normal;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;color:var(--soft)}
+.report .tl{font:12.5px/1.7 "JetBrains Mono",ui-monospace,Menlo,monospace;color:var(--soft);overflow-wrap:anywhere}
+.report .shots{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:8px}.report .shots img{width:100%;max-height:240px;object-fit:cover;object-position:top;border-radius:8px;border:1px solid var(--line2);cursor:zoom-in;background:#fff}
+.report .foot{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--muted);margin-top:14px;padding-top:12px;border-top:1px solid var(--line)}
+.report .acts{display:flex;gap:8px;flex-wrap:wrap;margin-top:14px}
+.report pre.box{max-height:420px}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin:4px 0 2px}
+.chip{background:transparent;color:var(--soft);border:1px solid var(--line2);border-radius:99px;padding:5px 12px;font-size:12.5px;font-weight:500}
+.chip:hover{background:var(--raise);opacity:1}
+.ctx{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
+.ctx select{width:auto;max-width:100%;border-radius:99px;padding:5px 10px;font-size:12.5px;background:var(--raise);border-color:var(--line)}
+#agOther{margin-bottom:6px;display:none}
+#agSend{width:34px;height:34px;border-radius:50%;padding:0;background:var(--accent);color:#111;display:inline-flex;align-items:center;justify-content:center;flex:none}
+#agSend.stop{background:var(--text)}
+.agempty{text-align:center;margin-top:12vh}.agempty h3{font-size:24px;font-weight:600;letter-spacing:-.01em;margin:0 0 6px}
+.agempty p{color:var(--muted);font-size:14.5px;margin:0 auto 18px;max-width:460px;line-height:1.55}
+.agempty .chips{justify-content:center}
+#agFoot{max-width:800px;width:calc(100% - 32px);margin:0 auto 12px;font-size:12px;color:var(--muted)}
+#agFoot summary{cursor:pointer;list-style:none;text-align:center}#agFoot details[open] summary{text-align:left;margin-bottom:6px}
+#taskList{flex:1;overflow:auto;display:none;flex-direction:column;gap:1px;min-height:40px}
+#taskList button{display:flex;align-items:center;gap:8px;background:transparent;border:0;color:var(--soft);text-align:left;padding:7px 10px;border-radius:8px;font:inherit;font-size:13.5px;cursor:pointer;flex:none;font-weight:400}
+#taskList button span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#taskList button i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--line2)}
+#taskList button i.ok{background:var(--accent)}#taskList button i.warn{background:#ffd76a}#taskList button i.bad{background:#ff9d8a}#taskList button i.run{background:var(--cyan);animation:pulse 1.2s infinite}
+#taskList button:hover{background:var(--raise)}#taskList button.on{background:var(--raise);color:var(--text)}
+body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList{display:flex}
 /* mobile */
 #scrim{display:none}
 @media(max-width:860px){
@@ -129,6 +194,11 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
   main{padding:16px 12px 48px;height:auto;overflow:visible}
   body.is-admin[data-view="chat"]{position:fixed;inset:0;display:flex;flex-direction:column}
   body.is-admin[data-view="chat"] main{flex:1;min-height:0}
+  body.is-admin[data-view="agent"]{position:fixed;inset:0;display:flex;flex-direction:column}
+  body.is-admin[data-view="agent"] main{flex:1;min-height:0}
+  #agHead{padding:8px 12px;min-height:0}#agHead .t b{font-size:14px}
+  .report{padding:14px}.act summary{padding:9px 10px}
+  #agFoot{width:calc(100% - 16px);margin-bottom:max(8px,env(safe-area-inset-bottom))}
   .chathead{display:none}.msgs{padding:16px 12px 8px}.m .txt{font-size:16px}
   .composer{width:calc(100% - 16px);margin-bottom:6px;border-radius:18px}.composer textarea{font-size:16px}
   .chatfoot{margin-bottom:max(8px,env(safe-area-inset-bottom))}
@@ -145,8 +215,9 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
     <div class="sep"></div>
     <button data-view="models"><svg class="ic" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>Models</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>Costs</button><button data-view="gpu"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>GPU</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button>
   </nav>
-  <div class="sidehead"><span>Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:26px;height:26px"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button></div>
+  <div class="sidehead"><span id="sideLabel">Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:26px;height:26px"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button></div>
   <div id="convList"></div>
+  <div id="taskList"></div>
   <div id="sideBudget"></div>
   <button class="navbtn" id="btnLogout" style="margin-top:6px;color:var(--muted)">Log out</button>
 </aside>
@@ -287,29 +358,29 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
       </details></div>
     </section>
 
-    <section class="card c12 admin-only" data-tab="agent">
-      <h2>Coding agent</h2>
-      <p class="sub2">Runs OpenCode in an isolated container on a snapshot of the repository: edits files, runs tests, fixes errors. Nothing reaches GitHub until you press “Create pull request”. One task at a time.</p>
-      <div class="msg" id="agentMsg"></div>
-      <div class="f2">
-        <div><label>Repository</label><select id="tRepoSel"><option value="">Loading…</option></select>
-          <input id="tRepo" placeholder="owner/name" autocomplete="off" style="display:none;margin-top:6px"></div>
-        <div><label>Branch</label><select id="tBase"><option value="">default branch</option></select></div>
+    <section class="admin-only" id="agentCard" data-tab="agent">
+      <div id="agHead">
+        <div class="t"><b id="agTitle">New task</b><small id="agMeta">Describe what you want; the agent works in an isolated copy and shows you everything it does.</small></div>
+        <span id="agPill"></span>
       </div>
-      <label>Task</label><textarea id="tPrompt" rows="4" placeholder="What should the agent do? e.g. Add a dark-mode toggle in common/, run the tests, fix what fails."></textarea>
-      <div class="row" style="margin-top:10px"><select id="tModel" style="width:auto"></select><button id="tStart">Start task</button><span class="note" id="tLimits" style="margin:0"></span></div>
-      <details id="ghBox" style="margin-top:14px"><summary class="note" id="ghNote" style="cursor:pointer;margin:0">GitHub connection</summary>
-        <div class="row" style="margin-top:8px"><input id="ghToken" type="password" autocomplete="off" placeholder="GitHub fine-grained token (stored on the server, never shown again)" style="max-width:460px"><button class="ghost" id="ghSave">Save token</button></div>
-        <p class="note">Create it at github.com → Settings → Developer settings → Fine-grained tokens. Repository access: the repositories you want; permissions: Contents and Pull requests (read and write), Metadata (read).</p>
-      </details>
-      <div style="overflow:auto;margin-top:14px"><table><thead><tr><th>#</th><th>State</th><th>Repository</th><th>Task</th><th>Files</th><th>Cost</th><th></th></tr></thead><tbody id="tList"></tbody></table></div>
-      <div id="tDetail" style="display:none;margin-top:14px">
-        <h2 id="tTitle"></h2>
-        <div class="row"><button class="danger" id="tCancel">Cancel task</button><button id="tPublish">Create pull request</button><a id="tPr" target="_blank" rel="noopener" style="color:var(--lime)"></a></div>
-        <div class="note" id="tErr"></div>
-        <label>Changes</label><pre class="box" id="tStat"></pre><pre class="box" id="tDiff"></pre>
-        <label>Agent log</label><pre class="box" id="tLog"></pre>
+      <div class="msgs" id="agMsgs"></div>
+      <div class="composer" id="agComposer">
+        <div class="ctx" id="agCtx">
+          <select id="tRepoSel" aria-label="Repository"><option value="">Loading…</option></select>
+          <select id="tBase" aria-label="Branch"><option value="">default branch</option></select>
+        </div>
+        <input id="agOther" placeholder="owner/name" autocomplete="off">
+        <textarea id="agIn" rows="1" placeholder="Describe what you want built or changed…"></textarea>
+        <div class="cbar">
+          <select id="tModel" style="width:auto;border-radius:99px;padding:6px 10px;font-size:13px" aria-label="Model"></select>
+          <span class="grow" id="agNote"></span>
+          <button id="agSend" aria-label="Send"><svg class="ic" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
+        </div>
       </div>
+      <div id="agFoot"><details id="ghBox"><summary id="ghNote">GitHub connection</summary>
+        <div class="row"><input id="ghToken" type="password" autocomplete="off" placeholder="GitHub fine-grained token (stored on the server, never shown again)" style="max-width:460px"><button class="ghost" id="ghSave">Save token</button></div>
+        <p class="note">github.com → Settings → Developer settings → Fine-grained tokens. Repository access: the repositories you choose; permissions: Contents and Pull requests (read and write), Metadata (read). Limits per run: <span id="tLimits"></span></p>
+      </details></div>
     </section>
 
     <section class="card c12 admin-only" data-tab="models">
@@ -437,7 +508,8 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
   function fillModels(sel, value) { sel.innerHTML = ""; ROLE_NAMES.forEach(r => sel.add(new Option(r, r))); if (value) sel.value = value; }
   let VIEW = "chat";
   function setView(v) {
-    VIEW = v; document.body.dataset.view = v; document.body.classList.remove("nav-open"); $("topTitle").textContent = v[0].toUpperCase() + v.slice(1); try { sessionStorage.setItem("vellurView", v); } catch (e) {}
+    if (VIEW === "agent" && v !== "agent") closeStream();
+    VIEW = v; document.body.dataset.view = v; if ($("sideLabel")) $("sideLabel").textContent = v === "agent" ? "Agent tasks" : "Conversations"; document.body.classList.remove("nav-open"); $("topTitle").textContent = v[0].toUpperCase() + v.slice(1); try { sessionStorage.setItem("vellurView", v); } catch (e) {}
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
     document.querySelectorAll("section[data-tab]").forEach(sec => { sec.hidden = !sec.dataset.tab.split(" ").includes(v); });
     ({ chat: loadConvs, agent: loadAgent, models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {} })[v]();
@@ -499,22 +571,219 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
   $("memSave").onclick = async () => { try { await send("settings", "PUT", { memory: $("memory").value }); $("memNote").textContent = "saved"; } catch (e) { $("memNote").textContent = e.message; } };
 
   // agent
-  let TASK = null, taskTimer = null, REPOS_LOADED = false, LAST_REPO = "";
+  // ── agent: one conversation per task, live timeline from the server's event log ─────────────
+  let TASK = null, TASKS = [], REPOS_LOADED = false, AGENT = {}, ES = null, LAST_EV = 0, CUR = null, RUN_T0 = 0, TICK = null, EXPLORE = null;
+  const FINAL_STATES = ["done", "failed", "cancelled", "timeout", "over_budget"];
+  const OUTCOME = { completed: ["Completed", "ok"], partial: ["Partly done", "warn"], blocked: ["Blocked", "warn"], unverified: ["Not confirmed", "warn"],
+    incomplete: ["Cut off", "warn"], needs_attention: ["Checks failing", "bad"], failed: ["Failed", "bad"], stopped: ["Stopped by limit", "bad"], cancelled: ["Stopped", ""] };
+  const pillFor = (t) => { if (!t) return ""; if (!FINAL_STATES.includes(t.state)) return '<span class="oc run">Working</span>';
+    const o = OUTCOME[t.outcome] || (t.state === "done" ? ["Finished", ""] : [t.state, "bad"]); return `<span class="oc ${o[1]}">${o[0]}</span>`; };
+  const dotFor = (t) => !FINAL_STATES.includes(t.state) ? "run" : (OUTCOME[t.outcome] || ["", t.state === "done" ? "" : "bad"])[1];
+  const rel = (p) => String(p || "").replace(/^.*?\/t\d+\/repo\/?/, "").replace(/^\/work\/?/, "") || ".";
+  const shotUrl = (n) => "/autopilot/api/agent/tasks/" + TASK + "/shots/" + encodeURIComponent(n);
+  const fmtDur = (s) => s < 60 ? Math.round(s) + "s" : Math.floor(s / 60) + "m " + String(Math.round(s % 60)).padStart(2, "0") + "s";
+  // agent text: same markdown as chat plus headings; the STATUS line becomes the outcome badge instead
+  const mdx = (t) => md(String(t || "").replace(/^\s*STATUS:.*$/gim, "").trim()).replace(/(^|\n)#{1,4} ([^\n]+)/g, "$1<h4>$2</h4>");
+  function toolView(d) {
+    const i = d.input || {}, cmd = i.command || "";
+    const map = { read: ["Read", rel(i.filePath || i.path)], edit: ["Edited", rel(i.filePath)], write: ["Wrote", rel(i.filePath)],
+      multiedit: ["Edited", rel(i.filePath)], patch: ["Edited files", ""], apply_patch: ["Edited files", ""],
+      bash: [/\b(test|pytest|vitest|jest|check|lint|tsc|build)\b/.test(cmd) ? "Ran checks" : "Ran", i.description || cmd],
+      glob: ["Searched files", i.pattern], grep: ["Searched code", i.pattern], list: ["Looked at", rel(i.path) || "repository structure"],
+      webfetch: ["Fetched", i.url], task: ["Delegated", i.description], todoread: ["Checked the plan", ""] };
+    const v = map[d.tool] || [d.tool, d.title];
+    if (d.status === "running" || d.status === "pending") v[0] = v[0].replace(/^Read$/, "Reading").replace(/^Edited$/, "Editing").replace(/^Wrote$/, "Writing").replace(/^Ran checks$/, "Running checks").replace(/^Ran$/, "Running");
+    const bad = d.status === "error" || (d.exit != null && d.exit !== 0), st = d.status === "completed" ? (bad ? "bad" : "ok") : d.status === "error" ? "bad" : "run";
+    let body = "";
+    if (d.tool === "bash") body = `<pre class="cmd">$ ${esc(cmd)}</pre><pre>${esc(d.output || "(no output)")}${d.exit != null ? "\n\nexit code " + d.exit : ""}</pre>`;
+    else if (d.tool === "edit" && (i.oldString || i.newString)) body = "<pre>" + String(i.oldString || "").split("\n").map(l => "<span class='ddel'>- " + esc(l) + "</span>").join("\n") + "\n" + String(i.newString || "").split("\n").map(l => "<span class='dadd'>+ " + esc(l) + "</span>").join("\n") + "</pre>";
+    else if (d.tool === "write" && i.content) body = "<pre>" + esc(String(i.content).split("\n").slice(0, 80).join("\n")) + "</pre>";
+    else if (d.output) body = "<pre>" + esc(d.output) + "</pre>";
+    return { verb: v[0], obj: v[1] || "", st: st === "ok" ? "ok" : st, stIcon: st === "ok" ? "✓" : st === "bad" ? "✕" : "", body, explore: ["read", "glob", "grep", "list"].includes(d.tool) };
+  }
+  const box = () => $("agMsgs");
+  const stick = () => { const b = box(); return b.scrollHeight - b.scrollTop - b.clientHeight < 160; };
+  function put(el, wasAtEnd) { const w = $("agWorking"); w ? box().insertBefore(el, w) : box().appendChild(el); if (wasAtEnd) box().scrollTop = box().scrollHeight; return el; }
+  function div(cls, html) { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; return d; }
+  function renderEvent(e) {
+    const d = e.data || {}, end = stick();
+    if (e.kind !== "tool" || !toolView(d).explore) EXPLORE = null;
+    if (e.kind === "user") return put(div("m user", `<div class="txt">${esc(d.text)}</div>`), true);
+    if (e.kind === "text") { const t = mdx(d.text); return t ? put(div("m assistant", `<div class="txt">${t}</div>`), end) : null; }
+    if (e.kind === "status" && d.state === "running") RUN_T0 = e.ts;
+    if (e.kind === "status") return put(div("sysline", esc(d.text) + " · " + new Date(e.ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })), end);
+    if (e.kind === "notice") return put(div("alert info", esc(d.text)), end);
+    if (e.kind === "error") return put(div("alert", "<b>Error.</b> " + esc(d.message)), end);
+    if (e.kind === "step" && d.reason === "length") return put(div("alert info", "The model's reply reached its output limit here."), end);
+    if (e.kind === "shot") return put(div("shot", `<img src="${shotUrl(d.name)}" alt="Screenshot ${esc(d.name)}" loading="lazy"><figcaption>Screenshot taken by the agent: ${esc(d.name)}</figcaption>`), end);
+    if (e.kind === "pr") return put(div("alert info", `Pull request ${d.updated ? "updated" : "opened"}: <a href="${esc(d.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(d.url)}</a>`), end);
+    if (e.kind === "report") return put(reportCard(d), end);
+    if (e.kind !== "tool") return null;
+    if (d.tool === "todowrite" && d.todos) {
+      const old = box().querySelector(".plan.live"); if (old) old.classList.remove("live");
+      return put(div("plan live", "<b>Plan</b>" + d.todos.map(x => `<div class="${esc(x.status)}">${x.status === "completed" ? "✓" : x.status === "in_progress" ? "▸" : "○"} ${esc(x.content)}</div>`).join("")), end);
+    }
+    const v = toolView(d);
+    if (v.explore && EXPLORE && EXPLORE.isConnected) {          // group consecutive reads/searches into one card
+      EXPLORE._n++; EXPLORE.querySelector(".v").textContent = "Explored " + EXPLORE._n + " items";
+      EXPLORE.querySelector(".o").textContent = v.obj; EXPLORE.querySelector(".files").insertAdjacentHTML("beforeend", `<div>${esc(v.verb)} ${esc(v.obj)}</div>`);
+      return EXPLORE;
+    }
+    const el = document.createElement("details"); el.className = "act"; el.dataset.call = d.callID || "";
+    el.innerHTML = `<summary><span class="st ${v.st}">${v.stIcon}</span><span class="v">${esc(v.verb)}</span><span class="o">${esc(v.obj)}</span></summary>`
+      + (v.explore ? `<div class="body"><div class="files"><div>${esc(v.verb)} ${esc(v.obj)}</div></div></div>` : `<div class="body">${v.body || "<pre>(no details)</pre>"}</div>`);
+    if (v.explore) { el._n = 1; EXPLORE = el; }
+    return put(el, end);
+  }
+  function reportCard(r) {
+    const o = OUTCOME[r.outcome] || ["Finished", ""], el = document.createElement("div"); el.className = "report";
+    const sec = r.sections || {}, tests = r.tests || [], files = r.files || [];
+    let h = `<div class="top"><span class="oc ${o[1]}">${o[0]}</span><span class="note" style="margin:0">Run ${r.run} report</span></div><p class="why">${esc(r.why || "")}</p>`;
+    if (sec.not_done && !/^(nothing|none|n\/a|-)\.?$/i.test(sec.not_done.trim())) h += `<h5>Still to do</h5><div class="txt">${esc(sec.not_done)}</div>`;
+    h += `<h5>Files changed (${files.length})</h5>` + (files.length ? `<div class="flist">${files.slice(0, 40).map(f => `<span><em>${esc(f.path)}</em>${f.status === "D" ? "<b class='ddel'>deleted</b>" : f.added == null ? "<b class='dhdr'>binary</b>" : `<b class='dadd'>+${f.added}</b><b class='ddel'>−${f.removed}</b>`}</span>`).join("")}${files.length > 40 ? `<span><em>… and ${files.length - 40} more</em></span>` : ""}</div>` : `<div class="txt">No files were changed.</div>`);
+    h += `<h5>Checks</h5>` + (tests.length ? `<div class="tl">${tests.map(c => `${c.exit === 0 ? "<span class='good'>✓</span>" : "<span class='badc'>✕</span>"} ${esc(c.command)}`).join("<br>")}</div>` : `<div class="txt">The agent ran no tests or checks${sec.tests ? ": " + esc(sec.tests.slice(0, 400)) : "."}</div>`);
+    if (r.shots && r.shots.length) h += `<h5>Screenshots</h5><div class="shots">${r.shots.map(n => `<img src="${shotUrl(n)}" alt="${esc(n)}" loading="lazy">`).join("")}</div>`;
+    else h += `<h5>Preview</h5><div class="txt">No screenshots were taken in this task${files.some(f => /\.(html|css|tsx?|jsx?|vue|svelte)$/.test(f.path)) ? " (the agent did not use vellur-screenshot or it was unavailable; see its report)" : ""}.</div>`;
+    if (r.errors && r.errors.length) h += `<h5>Errors</h5><div class="txt badc">${r.errors.map(esc).join("\n")}</div>`;
+    h += `<div class="foot"><span>This run ${money4(r.cost_run_usd)}</span><span>Task total ${money4(r.cost_total_usd)}</span><span>${r.tool_calls || 0} actions</span><span>${(r.tokens || {}).output || 0} output tokens</span></div>`;
+    h += `<div class="acts"></div><pre class="box" style="display:none"></pre>`;
+    el.innerHTML = h; el.dataset.run = r.run; fillActs(el); return el;
+  }
+  const money4 = (v) => "$" + Number(v || 0).toFixed(4);
+  function fillActs(el) {             // only the latest report gets live buttons
+    box().querySelectorAll(".report .acts").forEach(a => { if (a.parentNode !== el) a.innerHTML = ""; });
+    const a = el.querySelector(".acts"); if (!a || !CUR) return; a.innerHTML = "";
+    const add = (label, cls, fn) => { const b = document.createElement("button"); b.textContent = label; if (cls) b.className = cls; b.onclick = fn; a.appendChild(b); return b; };
+    if (CUR.files_changed) add("Show code changes", "ghost", async () => { const pre = el.querySelector("pre.box"); if (pre.style.display === "") { pre.style.display = "none"; return; }
+      const d = await send("agent/tasks/" + TASK + "/diff", "GET"); pre.innerHTML = (d.diff || "(no diff)").split("\n").map(l => `<span class="${l.startsWith("+") && !l.startsWith("+++") ? "dadd" : l.startsWith("-") && !l.startsWith("---") ? "ddel" : l.startsWith("@@") || l.startsWith("diff ") ? "dhdr" : ""}">${esc(l)}</span>`).join("\n"); pre.style.display = ""; });
+    if (CUR.can_publish) add(CUR.pr_url ? "Update pull request" : "Create draft pull request", "", async (ev) => {
+      const warn = CUR.outcome !== "completed" ? "\n\nNote: the agent did not confirm the task as complete." : "";
+      if (!confirm((CUR.pr_url ? "Push these changes to the existing pull request branch?" : "Create a branch and a draft pull request on GitHub with these changes?") + warn)) return;
+      ev.target.disabled = true; ev.target.textContent = "Publishing…";
+      try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; alert(e.message); } });
+    if (CUR.pr_url) { const l = document.createElement("a"); l.href = CUR.pr_url; l.target = "_blank"; l.rel = "noopener"; l.className = "chip"; l.style.cssText = "display:inline-flex;align-items:center;text-decoration:none"; l.textContent = "Open pull request ↗"; a.appendChild(l); }
+    if (CUR.can_message) {
+      const sug = CUR.outcome === "needs_attention" ? "Fix the failing checks." : ["incomplete", "unverified", "partial"].includes(CUR.outcome) ? "Continue the task." : "";
+      if (sug) add(sug, "chip", () => { $("agIn").value = sug; agSend(); });
+    }
+  }
+  function working(on, label) {
+    let w = $("agWorking");
+    if (!on) { if (w) w.remove(); clearInterval(TICK); TICK = null; return; }
+    if (!w) { w = div("working", "<i></i><span></span>"); w.id = "agWorking"; box().appendChild(w); box().scrollTop = box().scrollHeight; }
+    const upd = () => { w.querySelector("span").textContent = (label || "Working") + " · " + fmtDur((Date.now() / 1000) - RUN_T0); };
+    upd(); clearInterval(TICK); TICK = setInterval(upd, 1000);
+  }
+  function header() {
+    const t = CUR;
+    if (!t) { $("agTitle").textContent = "New task"; $("agMeta").textContent = "Describe what you want; the agent works in an isolated copy and shows you everything it does."; $("agPill").innerHTML = ""; return; }
+    $("agTitle").textContent = t.title || t.prompt.split("\n")[0].slice(0, 90);
+    $("agMeta").textContent = [(t.repo || "empty workspace") + (t.base ? " · " + t.base : ""), t.model, money4(t.cost_usd), t.runs > 1 ? t.runs + " runs" : ""].filter(Boolean).join(" · ");
+    $("agPill").innerHTML = pillFor(t);
+  }
+  function composer() {
+    const fresh = !CUR, busy = CUR && !FINAL_STATES.includes(CUR.state);
+    $("agCtx").style.display = fresh ? "" : "none"; $("agOther").style.display = fresh && $("tRepoSel").value === "__other" ? "block" : "none";
+    $("agIn").placeholder = fresh ? "Describe what you want built or changed…" : busy ? "The agent is working… you can stop it with ■" : CUR.can_message ? "Reply to the agent, e.g. “also add tests” or “continue”…" : "This task's workspace has expired: start a new task";
+    $("agIn").disabled = !!busy || (CUR && !CUR.can_message);
+    const b = $("agSend"); b.classList.toggle("stop", !!busy);
+    b.innerHTML = busy ? '<svg class="ic" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor"/></svg>' : '<svg class="ic" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg>';
+    b.setAttribute("aria-label", busy ? "Stop the agent" : "Send"); b.disabled = !busy && (!AGENT.available || (CUR && !CUR.can_message));
+  }
+  function renderTasks() {
+    const l = $("taskList"); l.innerHTML = "";
+    TASKS.forEach(t => { const b = document.createElement("button"); b.className = t.id === TASK ? "on" : ""; b.innerHTML = `<i class="${dotFor(t)}"></i><span>${esc(t.title)}</span>`;
+      b.title = (t.repo || "empty workspace") + " · " + money4(t.cost_usd); b.onclick = () => { openTask(t.id); document.body.classList.remove("nav-open"); }; l.appendChild(b); });
+    if (!TASKS.length) l.innerHTML = '<div class="note" style="padding:6px 10px">No tasks yet.</div>';
+  }
+  async function loadAgent() {
+    try { AGENT = await send("agent", "GET"); } catch (e) { AGENT = { available: false, why: e.message, tasks: [] }; }
+    TASKS = AGENT.tasks || []; renderTasks(); fillModels($("tModel"), $("tModel").value || "vellur-coder");
+    $("ghNote").textContent = AGENT.github_token_set ? "GitHub connected ✓ · change token" : "Connect GitHub to work on your repositories ▸";
+    if (!AGENT.github_token_set) $("ghBox").open = true;
+    $("tLimits").textContent = AGENT.max_minutes + " min, $" + AGENT.max_usd + " (GPU tab → settings).";
+    if (!REPOS_LOADED) loadRepos();
+    let want = TASK; if (want == null) { try { want = Number(sessionStorage.getItem("vellurTask")) || null; } catch (e) {} }
+    if (want && TASKS.some(t => t.id === want)) await openTask(want); else newTask();
+  }
+  function newTask() {
+    closeStream(); TASK = null; CUR = null; EXPLORE = null; try { sessionStorage.removeItem("vellurTask"); } catch (e) {}
+    const ex = ["Explain how this repository is organised and suggest 3 improvements (no changes).", "Find one real bug, fix it and add a test.", "Improve the mobile layout of the main page and show me before/after screenshots."];
+    box().innerHTML = `<div class="agempty"><h3>What should we build?</h3><p>Pick a repository, describe the task in your own words and watch the agent work. Nothing reaches GitHub until you approve it.</p><div class="chips">${ex.map(x => `<button class="chip">${esc(x)}</button>`).join("")}</div>${AGENT.available === false ? `<div class="alert" style="margin-top:18px;text-align:left">${esc(AGENT.why || "The agent is not available.")}</div>` : ""}</div>`;
+    box().querySelectorAll(".agempty .chip").forEach(c => c.onclick = () => { $("agIn").value = c.textContent; $("agIn").focus(); agGrow(); });
+    header(); composer(); renderTasks();
+  }
+  async function openTask(id) {
+    closeStream(); TASK = id; EXPLORE = null; LAST_EV = 0; RUN_T0 = 0; try { sessionStorage.setItem("vellurTask", String(id)); } catch (e) {}
+    let t; try { t = await send("agent/tasks/" + id, "GET"); } catch (e) { newTask(); return; }
+    CUR = t; header(); composer(); renderTasks(); box().innerHTML = "";
+    if (t.legacy) { renderLegacy(t); return; }
+    const r = await send("agent/tasks/" + id + "/events?after=0", "GET");
+    r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; });
+    box().scrollTop = box().scrollHeight;
+    if (!FINAL_STATES.includes(t.state)) live();
+  }
+  function renderLegacy(t) {
+    const dg = t.diagnostics || {};
+    put(div("m user", `<div class="txt">${esc(t.prompt)}</div>`), true);
+    let why = "This task ran before the conversation log existed, so only the raw log and the model router's records are available.";
+    if (dg.last_reply_tokens && dg.last_reply_tokens >= dg.output_limit_tokens * 0.95) why += ` The model's last reply used ${dg.last_reply_tokens} tokens, which is the output limit (${dg.output_limit_tokens}): the reply was most likely cut off, and the old version then marked the task “done”.`;
+    const el = div("report", `<div class="top"><span class="oc warn">Older task</span><span class="note" style="margin:0">${esc(t.state)} · ${t.files_changed} files · ${money4(t.cost_usd)}</span></div><p class="why">${esc(why)}</p>
+      <h5>Model requests</h5><div class="tl">${dg.requests || 0} requests (${dg.failed_requests || 0} failed) · ${dg.input_tokens || 0} input / ${dg.output_tokens || 0} output tokens · largest reply ${dg.largest_reply_tokens || 0} · last reply ${dg.last_reply_tokens || 0} tokens<br>${esc((dg.models || []).join(", "))}${(dg.errors || []).length ? "<br><span class='badc'>" + dg.errors.map(esc).join("<br>") + "</span>" : ""}</div>
+      ${t.error ? `<h5>Error</h5><div class="txt badc">${esc(t.error)}</div>` : ""}
+      <h5>Changes</h5><pre class="box">${esc(t.diff_stat || "(none)")}</pre>
+      <details class="adv"><summary>Raw agent log</summary><pre class="box">${esc(t.log || "(empty)")}</pre></details><div class="acts"></div><pre class="box" style="display:none"></pre>`);
+    put(el, true); fillActs(el);
+  }
+  function closeStream() { if (ES) { ES.close(); ES = null; } working(false); }
+  function live() {
+    closeStream(); if (!RUN_T0) RUN_T0 = Date.now() / 1000;
+    working(true, "Agent is working");
+    ES = new EventSource("/autopilot/api/agent/tasks/" + TASK + "/stream?after=" + LAST_EV);
+    ES.addEventListener("ev", (m) => { const e = JSON.parse(m.data); if (e.id <= LAST_EV) return; LAST_EV = e.id;
+      renderEvent(e); if (e.kind === "tool") working(true, toolView(e.data).verb + " " + toolView(e.data).obj); if (e.kind === "report") working(false); });
+    ES.addEventListener("task", async (m) => { const b = JSON.parse(m.data); Object.assign(CUR, b); header(); composer();
+      const row = TASKS.find(x => x.id === b.id); if (row) { Object.assign(row, b); renderTasks(); }
+      if (FINAL_STATES.includes(b.state)) { working(false); CUR = await send("agent/tasks/" + TASK, "GET"); header(); composer(); const last = [...box().querySelectorAll(".report")].pop(); if (last) fillActs(last); } });
+    ES.addEventListener("end", () => { closeStream(); });
+  }
+  document.addEventListener("visibilitychange", () => {      // phones pause background tabs: catch up when visible again
+    if (document.visibilityState === "visible" && VIEW === "agent" && CUR && !FINAL_STATES.includes(CUR.state) && (!ES || ES.readyState === 2)) live();
+  });
+  async function agSend() {
+    if (CUR && !FINAL_STATES.includes(CUR.state)) { if (!confirm("Stop the agent now?")) return; await send("agent/tasks/" + TASK + "/cancel", "POST", {}); return; }
+    const text = $("agIn").value.trim(); if (!text) return; $("agNote").textContent = ""; $("agSend").disabled = true;
+    try {
+      if (!CUR) {
+        const t = await send("agent/tasks", "POST", { prompt: text, model: $("tModel").value, repo: repoValue(), base: $("tBase").value });
+        $("agIn").value = ""; agGrow(); try { AGENT = await send("agent", "GET"); TASKS = AGENT.tasks || []; } catch (e) {} await openTask(t.id);
+      } else {
+        await send("agent/tasks/" + TASK + "/messages", "POST", { text, model: $("tModel").value }); $("agIn").value = ""; agGrow();
+        CUR = await send("agent/tasks/" + TASK, "GET"); header(); composer();
+        const r = await send("agent/tasks/" + TASK + "/events?after=" + LAST_EV, "GET"); r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; }); live();
+      }
+    } catch (e) { $("agNote").textContent = e.message; }
+    finally { composer(); }
+  }
+  $("agSend").onclick = agSend;
+  $("agIn").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer:coarse)").matches) { e.preventDefault(); agSend(); } });
+  const agGrow = () => { const t = $("agIn"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; };
+  $("agIn").addEventListener("input", agGrow);
+  $("agMsgs").addEventListener("click", (e) => { const img = e.target.closest(".shot img, .report .shots img"); if (img) window.open(img.src, "_blank", "noopener"); });
   async function loadRepos() {
     REPOS_LOADED = true; const sel = $("tRepoSel"); let list = [];
-    try { list = (await send("agent/repos", "GET")).repos || []; } catch (e) { tnote(e.message); }
+    try { list = (await send("agent/repos", "GET")).repos || []; } catch (e) { $("agNote").textContent = e.message; }
     const owner = list.length ? list[0].name.split("/")[0] : "";
     sel.innerHTML = list.map(r => `<option value="${esc(r.name)}">${esc(r.name.startsWith(owner + "/") ? r.name.slice(owner.length + 1) : r.name)}${r.private ? " 🔒" : ""}</option>`).join("")
       + '<option value="">Empty workspace (no repository)</option><option value="__other">Other (type owner/name)…</option>';
-    const last = LAST_REPO;
-    if (last && [...sel.options].some(o => o.value === last)) sel.value = last;
-    else if (!list.length) sel.value = "";
+    const last = (TASKS.find(t => t.repo) || {}).repo || "";
+    if (last && [...sel.options].some(o => o.value === last)) sel.value = last; else if (!list.length) sel.value = "";
     await repoChanged();
   }
-  const repoValue = () => $("tRepoSel").value === "__other" ? $("tRepo").value.trim() : $("tRepoSel").value;
+  const repoValue = () => $("tRepoSel").value === "__other" ? $("agOther").value.trim() : $("tRepoSel").value;
   async function repoChanged() {
     const v = $("tRepoSel").value, b = $("tBase");
-    $("tRepo").style.display = v === "__other" ? "" : "none";
+    $("agOther").style.display = v === "__other" && !CUR ? "block" : "none";
     b.innerHTML = '<option value="">default branch</option>';
     if (!v || v === "__other") return;
     try { const r = await send("agent/branches?repo=" + encodeURIComponent(v), "GET");
@@ -522,35 +791,6 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
     catch (e) { /* keep "default branch" */ }
   }
   $("tRepoSel").onchange = repoChanged;
-  const tnote = (text, kind) => { const m = $("agentMsg"); m.textContent = text || ""; m.className = "msg" + (text ? " show " + (kind || "bad") : ""); };
-  async function loadAgent() {
-    const a = await send("agent", "GET"); fillModels($("tModel"), $("tModel").value || "vellur-coder");
-    tnote(a.available ? "" : a.why, "info"); $("tStart").disabled = !a.available;
-    $("ghNote").textContent = a.github_token_set ? "GitHub connected ✓ (change token)" : "Connect GitHub to pick your repositories ▸";
-    if (!a.github_token_set) $("ghBox").open = true;
-    LAST_REPO = (a.tasks.find(t => t.repo) || {}).repo || "";
-    if (!REPOS_LOADED) loadRepos();
-    $("tLimits").textContent = "Limits per task: " + a.max_minutes + " min, $" + a.max_usd + " (GPU tab → settings).";
-    $("tList").innerHTML = a.tasks.map(t => `<tr><td class="m">${t.id}</td><td class="${t.state === "done" ? "good" : ["failed", "timeout", "over_budget"].includes(t.state) ? "badc" : "warnc"}">${esc(t.state)}</td><td>${esc(t.repo || "scratch")}</td><td>${esc(t.prompt.slice(0, 90))}</td><td class="m">${t.files_changed}</td><td class="m">$${Number(t.cost_usd).toFixed(4)}</td><td><button class="ghost" data-task="${t.id}">Open</button></td></tr>`).join("");
-    document.querySelectorAll("[data-task]").forEach(b => b.onclick = () => openTask(Number(b.dataset.task)));
-    if (TASK) await showTask();
-  }
-  async function showTask() {
-    const t = await send("agent/tasks/" + TASK, "GET"); const live = !["done", "failed", "cancelled", "timeout", "over_budget"].includes(t.state);
-    $("tDetail").style.display = ""; $("tTitle").textContent = "Task " + t.id + " — " + t.state + " — $" + Number(t.cost_usd).toFixed(4);
-    $("tErr").textContent = t.error || ""; $("tStat").textContent = t.diff_stat || "(no changes yet)"; $("tDiff").innerHTML = (t.diff || "").split("\n").map(l => { const c = l.startsWith("+") && !l.startsWith("+++") ? "dadd" : l.startsWith("-") && !l.startsWith("---") ? "ddel" : l.startsWith("@@") || l.startsWith("diff ") ? "dhdr" : ""; return "<span class='" + c + "'>" + esc(l) + "</span>"; }).join("\n"); $("tDiff").style.display = t.diff ? "" : "none";
-    $("tLog").textContent = t.log || "(no output yet)"; $("tLog").scrollTop = $("tLog").scrollHeight;
-    $("tCancel").style.display = live ? "" : "none"; $("tPublish").style.display = t.can_publish ? "" : "none";
-    $("tPr").textContent = t.pr_url || ""; $("tPr").href = t.pr_url || "#";
-    clearTimeout(taskTimer); if (live && VIEW === "agent") taskTimer = setTimeout(loadAgent, 3000);
-  }
-  function openTask(id) { TASK = id; showTask(); }
-  $("tStart").onclick = async () => { tnote("");
-    try { const t = await send("agent/tasks", "POST", { prompt: $("tPrompt").value, model: $("tModel").value, repo: repoValue(), base: $("tBase").value }); TASK = t.id; await loadAgent(); }
-    catch (e) { tnote(e.message); } };
-  $("tCancel").onclick = async () => { await send("agent/tasks/" + TASK + "/cancel", "POST", {}); await loadAgent(); };
-  $("tPublish").onclick = async () => { if (!confirm("Create a branch and a draft pull request on GitHub with these changes?")) return;
-    try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await loadAgent(); } catch (e) { $("tErr").textContent = e.message; } };
   $("ghSave").onclick = async () => { try { await send("agent/github", "PUT", { token: $("ghToken").value }); $("ghToken").value = ""; $("ghBox").open = false; REPOS_LOADED = false; await loadAgent(); } catch (e) { $("ghNote").textContent = e.message; $("ghBox").open = true; } };
 
   // models
@@ -608,7 +848,8 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
       b.onclick = () => { if (VIEW !== "chat") setView("chat"); openConv(o.value).then(syncConvList); document.body.classList.remove("nav-open"); }; box.appendChild(b); }); }
   new MutationObserver(syncConvList).observe($("convSel"), { childList: true });
   $("convSel").addEventListener("change", () => setTimeout(syncConvList, 300));
-  const newChat = () => { if (VIEW !== "chat") setView("chat"); $("convNew").click(); document.body.classList.remove("nav-open"); };
+  const newChat = () => { if (VIEW === "agent") { newTask(); document.body.classList.remove("nav-open"); $("agIn").focus(); return; }
+    if (VIEW !== "chat") setView("chat"); $("convNew").click(); document.body.classList.remove("nav-open"); };
   $("sideNew").onclick = newChat; $("topNew").onclick = newChat;
   $("navOpen").onclick = () => document.body.classList.add("nav-open"); $("scrim").onclick = () => document.body.classList.remove("nav-open");
   $("msgs").addEventListener("click", (e) => { const pre = e.target.closest("pre"); if (!pre || !navigator.clipboard) return;

@@ -53,7 +53,20 @@ CREATE TABLE IF NOT EXISTS tasks (
   repo TEXT DEFAULT '', base TEXT DEFAULT '', branch TEXT DEFAULT '', model TEXT NOT NULL, prompt TEXT NOT NULL,
   error TEXT DEFAULT '', files_changed INTEGER DEFAULT 0, pr_url TEXT DEFAULT '', started REAL, ended REAL
 );
+CREATE TABLE IF NOT EXISTS task_events (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, task_id INTEGER NOT NULL, ts REAL NOT NULL, run INTEGER DEFAULT 1,
+  kind TEXT NOT NULL, data TEXT NOT NULL DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS task_events_task ON task_events(task_id, id);
 """
+
+# Columns added after the first release (ALTER TABLE ... ADD COLUMN is skipped when the column exists).
+MIGRATIONS = [
+    ("tasks", "outcome", "TEXT DEFAULT ''"),       # completed | partial | blocked | unverified | incomplete | needs_attention | failed | stopped | cancelled
+    ("tasks", "runs", "INTEGER DEFAULT 1"),        # 1 + number of follow-up messages
+    ("tasks", "cursor", "INTEGER DEFAULT 0"),      # runner event lines already imported
+    ("tasks", "report", "TEXT DEFAULT '{}'"),      # final report of the latest run (JSON)
+]
 
 
 class DB:
@@ -65,6 +78,10 @@ class DB:
         self._c.execute("PRAGMA journal_mode=WAL")
         self._c.execute("PRAGMA synchronous=NORMAL")
         self._c.executescript(SCHEMA)
+        for table, col, decl in MIGRATIONS:
+            cols = {r[1] for r in self._c.execute(f"PRAGMA table_info({table})")}
+            if col not in cols:
+                self._c.execute(f"ALTER TABLE {table} ADD COLUMN {col} {decl}")
 
     def x(self, sql: str, args: tuple = ()) -> sqlite3.Cursor:
         with self._lock:

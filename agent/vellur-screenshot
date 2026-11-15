@@ -1,0 +1,75 @@
+#!/usr/bin/env python3
+"""vellur-screenshot — take a REAL screenshot of a page for the owner (shown in the VELLUR Agent conversation).
+
+usage: vellur-screenshot <url-or-html-file> <name> [desktop|mobile|WIDTHxHEIGHT]
+
+Examples (inside the agent workspace):
+  vellur-screenshot http://localhost:5173/ home-desktop
+  vellur-screenshot http://localhost:5173/ home-mobile mobile
+  vellur-screenshot dist/index.html built-page 1440x900
+
+Start the project's dev or preview server first (in the background) when the page needs one. The picture is taken with
+headless Chromium inside this isolated container; nothing is published to the internet.
+"""
+import glob
+import os
+import re
+import subprocess
+import sys
+import tempfile
+
+SIZES = {"desktop": (1280, 800), "mobile": (390, 844), "tablet": (820, 1180)}
+
+
+def main(argv):
+    if len(argv) < 2 or argv[0] in ("-h", "--help"):
+        print(__doc__.strip())
+        return 2
+    target, name = argv[0], argv[1]
+    size = argv[2] if len(argv) > 2 else "desktop"
+    if not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,39}", name):
+        print("error: name must be 1-40 lowercase letters, digits or dashes", file=sys.stderr)
+        return 2
+    if size in SIZES:
+        w, h = SIZES[size]
+    elif re.fullmatch(r"\d{3,4}x\d{3,4}", size):
+        w, h = (int(x) for x in size.split("x"))
+    else:
+        print("error: size must be desktop, mobile, tablet or WIDTHxHEIGHT", file=sys.stderr)
+        return 2
+    if not re.match(r"^https?://", target):
+        path = os.path.abspath(target)
+        if not os.path.exists(path):
+            print(f"error: {target} is neither a URL nor an existing file", file=sys.stderr)
+            return 2
+        target = "file://" + path
+    shots = os.environ.get("VELLUR_SHOTS")
+    if not shots or not os.path.isdir(shots):
+        print("error: screenshots are not available in this workspace (VELLUR_SHOTS not set)", file=sys.stderr)
+        return 1
+    if len([n for n in os.listdir(shots) if n.endswith(".png")]) >= 40:
+        print("error: screenshot limit (40) reached for this task", file=sys.stderr)
+        return 1
+    shells = sorted(glob.glob(os.path.join(os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "/opt/pw-browsers"),
+                                           "chromium_headless_shell-*", "chrome-*", "chrome-headless-shell")))
+    candidates = [os.environ.get("VELLUR_BROWSER", "")] + shells[-1:] + ["chromium", "chromium-browser"]
+    browser = next((b for b in candidates if b and subprocess.run(["sh", "-c", 'command -v "$0"', b],
+                                                                   capture_output=True).returncode == 0), None)
+    if not browser:
+        print("error: no browser is installed in this agent image, so screenshots are unavailable", file=sys.stderr)
+        return 1
+    out = os.path.join(shots, f"{name}.png")
+    with tempfile.TemporaryDirectory() as prof:
+        r = subprocess.run([browser, "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
+                            "--hide-scrollbars", "--no-first-run", "--disable-extensions", f"--user-data-dir={prof}",
+                            f"--window-size={w},{h}", "--virtual-time-budget=6000", f"--screenshot={out}", target],
+                           capture_output=True, text=True, timeout=90)
+    if r.returncode != 0 or not os.path.exists(out) or os.path.getsize(out) == 0:
+        print("error: the browser could not take the screenshot:\n" + (r.stderr or "")[-800:], file=sys.stderr)
+        return 1
+    print(f"screenshot saved: {name}.png ({w}x{h}) — it will appear in the owner's conversation")
+    return 0
+
+
+if __name__ == "__main__":
+    sys.exit(main(sys.argv[1:]))

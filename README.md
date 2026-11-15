@@ -7,7 +7,8 @@ rutare între modele, control al costurilor. Din 14.11.2026 e **API-first**: mod
 
 Pornire rapidă după instalare: login → **Models** → salvezi o cheie de furnizor → „Models” (lista live) → pui o țintă
 `furnizor:model` la `vellur-coder` → **Chat**. Pentru agent: **Agent** (opțional un token GitHub limitat la
-repo-urile alese).
+repo-urile alese). Agentul e o conversație: acțiuni live, capturi de ecran reale, raport final, continuare în aceeași
+sesiune și pull request la cerere — [`docs/AGENT.md`](docs/AGENT.md).
 
 > Secțiunile de mai jos descriu instalarea și infrastructura de bază; părțile despre HyperAI ca furnizor principal
 > sunt istorice.
