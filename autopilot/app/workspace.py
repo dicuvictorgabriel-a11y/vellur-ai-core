@@ -20,6 +20,7 @@ from .budget import month_key
 from .images import ImageError, ImageService, wants_image
 from .config import ROLES
 from .lifecycle import Controller
+from .model_intel import summary
 from .release import Release, ReleaseError
 from .router import Router, RouterError
 from .settings import SettingsError
@@ -268,27 +269,33 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-store"})
 
     # ── model providers and routes ──────────────────────────────────────────────────────────────
-    def llm_state() -> dict:
+    def llm_state_sync() -> dict:
         st = ctrl.settings.get()
+        exhausted = router.budget_exhausted()          # computed once for every route and catalog entry below
         effective = {}
         for role in ROLES:
             rows = []
             capability = "image_generation" if role == "vellur-image" else None
             for i, t in enumerate(router.chain(role)):
-                ok, code, why = router.usable(t, fallback=i > 0, capability=capability)
+                ok, code, why = router.usable(t, fallback=i > 0, capability=capability, budget_exhausted=exhausted)
                 pr = router.price(t)
                 rows.append({"target": t, "usable": ok, "code": code, "why": why, "price": pr})
             effective[role] = rows
         return {"roles": ROLES, "routes": st["routes"], "prices": st["prices"],
                 "image_prices": st.get("image_prices", {}), "providers": router.providers_public(),
                 "effective": effective, "paid_fallback": st["paid_fallback"],
-                "capabilities": router.capability_summary(),
+                "capabilities": router.capability_summary(exhausted),
                 "images": {"max_usd": st.get("image_max_usd"), "confirm_paid": st.get("image_confirm_paid"),
                            "agent": st.get("agent_image_generation"), "agent_max_usd": st.get("agent_image_max_usd")}}
 
+    async def llm_state() -> dict:
+        # Synchronous database and catalog work runs in a worker thread, so it can never stall the event loop
+        # (health checks, streaming chats, the agent's live timeline keep answering while it runs).
+        return await asyncio.to_thread(llm_state_sync)
+
     @app.get("/autopilot/api/llm", dependencies=[Depends(admin)])
     async def llm():
-        return llm_state()
+        return await llm_state()
 
     @app.put("/autopilot/api/llm/providers/{name}", dependencies=[Depends(admin_write)])
     async def put_provider(name: str, changes: dict):
@@ -297,12 +304,12 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         except RouterError as e:
             return err(e)
         await ctrl._bump()
-        return llm_state()
+        return await llm_state()
 
     @app.delete("/autopilot/api/llm/providers/{name}", dependencies=[Depends(admin_write)])
     async def delete_provider(name: str):
         router.delete_provider(name)
-        return llm_state()
+        return await llm_state()
 
     @app.post("/autopilot/api/llm/providers/{name}/catalog", dependencies=[Depends(admin_write)])
     async def catalog(name: str):
@@ -347,7 +354,10 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
 
     @app.get("/autopilot/api/llm/models", dependencies=[Depends(admin)])
     async def llm_models():
-        return {"models": router.models(), "capabilities": router.capability_summary()}
+        def build() -> dict:
+            rows = router.models()
+            return {"models": rows, "capabilities": summary(rows)}
+        return await asyncio.to_thread(build)
 
     @app.post("/autopilot/api/llm/test", dependencies=[Depends(admin_write)])
     async def test_target(body: TargetBody):
@@ -363,7 +373,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         except SettingsError as e:
             return JSONResponse(status_code=400, content={"error": "invalid", "message": str(e)})
         db.event("info", "llm", "model routes changed", routes=routes)
-        return llm_state()
+        return await llm_state()
 
     # ── costs ───────────────────────────────────────────────────────────────────────────────────
     @app.get("/autopilot/api/costs", dependencies=[Depends(admin)])

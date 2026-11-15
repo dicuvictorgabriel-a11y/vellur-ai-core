@@ -43,14 +43,26 @@ class Budget:
         rows = self.db.all("SELECT * FROM sessions WHERE provider='hyperai' AND created_at>=?", (month_start(now),))
         return sum(session_hours(r, now) for r in rows)
 
-    def session_estimate(self, s: dict, settings: dict, now: Optional[float] = None) -> float:
+    def _hyperai_hours_before(self, since: float, now: float) -> dict:
+        """{session id: HyperAI hours used by earlier sessions since `since`}, from ONE query (running total).
+        Replaces a query per session, which made Budget.status quadratic in the number of HyperAI sessions."""
+        out, total = {}, 0.0
+        for r in self.db.all("SELECT id, billing_started_at, ended_at, dry_run FROM sessions "
+                             "WHERE provider='hyperai' AND created_at>=? ORDER BY id", (since,)):
+            out[r["id"]] = total
+            total += session_hours(r, now)
+        out[None] = total            # hours of the whole month
+        return out
+
+    def session_estimate(self, s: dict, settings: dict, now: Optional[float] = None,
+                         hyperai_before: Optional[dict] = None) -> float:
         now = now or time.time()
         h = session_hours(s, now)
         if s["provider"] == "hyperai":
             # Included hours first, then the advertised hourly rate. Hours are attributed in session order.
-            before = sum(session_hours(r, now) for r in self.db.all(
-                "SELECT * FROM sessions WHERE provider='hyperai' AND created_at>=? AND id<?",
-                (month_start(s["created_at"]), s["id"])))
+            if hyperai_before is None or s["id"] not in hyperai_before:
+                hyperai_before = self._hyperai_hours_before(month_start(s["created_at"]), now)
+            before = hyperai_before.get(s["id"], hyperai_before[None])
             included_left = max(0.0, float(settings["hyperai_included_hours"]) - before)
             billable = max(0.0, h - included_left)
             return billable * float(settings["hyperai_hourly_after_usd"])
@@ -63,7 +75,8 @@ class Budget:
             "SELECT amount_usd FROM ledger WHERE month=? AND kind='provider_charge'", (m,)))
         unreconciled = self.db.all(
             "SELECT * FROM sessions WHERE created_at>=? AND reconciled=0 AND dry_run=0", (month_start(now),))
-        estimated = sum(self.session_estimate(s, settings, now) for s in unreconciled)
+        hyperai_before = self._hyperai_hours_before(month_start(now), now)       # one query for all sessions below
+        estimated = sum(self.session_estimate(s, settings, now, hyperai_before) for s in unreconciled)
         # Model APIs: per-request cost reported by the provider vs. our own token × price estimate.
         api = {r["cost_source"]: float(r["c"] or 0) for r in self.db.all(
             "SELECT cost_source, SUM(cost_usd) AS c FROM usage WHERE month=? GROUP BY cost_source", (m,))}
@@ -77,9 +90,10 @@ class Budget:
         total = confirmed + estimated + api_reported + api_estimated + subs + fixed_in
         budget = float(settings["monthly_budget_usd"])
         cur_est, rate = 0.0, 0.0
+        hyperai_used = hyperai_before[None]
         if current and not current.get("ended_at") and not current.get("dry_run"):
-            cur_est = self.session_estimate(current, settings, now)
-            rate = self.current_rate(current, settings, now)
+            cur_est = self.session_estimate(current, settings, now, hyperai_before)
+            rate = self.current_rate(current, settings, now, hyperai_used)
         projected = total + rate * float(settings["idle_timeout_min"]) / 60.0
         remaining = budget - total
         return {
@@ -94,8 +108,8 @@ class Budget:
             "current_rate_usd_per_hour": round(rate, 3),
             "projected_if_idle_out_usd": round(projected, 2),
             "hours_left_at_current_rate": round(remaining / rate, 1) if rate > 0 and remaining > 0 else None,
-            "hyperai_hours_used_estimate": round(self.hyperai_hours_used(now), 2),
-            "hyperai_hours_left_estimate": round(max(0.0, float(settings["hyperai_included_hours"]) - self.hyperai_hours_used(now)), 2),
+            "hyperai_hours_used_estimate": round(hyperai_used, 2),
+            "hyperai_hours_left_estimate": round(max(0.0, float(settings["hyperai_included_hours"]) - hyperai_used), 2),
             "api_reported_usd": round(api_reported, 4),
             "api_estimated_usd": round(api_estimated, 4),
             "subscriptions_usd": round(subs, 2),
@@ -106,9 +120,10 @@ class Budget:
             "note": "Estimates are not confirmed charges. Confirmed = provider-reported.",
         }
 
-    def current_rate(self, s: dict, settings: dict, now: float) -> float:
+    def current_rate(self, s: dict, settings: dict, now: float, hyperai_used: Optional[float] = None) -> float:
         if s["provider"] == "hyperai":
-            return float(settings["hyperai_hourly_after_usd"]) if self.hyperai_hours_used(now) >= float(settings["hyperai_included_hours"]) else 0.0
+            used = self.hyperai_hours_used(now) if hyperai_used is None else hyperai_used
+            return float(settings["hyperai_hourly_after_usd"]) if used >= float(settings["hyperai_included_hours"]) else 0.0
         return float(s.get("dph") or 0)
 
     def check_start(self, settings: dict, provider: str, dph: float, extra_cost: float,

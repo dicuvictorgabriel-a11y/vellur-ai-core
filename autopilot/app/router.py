@@ -303,8 +303,10 @@ class Router:
     def can_generate_images(self, role: str = "vellur-image") -> bool:
         return any(self.supports(t, "image_generation") for t in self.chain(role))
 
-    def models(self) -> list:
+    def models(self, budget_exhausted: Optional[bool] = None) -> list:
         rows = []
+        if budget_exhausted is None:      # once for the whole list, not once per model (hundreds of catalog entries)
+            budget_exhausted = self.budget_exhausted()
         for name, p in self.providers().items():
             cat = self.db.kv_get(f"llm_catalog_{name}") or {}
             meta = self._catalog_meta(name)
@@ -319,18 +321,18 @@ class Router:
                              "vision": "vision" in caps, "image_generation": image,
                              "tool_call": "tool_call" in caps, "coding": "coding" in caps,
                              "free": p["plan"] in ("free", "subscription") or (name == "openrouter" and m["id"].endswith(":free")),
-                             "usable": self.usable(target, fallback=False,
-                                                   capability="image_generation" if image else None)[0]})
+                             "usable": self.usable(target, fallback=False, capability="image_generation" if image else None,
+                                                   budget_exhausted=budget_exhausted)[0]})
         gpu = self.info("gpu")
         rows.append({"target": "gpu", "provider": "gpu", "provider_display": "GPU Autopilot", "model": "vellur-coder",
                      "id": "vellur-coder", "in": None, "out": None, "ctx": None, "image_price": None,
                      "capabilities": gpu["capabilities"], "labels": labels(gpu["capabilities"]),
                      "vision": False, "image_generation": False, "tool_call": True, "coding": True,
-                     "free": False, "usable": self.usable("gpu", fallback=False)[0]})
+                     "free": False, "usable": self.usable("gpu", fallback=False, budget_exhausted=budget_exhausted)[0]})
         return rows
 
-    def capability_summary(self) -> dict:
-        return summary(self.models())
+    def capability_summary(self, budget_exhausted: Optional[bool] = None) -> dict:
+        return summary(self.models(budget_exhausted))
 
     def price(self, target: str) -> Optional[tuple]:
         manual = self.settings.get()["prices"].get(target)
@@ -351,7 +353,12 @@ class Router:
         value = meta.get("image_price")
         return float(value) if isinstance(value, (int, float)) else None
 
-    def usable(self, target: str, fallback: bool, capability: Optional[str] = None) -> tuple:
+    def budget_exhausted(self) -> bool:
+        return bool(self.ctrl.budget.status(self.settings.get(), None, self.ctrl.clock())["exhausted"])
+
+    def usable(self, target: str, fallback: bool, capability: Optional[str] = None,
+               budget_exhausted: Optional[bool] = None) -> tuple:
+        """`budget_exhausted`: pass it when checking many targets at once, so the budget is computed only once."""
         st = self.settings.get()
         info = self.info(target)
         if info is None:
@@ -372,7 +379,7 @@ class Router:
             return False, "config", f"no API key saved for {cfg['display']}"
         if info["free"]:
             return True, "", ""
-        if self.ctrl.budget.status(st, None, self.ctrl.clock())["exhausted"]:
+        if self.budget_exhausted() if budget_exhausted is None else budget_exhausted:
             return False, "budget", "monthly budget is used up; paid model APIs are blocked"
         if capability == "image_generation":
             if self.image_price(target) is None and not cfg["reports_cost"]:
