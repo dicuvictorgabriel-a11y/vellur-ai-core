@@ -119,6 +119,16 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     async def dashboard():
         return FileResponse(os.path.join(STATIC, "dashboard.html"), headers={"Cache-Control": "no-store"})
 
+    @app.get("/autopilot/studio/", dependencies=[Depends(admin)])
+    async def studio():
+        return FileResponse(os.path.join(STATIC, "studio.html"), headers={"Cache-Control": "no-store"})
+
+    @app.get("/autopilot/studio/{asset}", dependencies=[Depends(admin)])
+    async def studio_asset(asset: str):
+        if asset not in {"studio.js", "geometry.js", "studio.css"}:
+            raise HTTPException(404, "not found")
+        return FileResponse(os.path.join(STATIC, asset), headers={"Cache-Control": "no-store"})
+
     @app.get("/autopilot/api/public/status")
     async def public_status():
         return ctrl.public_status()
