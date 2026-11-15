@@ -154,7 +154,8 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .iconbtn:hover{background:var(--raise)}
 #btnSend{width:34px;height:34px;border-radius:50%;padding:0;background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:0}
 #btnSend.stop{background:var(--text)}
-.modelpick{width:auto;max-width:56%;border-radius:99px;padding:6px 28px 6px 12px;font-size:12.5px;font-weight:500;background:var(--raise);border-color:var(--line2)}
+#imgSize{max-width:30%}
+.modelpick{width:auto;max-width:56%;min-width:0;border-radius:99px;padding:6px 28px 6px 12px;font-size:12.5px;font-weight:500;background:var(--raise);border-color:var(--line2)}
 #chatFile,#agFile{display:none}
 .agimgs{display:flex;align-items:center;gap:6px;padding:8px 20px;border-bottom:1px solid var(--line);overflow-x:auto;flex:none}
 .agimgs:before{content:"Generated";font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-right:6px;flex:none}
@@ -200,6 +201,35 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .suggest{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-top:10px}
 .suggest .modelcard{display:flex;flex-direction:column;gap:6px}.suggest .modelcard .row{margin-top:auto}
 .modelcard.cur{border-color:var(--accent-line)}
+.rtop{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:6px}.rtop .row{flex:none}
+.rrow{display:grid;grid-template-columns:200px minmax(0,1fr);min-width:0;gap:16px;padding:16px 0;border-top:1px solid var(--line)}
+.rrow:first-child{margin-top:12px}
+.rhead b{display:block;font-size:14px}.rhead span{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}.rhead .label{display:inline-block;margin-top:8px}
+.rchain{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
+.rchain li{display:flex;align-items:center;gap:10px;border:1px solid var(--line2);background:var(--sunk);border-radius:9px;padding:7px 8px 7px 10px;min-width:0}
+.rchain li.first{border-color:var(--accent-line)}
+.rchain .n{font:500 10.5px var(--mono);color:var(--faint);width:52px;flex:none;letter-spacing:.06em;text-transform:uppercase}.rchain li.first .n{color:var(--accent)}
+.rchain .t{flex:1;min-width:0}.rchain .t b{display:block;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rchain .t small{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rchain .t small.bad{color:#ffb9a3}.rchain .t small.ok{color:var(--accent)}
+.rchain button{width:30px;height:30px;padding:0;min-height:0;border-radius:7px;background:transparent;color:var(--muted);border:1px solid transparent;font-size:14px;flex:none}
+.rchain button:hover{border-color:var(--line2);color:var(--text);background:var(--raise);opacity:1}.rchain button:disabled{opacity:.2}
+.daytot{text-align:right}.daytot b{display:block;font-size:24px;font-weight:600;letter-spacing:-.02em;margin-top:6px}
+.daychart{--bar:#729521;position:relative;display:grid;grid-template-columns:44px 1fr;gap:8px;margin-top:18px;height:180px}
+.daychart .yax{position:relative;font:500 10.5px var(--mono);color:var(--faint);text-align:right}.daychart .yax span{position:absolute;right:0;transform:translateY(-50%)}
+.daychart .plot{position:relative;border-bottom:1px solid var(--line2);display:flex;align-items:flex-end;gap:2px}
+.daychart .grid{position:absolute;left:0;right:0;border-top:1px dashed var(--line);pointer-events:none}
+.daychart .d{flex:1;height:100%;display:flex;align-items:flex-end;position:relative;cursor:default;outline:0}
+.daychart .d i{display:block;width:100%;background:var(--bar);border-radius:4px 4px 0 0;min-height:0}
+.daychart .d.zero i{height:0!important}
+.daychart .d:hover i,.daychart .d:focus-visible i{background:var(--accent)}.daychart .d:focus-visible{box-shadow:inset 0 0 0 1px var(--accent-line)}
+.daychart .d.today:after{content:"";position:absolute;left:50%;bottom:-7px;width:4px;height:4px;border-radius:50%;background:var(--muted);transform:translateX(-50%)}
+.dayx{display:grid;grid-template-columns:44px 1fr;gap:8px;margin-top:10px;font:500 10.5px var(--mono);color:var(--faint)}.dayx div{display:flex;justify-content:space-between}
+.daytip{position:absolute;z-index:5;pointer-events:none;background:var(--raise);border:1px solid var(--line2);border-radius:8px;padding:8px 10px;font-size:12.5px;box-shadow:0 10px 30px rgba(0,0,0,.45);white-space:nowrap}
+.daytip b{display:block;font-size:13px}.daytip span{color:var(--muted)}
+section:has(> .daychart){position:relative}
+.rempty{color:var(--muted);font-size:13px;padding:8px 0}
+.radd{margin-top:8px}.radd select{width:auto;max-width:100%;font-size:12.5px;padding:6px 10px;border-radius:8px}
+@media(max-width:700px){.daytot{text-align:left}.rrow{grid-template-columns:minmax(0,1fr);gap:10px}.rchain .n{width:auto}}
 .modelgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:10px;max-height:460px;overflow:auto}
 .modelcard{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:10px 11px;min-width:0}
 .modelcard b{display:block;font-size:12.5px;font-weight:600;overflow-wrap:anywhere}.modelcard .note{margin:3px 0 0;font-size:11px}
@@ -488,7 +518,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         <textarea id="chatIn" rows="1" placeholder="Message VELLUR AI…"></textarea>
         <div class="cbar">
           <label class="iconbtn" for="chatFile" title="Attach images, PDFs, documents, code or 3D files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></label><input type="file" id="chatFile" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.json,.xml,.yaml,.yml,.toml,.py,.js,.ts,.tsx,.jsx,.css,.html,.sh,.sql,.zip,.glb,.gltf,.obj,.stl,.blend">
-          <select id="chatModel" class="modelpick" aria-label="Model"></select>
+          <select id="chatModel" class="modelpick" aria-label="Model"></select><select id="imgSize" class="modelpick" aria-label="Image format" hidden><option value="1024x1024" title="Square">1:1</option><option value="832x1248" title="Portrait">2:3</option><option value="768x1344" title="Tall">9:16</option><option value="1248x832" title="Landscape">3:2</option><option value="1344x768" title="Wide">16:9</option></select>
           <span class="grow" id="chatFileNote"></span>
           <button id="btnSend" aria-label="Send"><svg class="ic" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
         </div>
@@ -554,6 +584,11 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     </section>
 
     <section class="c12 admin-only pagehead" data-tab="models"><div><span class="label">VELLUR · Models</span><h1>Models</h1><p>Which AI answers chat, writes code and creates images, and what each one costs.</p></div></section>
+    <section class="card c12 admin-only" data-tab="models" id="routeCard">
+      <div class="rtop"><div><h2>Who answers what</h2><p class="sub2" style="margin:0">Each kind of work tries its models from top to bottom. The first one is used; the others are fallbacks (a <em>paid</em> fallback only if “Paid fallback” is on in GPU).</p></div>
+        <div class="row"><span class="note" id="rNote" style="margin:0"></span><button class="ghost" id="rDiscard" hidden>Discard</button><button class="primary" id="rSave" disabled>Save</button></div></div>
+      <div id="rEditor"></div>
+    </section>
     <section class="card c12 admin-only" data-tab="models">
       <h2>Models and capabilities</h2>
       <p class="sub2">Discovered models are grouped by what they can actually do. Vision means the model can read images; Image generation means it can create them. A model is never used for a task it does not declare.</p>
@@ -588,7 +623,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     </section>
 
     <section class="card c12 admin-only" data-tab="models">
-      <h2>Routing (advanced)</h2>
+      <h2>Routing as text (advanced)</h2>
       <p class="sub2">Each public model name tries its targets in order: <code>provider:model-id</code> or <code>gpu</code>. Empty chat/max lists use the coder list. A later <em>paid</em> target is used only if “Paid fallback” is on (GPU tab).</p>
       <div id="routes"></div>
       <div class="row" style="margin-top:10px"><button id="routesSave">Save routing</button><span class="note" id="routesNote" style="margin:0"></span></div>
@@ -596,6 +631,12 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       <label style="margin-top:14px">Manual prices, one per line: <code>provider:model-id  input  output</code> (USD per million tokens; needed for paid models when the provider does not publish prices)</label>
       <textarea id="prices" rows="3"></textarea>
       <div class="row" style="margin-top:8px"><button class="ghost" id="pricesSave">Save prices</button></div>
+    </section>
+    <section class="card c8 admin-only" data-tab="costs">
+      <div class="rtop"><div><h2 id="dayTitle">Spend per day</h2><p class="sub2" style="margin:0">Model and image requests recorded by VELLUR, by day (UTC). Fixed monthly costs are not included.</p></div><div class="daytot"><span class="label">This month</span><b id="dayTotal">—</b></div></div>
+      <div class="daychart" id="dayChart" role="img" aria-label="Spend per day"></div>
+      <div class="daytip" id="dayTip" hidden></div>
+      <details class="adv"><summary>Show as table</summary><div style="overflow:auto"><table><thead><tr><th>Day</th><th>Requests</th><th>Tokens</th><th>Cost</th></tr></thead><tbody id="dayTable"></tbody></table></div></details>
     </section>
     <section class="card c8 admin-only" data-tab="costs">
       <h2>This month by model</h2>
@@ -944,6 +985,9 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   const textModel = () => $("chatModel").value === "vellur-image" ? "vellur-chat" : $("chatModel").value;
   $("convNew").onclick = async () => { const c = await send("conversations", "POST", { model: textModel() }); await loadConvs(c.id); $("chatIn").focus(); };
   $("convDel").onclick = async () => { if (CONV && confirm("Delete this conversation?")) { await send("conversations/" + CONV, "DELETE"); CONV = null; await loadConvs(); } };
+  const syncImgSize = () => { $("imgSize").hidden = $("chatModel").value !== "vellur-image"; };
+  $("chatModel").addEventListener("change", syncImgSize);
+  new MutationObserver(syncImgSize).observe($("chatModel"), { childList: true, subtree: true });
   let CHAT_ABORT = null;
   function chatBusy(on) { const b = $("btnSend"); b.classList.toggle("stop", on); b.innerHTML = on ? STOP_ICON : SEND_ICON; b.setAttribute("aria-label", on ? "Stop the answer" : "Send"); b.title = on ? "Stop" : "Send"; }
   $("btnSend").onclick = async () => {
@@ -961,7 +1005,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       if (model === "vellur-image") tick = imagePending(out, ROUTE_HINT["vellur-image"] ? shortModel(ROUTE_HINT["vellur-image"]) : "image model"); else out.innerHTML = TYPING;
       let errText = "", done = null, card = false, image = false;
       const r = await fetch("/autopilot/api/conversations/" + CONV + "/messages", { method: "POST", credentials: "same-origin", signal: ctl.signal,
-        headers: { "Content-Type": "application/json", "X-Vellur-Request": "1" }, body: JSON.stringify({ content: text, model, attachments: ids, request_id: reqId() }) });
+        headers: { "Content-Type": "application/json", "X-Vellur-Request": "1" }, body: JSON.stringify({ content: text, model, attachments: ids, request_id: reqId(), image_size: $("imgSize").value }) });
       if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || ("HTTP " + r.status)); }
       const reader = r.body.getReader(), dec = new TextDecoder(); let buf = "", thinking = false;
       for (;;) { const { value, done: end } = await reader.read(); if (end) break; buf += dec.decode(value, { stream: true });
@@ -1504,7 +1548,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     : (x.in == null ? "price unknown" : (+x.in === 0 && +x.out === 0) ? "free" : "$" + (+x.in).toFixed(2) + " in · $" + (+x.out).toFixed(2) + " out / M");
   async function useForImages(target) {
     const routes = Object.assign({}, ROUTES, { "vellur-image": [target] });
-    renderLLM(await send("llm/routes", "PUT", routes)); await loadLLM();
+    renderLLM(await send("llm/routes", "PUT", routes)); if (RDRAFT) RDRAFT["vellur-image"] = [target]; await loadLLM(); loadRouteHints();
     $("imageNote").textContent = target + " is now the image model.";
   }
   function renderModels(m, imageStatus) {
@@ -1536,11 +1580,43 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     $("imageStatus").innerHTML = img.available ? `<span class="good">Ready:</span> ${esc(img.target)} · asks for ${esc((img.modalities || []).join(" + ") || "image")} output · ${img.price_per_image == null ? "price per image not published: every paid image is confirmed first and the provider's reported cost is recorded" : "$" + (+img.price_per_image).toFixed(4) + " per image (" + esc(src) + ")"}${img.free ? " · free plan" : ""}` : '<span class="badc">Not available:</span> no usable image-output model is configured.';
     const cur = (img.target || "");
     $("imageSuggest").innerHTML = (img.suggested || []).map(x => { const known = MODELS.find(mm => mm.target === x.target); return `<div class="modelcard${cur === x.target ? " cur" : ""}"><b>${esc(x.name)}</b><div class="note">${esc(x.maker)} · ${esc(x.note)}</div><div class="note mono" style="font-size:11px">${esc(x.target)}</div><div class="note">${known ? esc(priceOf(known)) : "price shown after the OpenRouter model list is loaded"}</div><div class="row">${cur === x.target ? '<span class="oc ok">In use</span>' : `<button class="ghost" data-use="${esc(x.target)}">Use for images</button>`}</div></div>`; }).join("");
+    renderRouteEditor();
     $("imageSuggest").querySelectorAll("[data-use]").forEach(b => b.onclick = async () => { b.disabled = true; try { await useForImages(b.dataset.use); } catch (e) { $("imageNote").textContent = e.message; b.disabled = false; } });
   }
+  // ── routing editor: ordered model chains per kind of work, edited as a draft and saved at once ──
+  let LLM = null, RDRAFT = null, RDIRTY = false;
+  const R_ORDER = ["vellur-chat", "vellur-max", "vellur-coder", "vellur-image"];
+  function rDirty(on) { RDIRTY = on; $("rSave").disabled = !on; $("rDiscard").hidden = !on; $("rNote").textContent = on ? "Unsaved changes" : ""; }
+  function renderRouteEditor() {
+    if (!LLM || !RDRAFT) return;
+    const statusOf = (role, t) => { const row = ((LLM.effective || {})[role] || []).find(x => x.target === t);
+      if (!row || RDIRTY && JSON.stringify((LLM.routes || {})[role] || []) !== JSON.stringify(RDRAFT[role] || [])) return ["", "checked after saving"];
+      return row.usable ? ["ok", "ready"] : ["bad", row.why || "not usable"]; };
+    $("rEditor").innerHTML = R_ORDER.map(role => {
+      const chain = RDRAFT[role] || [], image = role === "vellur-image";
+      const pool = (MODELS || []).filter(x => image ? x.image_generation : !x.image_generation).filter(x => !chain.includes(x.target));
+      const items = chain.map((t, i) => { const m = (MODELS || []).find(x => x.target === t) || {}; const [cls, st] = statusOf(role, t);
+        return `<li class="${i === 0 ? "first" : ""}"><span class="n">${i === 0 ? "first" : "fallback"}</span><span class="t"><b title="${esc(t)}">${esc(shortModel(t) || t)}</b><small class="${cls}">${esc((m.provider_display || t.split(":")[0]) + " · " + (m.target ? priceOf(m) : "not in the model list") + " · " + st)}</small></span><button type="button" data-mv="-1" data-i="${i}" ${i === 0 ? "disabled" : ""} aria-label="Move up">↑</button><button type="button" data-mv="1" data-i="${i}" ${i === chain.length - 1 ? "disabled" : ""} aria-label="Move down">↓</button><button type="button" data-rm="${i}" aria-label="Remove ${esc(t)}">×</button></li>`; }).join("");
+      const empty = image ? "No image model: image requests explain that images are unavailable." : role === "vellur-coder" ? "Empty: the private GPU (if any) is used." : "Empty: uses the Coder list.";
+      return `<div class="rrow" data-role="${role}"><div class="rhead"><b>${ROLE_INFO[role]}</b><span>${esc(ROLE_HELP[role])}</span><span class="label">${role}</span></div><div>${chain.length ? `<ol class="rchain">${items}</ol>` : `<div class="rempty">${empty}</div>`}<div class="radd"><select aria-label="Add a model to ${ROLE_INFO[role]}"><option value="">+ Add ${image ? "an image" : "a"} model…</option>${pool.map(x => `<option value="${esc(x.target)}">${esc(x.target)} · ${esc(priceOf(x))}</option>`).join("")}</select>${!pool.length ? '<span class="note" style="margin-left:8px">' + (image ? "No image models discovered: load a provider's model list below." : "No more models discovered.") + "</span>" : ""}</div></div></div>`;
+    }).join("");
+    $("rEditor").querySelectorAll(".rrow").forEach(row => {
+      const role = row.dataset.role, chain = RDRAFT[role] = (RDRAFT[role] || []).slice();
+      row.querySelectorAll("[data-mv]").forEach(b => b.onclick = () => { const i = +b.dataset.i, j = i + +b.dataset.mv; [chain[i], chain[j]] = [chain[j], chain[i]]; rDirty(true); renderRouteEditor(); });
+      row.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { chain.splice(+b.dataset.rm, 1); rDirty(true); renderRouteEditor(); });
+      row.querySelector("select").onchange = (e) => { if (!e.target.value) return; if (chain.length >= 6) { $("rNote").textContent = "At most 6 models per kind of work."; return; } chain.push(e.target.value); rDirty(true); renderRouteEditor(); };
+    });
+  }
+  $("rSave").onclick = async () => {
+    $("rSave").disabled = true; $("rNote").textContent = "Saving…";
+    try { const l = await send("llm/routes", "PUT", RDRAFT); rDirty(false); renderLLM(l); $("rNote").textContent = "Saved"; loadRouteHints(); }
+    catch (e) { $("rSave").disabled = false; $("rNote").textContent = "Not saved: " + e.message; }
+  };
+  $("rDiscard").onclick = () => { RDRAFT = JSON.parse(JSON.stringify((LLM && LLM.routes) || {})); rDirty(false); renderRouteEditor(); };
   const pnote = (text, kind) => { const m = $("provMsg"); m.textContent = text || ""; m.className = "msg" + (text ? " show " + (kind || "bad") : ""); };
   function renderLLM(l) {
-    ROUTES = Object.assign({}, l.routes || {});
+    ROUTES = Object.assign({}, l.routes || {}); LLM = l;
+    if (!RDIRTY) RDRAFT = JSON.parse(JSON.stringify(l.routes || {}));
     $("routes").innerHTML = Object.entries(l.roles).map(([r, label]) => `<label>${esc(r)} — ${esc(label)}</label><textarea data-route="${r}" rows="2" placeholder="one target per line, e.g. openrouter:deepseek/deepseek-v4.1-flash">${esc((l.routes[r] || []).join("\n"))}</textarea>`).join("");
     $("effective").innerHTML = Object.entries(l.effective).map(([r, rows]) => "<b>" + esc(r) + "</b>: " + rows.map(x => `<span class="${x.usable ? "good" : "badc"}">${esc(x.target)}${x.usable ? (x.price && r !== "vellur-image" ? " ($" + x.price[0] + " / $" + x.price[1] + " per M)" : "") : " — " + esc(x.why)}</span>`).join(" → ")).join("<br>");
     $("prices").value = Object.entries(l.prices).map(([t, p]) => t + "  " + p[0] + "  " + p[1]).join("\n");
@@ -1593,9 +1669,35 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   $("modelFilter").oninput = () => renderModels({ models: MODELS });
   $("modelsRefresh").onclick = async () => { $("modelsNote").textContent = "Refreshing…"; try { for (const p of (await send("llm", "GET")).providers.filter(x => x.key_set)) { try { await send("llm/providers/" + p.name + "/catalog", "POST", {}); } catch (e) {} } await loadLLM(); $("modelsNote").textContent = "Updated"; } catch (e) { $("modelsNote").textContent = e.message; } };
 
+  function renderDays(c) {
+    const [y, mo] = String(c.month || "").split("-").map(Number); if (!y || !mo) return;
+    const days = new Date(Date.UTC(y, mo, 0)).getUTCDate(), by = {};
+    (c.by_day || []).forEach(r => { by[r.day] = r; });
+    const rows = Array.from({ length: days }, (_, i) => { const key = `${y}-${String(mo).padStart(2, "0")}-${String(i + 1).padStart(2, "0")}`; const r = by[key] || {}; return { day: i + 1, key, cost: Number(r.cost_usd || 0), requests: r.requests || 0, tokens: r.tokens || 0 }; });
+    const max = Math.max(...rows.map(r => r.cost)), top = max > 0 ? niceMax(max) : 1, total = rows.reduce((a, r) => a + r.cost, 0);
+    const today = new Date(); const isToday = (d) => today.getUTCFullYear() === y && today.getUTCMonth() + 1 === mo && today.getUTCDate() === d;
+    const fmt = (v) => "$" + (v >= 1 ? v.toFixed(2) : v.toFixed(4));
+    $("dayTitle").textContent = "Spend per day · " + new Date(Date.UTC(y, mo - 1, 1)).toLocaleString([], { month: "long", year: "numeric", timeZone: "UTC" });
+    $("dayTotal").textContent = fmt(total);
+    const ticks = max > 0 ? [top, top / 2] : [];
+    $("dayChart").setAttribute("aria-label", `Spend per day, ${rows.filter(r => r.cost > 0).length} days with spending, total ${fmt(total)}`);
+    $("dayChart").innerHTML = `<div class="yax">${ticks.map(t => `<span style="top:${100 - t / top * 100}%">${fmt(t)}</span>`).join("")}<span style="top:100%">$0</span></div><div class="plot">${ticks.map(t => `<div class="grid" style="top:${100 - t / top * 100}%"></div>`).join("")}${rows.map(r => `<div class="d${r.cost > 0 ? "" : " zero"}${isToday(r.day) ? " today" : ""}" tabindex="${r.requests ? 0 : -1}" data-k="${r.key}"><i style="height:${r.cost / top * 100}%"></i></div>`).join("")}</div>`;
+    let ax = $("dayChart").nextElementSibling && $("dayChart").nextElementSibling.classList.contains("dayx") ? $("dayChart").nextElementSibling : null;
+    if (!ax) { ax = document.createElement("div"); ax.className = "dayx"; $("dayChart").after(ax); }
+    ax.innerHTML = `<span></span><div><span>1</span><span>${Math.ceil(days / 2)}</span><span>${days}</span></div>`;
+    const tip = $("dayTip"), card = $("dayChart").parentNode;
+    const show = (el) => { const r = rows.find(x => x.key === el.dataset.k); if (!r) return;
+      tip.innerHTML = `<b>${new Date(Date.UTC(y, mo - 1, r.day)).toLocaleDateString([], { day: "numeric", month: "short", timeZone: "UTC" })} · ${fmt(r.cost)}</b><span>${r.requests} requests · ${Number(r.tokens).toLocaleString()} tokens</span>`;
+      tip.hidden = false; const cb = card.getBoundingClientRect(), b = el.getBoundingClientRect();
+      const left = Math.min(Math.max(8, b.left - cb.left + b.width / 2 - tip.offsetWidth / 2), cb.width - tip.offsetWidth - 8);
+      tip.style.left = left + "px"; tip.style.top = (b.top - cb.top + b.height - (r.cost / top) * b.height - tip.offsetHeight - 10) + "px"; };
+    $("dayChart").querySelectorAll(".d").forEach(el => { el.onpointerenter = () => show(el); el.onfocus = () => show(el); el.onpointerleave = el.onblur = () => { tip.hidden = true; }; });
+    $("dayTable").innerHTML = rows.filter(r => r.requests).map(r => `<tr><td class="m">${r.key}</td><td class="m">${r.requests}</td><td class="m">${Number(r.tokens).toLocaleString()}</td><td class="m">${fmt(r.cost)}</td></tr>`).join("") || '<tr><td colspan="4" class="note">No requests this month.</td></tr>';
+  }
+  const niceMax = (v) => { const p = Math.pow(10, Math.floor(Math.log10(v))); for (const m of [1, 2, 2.5, 5, 10]) if (v <= m * p) return m * p; return 10 * p; };
   // costs
   async function loadCosts() {
-    const c = await send("costs", "GET"), b = c.budget;
+    const c = await send("costs", "GET"), b = c.budget; renderDays(c);
     $("cTargets").innerHTML = c.by_target.map(r => `<tr><td>${esc(r.target)}</td><td class="m">${r.requests}</td><td class="m">${r.requests - r.ok}</td><td class="m">${r.in_tokens} / ${r.out_tokens}</td><td class="m">$${Number(r.cost_usd).toFixed(4)}</td><td>${esc({ provider: "provider-reported", estimate: "estimate", plan: "free / flat plan", gpu: "GPU session", unpriced: "no price!", "": "—" }[r.cost_source] || r.cost_source)}</td><td class="m">${r.avg_ms} ms</td></tr>`).join("") || '<tr><td colspan="7" class="note">No requests this month.</td></tr>';
     $("cUse").innerHTML = c.by_use.map(r => `<tr><td>${esc(r.use)}</td><td class="m">${r.requests} requests</td><td class="m">$${Number(r.cost_usd).toFixed(4)}</td></tr>`).join("");
     $("fixed").value = c.fixed_costs.map(f => f.name + " | " + f.usd + " | " + (f.in_budget ? "yes" : "no")).join("\n");

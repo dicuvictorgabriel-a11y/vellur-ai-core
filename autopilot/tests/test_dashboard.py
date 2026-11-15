@@ -199,3 +199,16 @@ assert.equal(TASK, 42);
 '''
     result = subprocess.run(["node", "-e", setup + helper + boot + checks], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_routing_editor_image_format_and_daily_costs_are_wired():
+    html = open(PAGE).read()
+    # routing editor: draft saved in one PUT; image rows only offer image models and text rows never do
+    assert 'id="rEditor"' in html and 'send("llm/routes", "PUT", RDRAFT)' in html
+    assert "image ? x.image_generation : !x.image_generation" in html
+    # image format: only shown in image mode, sent with the message
+    assert 'id="imgSize"' in html and 'image_size: $("imgSize").value' in html
+    for size in ("1024x1024", "832x1248", "768x1344", "1248x832", "1344x768"):
+        assert f'value="{size}"' in html
+    # daily spend chart with a table view for screen readers
+    assert 'id="dayChart"' in html and 'id="dayTable"' in html and "renderDays(c)" in html
