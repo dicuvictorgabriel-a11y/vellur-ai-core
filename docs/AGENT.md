@@ -92,10 +92,8 @@ The Agent tab is now a studio: the conversation on the left, the **live preview*
   changed on GitHub meanwhile, VELLUR refuses and offers a pull request instead. After publishing, the workspace
   takes the published state as its new baseline. "Pull request instead" remains available. Nothing is ever
   published without that click.
-- **Server updates without the terminal.** `sudo vac autoupdate on` (once) makes the server follow `main` of this
-  repository: every 5 minutes it checks GitHub, waits while an agent task runs, installs with the normal
-  `install.sh`, runs `vac verify`, and on failure re-installs the previous release and skips the broken commit.
-  `sudo vac autoupdate status | off`. Requires the repository to be public (it reads GitHub without a token).
+- **Server updates without the terminal.** Superseded the same day: the server no longer follows `main`. It installs
+  only a version the owner approved, after its tests passed, with rollback — see `docs/SELF-DEVELOPMENT.md`.
 
 Tested here: real OpenCode + runner + controller with a scripted (non-model) server and a fake GitHub: preview
 appears while the agent works, refreshes after a follow-up, sandbox isolation, automatic screenshots, direct publish

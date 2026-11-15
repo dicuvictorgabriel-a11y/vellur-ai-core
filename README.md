@@ -9,7 +9,9 @@ Pornire rapidă după instalare: login → **Models** → salvezi o cheie de fur
 `furnizor:model` la `vellur-coder` → **Chat**. Pentru agent: **Agent** (opțional un token GitHub limitat la
 repo-urile alese). Agentul e o conversație: acțiuni live, capturi de ecran reale, raport final, continuare în aceeași
 sesiune, **previzualizare live** a proiectului lângă conversație, publicare cu un click (fără pull request) și
-actualizare automată a serverului (`sudo vac autoupdate on`) — [`docs/AGENT.md`](docs/AGENT.md).
+versiuni salvate (checkpoints) — [`docs/AGENT.md`](docs/AGENT.md). VELLUR se poate dezvolta pe el însuși, cu
+previzualizare izolată și instalare doar a versiunilor aprobate de tine și testate, cu revenire automată:
+[`docs/SELF-DEVELOPMENT.md`](docs/SELF-DEVELOPMENT.md).
 
 > Secțiunile de mai jos descriu instalarea și infrastructura de bază; părțile despre HyperAI ca furnizor principal
 > sunt istorice.
