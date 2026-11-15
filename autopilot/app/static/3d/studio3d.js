@@ -429,7 +429,7 @@ function selectMesh(mesh) {
   clearSelection(true);
   $('selNote').textContent = '';
   state.selected = mesh;
-  state.helper = new THREE.Box3Helper(new THREE.Box3().setFromObject(mesh), 0xc8ff3d);
+  state.helper = new THREE.Box3Helper(new THREE.Box3().setFromObject(mesh), 0xc3b4f3);
   state.helper.material.transparent = true;
   state.helper.material.opacity = 0.9;
   state.helper.material.depthTest = false;

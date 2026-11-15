@@ -1,6 +1,7 @@
 (() => {
   'use strict';
   const $ = id => document.getElementById(id), G = window.PrecisionGeometry;
+  const theme = (document.cookie.match(/(?:^|; )vellur_theme=(dark|light)/) || [])[1]; if (theme) document.documentElement.dataset.theme = theme;   // same choice as the workspace
   const canvas = $('canvas'), reference = $('reference'), shape = $('shape'), handles = $('handles');
   const buffer = document.createElement('canvas'), ctx = buffer.getContext('2d', { willReadFrequently: true });
   let project = null, source = '', undoStack = [], redoStack = [], view = null, drag = null, sel = null, dirty = false, docName = 'Untitled';

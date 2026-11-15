@@ -3,6 +3,7 @@ every catalog model, and each budget computation ran one query per unreconciled 
 With a few hundred HyperAI sessions and an OpenRouter catalog the request took minutes, on the event loop, so
 /healthz stopped answering."""
 import asyncio
+import threading
 import time
 
 import httpx
@@ -97,31 +98,67 @@ async def test_repeated_model_list_requests_stay_fast(rig):
 
 
 async def test_healthz_answers_while_model_lists_are_computed(rig):
-    """The heavy endpoint runs in a worker thread: health checks keep answering within Docker's 5 s timeout."""
+    """The heavy endpoint runs in a worker thread: health checks keep answering within Docker's 5 s timeout.
+
+    1. Deterministic: the heavy catalog work never runs on the event-loop thread.
+    2. The event loop is never blocked near the ~4.5 s a regression causes (three 1.5 s computations run on the loop
+       one after another); a sleeping ticker measures the longest stall.
+    3. /healthz keeps answering: median probe fast, worst probe inside Docker's 4 s urlopen / 5 s timeout.
+    The bounds are 3 s, not 1 s: /healthz reads the database on the loop, and a worker holding the DB lock while
+    a CPU-bound thread hogs the GIL can delay it by up to one heavy computation (~1.5 s here; sqlite3 takes the
+    GIL back for every row it fetches). That bounded wait is not the regression this test guards against, and a
+    1 s bound made the test fail about once in six full-suite runs."""
     ctrl = rig()
     seed(ctrl)
     router, c = app_for(ctrl)
     real = router.models
+    loop_thread = threading.get_ident()
+    seen = {"threads": [], "active": 0, "done": 0}
 
     def slow_models(*a, **k):          # make the catalog work deliberately slow and CPU/GIL-bound
-        end = time.perf_counter() + 1.5
-        while time.perf_counter() < end:
-            sum(range(1000))
-        return real(*a, **k)
+        seen["threads"].append(threading.get_ident())
+        seen["active"] += 1
+        try:
+            end = time.perf_counter() + 1.5
+            while time.perf_counter() < end:
+                sum(range(1000))
+            return real(*a, **k)
+        finally:
+            seen["active"] -= 1
+            seen["done"] += 1
     router.models = slow_models
+
+    lag = {"worst": 0.0, "stop": False}
+
+    async def ticker():                # how late does a 10 ms sleep wake up? = longest stretch the loop was blocked
+        while not lag["stop"]:
+            t = time.perf_counter()
+            await asyncio.sleep(0.01)
+            lag["worst"] = max(lag["worst"], time.perf_counter() - t - 0.01)
+    tick = asyncio.create_task(ticker())
+
     heavy = [asyncio.create_task(c.get("/autopilot/api/llm", headers=ADMIN)) for _ in range(3)]
     await asyncio.sleep(0.05)
-    worst = 0.0
+    probes, overlapped = [], 0
     for _ in range(10):
+        overlapped += seen["active"] > 0
         t = time.perf_counter()
         r = await c.get("/healthz")
-        worst = max(worst, time.perf_counter() - t)
+        probes.append(time.perf_counter() - t)
         assert r.status_code == 200 and r.json()["ok"] is True
         await asyncio.sleep(0.05)
-    assert all(not h.done() for h in heavy) or True
-    assert worst < 1.0, f"/healthz took {worst:.2f}s while model lists were computed"
     results = await asyncio.gather(*heavy)
+    lag["stop"] = True
+    await tick
+
     assert all(r.status_code == 200 for r in results)
+    assert loop_thread not in seen["threads"], "the heavy model-list work ran on the event-loop thread"
+    assert lag["worst"] < 3.0, f"the event loop was blocked for {lag['worst']:.2f}s while model lists were computed"
+    assert seen["done"] >= 3 and overlapped > 0, "the health probes did not overlap the heavy work"
+    probes.sort()
+    median = (probes[4] + probes[5]) / 2
+    assert median < 0.5, f"/healthz median {median:.2f}s while model lists were computed"
+    assert probes[-1] < 3.0, f"/healthz took {probes[-1]:.2f}s while model lists were computed (Docker allows 4-5 s)"
 
 
 def provider_catalog(n):
