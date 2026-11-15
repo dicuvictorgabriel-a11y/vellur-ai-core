@@ -1,0 +1,33 @@
+<!doctype html>
+<html lang="ro">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Precision Studio · VELLUR</title>
+  <link rel="stylesheet" href="studio.css">
+  <script defer src="geometry.js"></script>
+  <script defer src="studio.js"></script>
+</head>
+<body>
+  <header><a href="/autopilot/">← AI Core</a><strong>VELLUR <span>Precision Studio</span></strong><span class="badge">PROTOTIP 2D</span></header>
+  <main>
+    <section class="work">
+      <div class="heading"><div><p class="eyebrow">IMPORT → RECONSTRUCȚIE → EXPORT</p><h1>Desenează cu precizie.</h1><p>Transformă un contur simplu într-un vector editabil.</p></div><button id="export" class="primary">Descarcă SVG</button></div>
+      <div class="toolbar"><label class="button" for="image">Importă PNG / JPEG</label><input id="image" type="file" accept="image/png,image/jpeg" hidden><button id="demo">Exemplu sintetic</button><button id="undo" disabled>Anulează</button><label class="check"><input id="overlay" type="checkbox" checked> Referință</label><label class="check"><input id="nodes" type="checkbox" checked> Puncte</label><button id="zoomOut" aria-label="Micșorează">−</button><button id="zoomIn" aria-label="Mărește">+</button><button id="resetZoom">Încadrare</button></div>
+      <div class="viewport" id="viewport"><svg id="canvas" viewBox="0 0 480 320" role="img" aria-label="Zona de editare a conturului"><image id="reference"/><path id="shape"/><g id="handles"></g></svg></div>
+      <div class="status"><span id="message" role="status">Exemplu sintetic: mută punctele sau importă o imagine.</span><span>Rotița: zoom · trage fundalul: deplasare</span></div>
+    </section>
+    <aside>
+      <p class="eyebrow">INSPECTOR</p><h2>Geometrie</h2><p class="hint">Imaginea rămâne în browser. Datele nu se salvează automat.</p>
+      <label>Prag contur <output id="thresholdValue">150</output><input id="threshold" type="range" min="1" max="254" value="150"></label>
+      <label>Simplificare <output id="toleranceValue">1.5 px</output><input id="tolerance" type="range" min="0.5" max="5" step="0.5" value="1.5"></label>
+      <button id="retrace" class="wide">Reconstruiește conturul</button>
+      <p class="hint">Reconstrucția înlocuiește punctele editate. Culorile închise devin forme; transparența este tratată ca fundal alb.</p>
+      <div class="divider"></div>
+      <label>Netezire <output id="smoothValue">0.55</output><input id="smooth" type="range" min="0" max="1" step="0.05" value="0.55"></label>
+      <label>Extindere contur <output id="thicknessValue">0 px</output><input id="thickness" type="range" min="0" max="20" step="0.5" value="0"></label>
+      <div class="notice"><strong>Ce măsurăm?</strong><p>Conturul este estimat din pixeli, nu este geometria originală. Netezirea și extinderea sunt alegerile tale. Verifică rezultatul înainte de utilizare.</p></div>
+    </aside>
+  </main>
+</body>
+</html>
