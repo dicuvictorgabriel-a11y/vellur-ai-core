@@ -7,7 +7,7 @@ Screenshots: `docs/obsidian/` (`before-*` were taken from `main` at 90fd957 with
 
 | Feature | Before | After | Evidence |
 |---|---|---|---|
-| Image generation via OpenRouter | **BROKEN** (HTTP 404 for FLUX/Seedream) | **WORKING with a mocked OpenRouter**; real provider UNVERIFIED (no paid test was run) | `tests/test_image_generation_fix.py` (31 tests) |
+| Image generation via OpenRouter | **BROKEN** (HTTP 404 for FLUX/Seedream) | **WORKING with a mocked OpenRouter**; real provider UNVERIFIED (no paid test was run) | `tests/test_image_generation_fix.py` (28 cases) |
 | Image prices | **BROKEN** (`pricing.image` = price of an *input* image was shown as the generation price) | WORKING: only `pricing.image_output`; unknown = "not published", always confirmed | same |
 | Duplicate paid image requests | NOT IMPLEMENTED | WORKING (request id per confirmation card, server-side dedupe) | same |
 | Agent image spending with unknown price | RISK (agent auto-confirmed) | Blocked until a manual price is set | same |
