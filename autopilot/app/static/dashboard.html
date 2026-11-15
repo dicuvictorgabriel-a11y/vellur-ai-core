@@ -6,41 +6,58 @@
 <meta name="robots" content="noindex, nofollow">
 <title>VELLUR AI Core</title>
 <style>
-:root{--bg:#0d0d0f;--side:#131316;--panel:#17171b;--raise:#1d1d22;--line:#26262d;--line2:#33333c;--text:#ececef;--soft:#c9c9d1;--muted:#8b8b96;--lime:#c6ff00;--accent:#d4ff4d;--orange:#ff7a4d;--cyan:#5fd4e0;--r:12px}
+:root{
+  /* OBSIDIAN: deep neutral surfaces, one chartreuse signal colour used only for state and the primary action */
+  --bg:#0b0d0f;--side:#0e1113;--panel:#15191d;--raise:#20262b;--sunk:#090b0c;--line:#1d2327;--line2:#2b3338;
+  --text:#f2f3f1;--soft:#c3c9c8;--muted:#7f898e;--faint:#5b6469;
+  --lime:#c8ff3d;--accent:#c8ff3d;--accent-ink:#0b0d0f;--accent-dim:rgba(200,255,61,.12);--accent-line:rgba(200,255,61,.32);
+  --orange:#ff8a5c;--cyan:#6fd6e0;--warn:#f2cf66;--r:10px;
+  --mono:"JetBrains Mono","SF Mono","IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:"Inter","SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  color-scheme:dark}
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--text)}
-body{font:15px/1.55 "Inter","SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;-webkit-font-smoothing:antialiased;display:flex;min-height:100dvh}
-code,pre,.mono{font-family:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace}
+body{font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased;display:flex;min-height:100dvh;font-feature-settings:"cv11","ss01"}
+code,pre,.mono{font-family:var(--mono)}
+::selection{background:var(--accent);color:var(--accent-ink)}
+*{scrollbar-width:thin;scrollbar-color:var(--line2) transparent}
+.label{font:500 10.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
 a{color:inherit}
 /* shell */
 #side{width:268px;flex:none;background:var(--side);border-right:1px solid var(--line);display:flex;flex-direction:column;height:100dvh;position:sticky;top:0;padding:14px 10px}
-.logo{display:flex;align-items:center;gap:10px;padding:6px 10px 14px;font-weight:600;letter-spacing:.01em}
-.logo i{width:22px;height:22px;border-radius:7px;background:linear-gradient(140deg,var(--accent),#7da800);display:block}
-.logo small{color:var(--muted);font-weight:500;letter-spacing:.18em;font-size:10.5px;display:block;line-height:1}
+.logo{display:flex;align-items:center;gap:11px;padding:6px 10px 18px;font-weight:600;letter-spacing:-.01em;font-size:15px}
+.logo i{width:22px;height:22px;border-radius:6px;border:1.5px solid var(--accent);display:grid;place-items:center;position:relative}
+.logo i:after{content:"";width:6px;height:6px;border-radius:2px;background:var(--accent)}
+.logo small{color:var(--faint);font:500 9.5px/1 var(--mono);letter-spacing:.24em;display:block;margin-top:3px}
 #tabs{display:flex;flex-direction:column;gap:2px}
-#tabs button,.navbtn{display:flex;align-items:center;gap:10px;width:100%;background:transparent;color:var(--soft);border:0;border-radius:9px;padding:8px 10px;font:inherit;font-size:14px;font-weight:500;text-align:left;cursor:pointer}
-#tabs button:hover,.navbtn:hover{background:var(--raise)}#tabs button.on{background:var(--raise);color:var(--text)}
+#tabs button,.navbtn{position:relative;display:flex;align-items:center;gap:10px;width:100%;background:transparent;color:var(--muted);border:0;border-radius:8px;padding:8px 10px;font:inherit;font-size:13.5px;font-weight:500;text-align:left;cursor:pointer;transition:background .12s,color .12s}
+#tabs button:hover,.navbtn:hover{background:#161b1f;color:var(--text);opacity:1}#tabs button.on{background:#161b1f;color:var(--text)}
+#tabs button.on:before{content:"";position:absolute;left:-10px;top:9px;bottom:9px;width:2px;border-radius:2px;background:var(--accent)}
 #tabs button.on svg{color:var(--accent)}
+.navbtn .ext{margin-left:auto;font:500 10px var(--mono);color:var(--faint);letter-spacing:.06em}
 #tabs .sep{height:1px;background:var(--line);margin:8px 6px}
 svg.ic{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
-.sidehead{display:flex;align-items:center;justify-content:space-between;color:var(--muted);font-size:11.5px;letter-spacing:.08em;text-transform:uppercase;padding:16px 10px 6px}
+.sidehead{display:flex;align-items:center;justify-content:space-between;color:var(--faint);font:500 10.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;padding:18px 10px 8px}
 #convList{flex:1;overflow:auto;display:flex;flex-direction:column;gap:1px;min-height:40px}
-#convList button{background:transparent;border:0;color:var(--soft);text-align:left;padding:7px 10px;border-radius:8px;font:inherit;font-size:13.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;flex:none}
-#convList button:hover{background:var(--raise)}#convList button.on{background:var(--raise);color:var(--text)}
+#convList button{background:transparent;border:0;color:var(--muted);text-align:left;padding:7px 10px;border-radius:7px;font:inherit;font-size:13px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;flex:none}
+#convList button:hover{background:#161b1f;color:var(--soft);opacity:1}#convList button.on{background:#161b1f;color:var(--text)}
 #sideBudget{border-top:1px solid var(--line);padding:12px 10px 4px;font-size:12.5px;color:var(--muted)}
 #sideBudget b{color:var(--text);font-weight:600}
-.bar{height:5px;border-radius:99px;background:#232329;overflow:hidden;margin:8px 0 4px}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .4s}
-.bar.warn i{background:#ffd23f}.bar.hot i{background:var(--orange)}
+.bar{height:3px;border-radius:99px;background:var(--line);overflow:hidden;margin:9px 0 4px}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .4s}
+.bar.warn i{background:var(--warn)}.bar.hot i{background:var(--orange)}
+#sideBudget .label{display:block;margin-bottom:7px}
 main{flex:1;min-width:0;padding:28px 28px 64px;overflow:auto;height:100dvh}
 .wrap{max-width:1040px;margin:0 auto}
 #topbar{display:none}
 body:not(.is-admin) #side{display:none}body:not(.is-admin) main{height:auto}
 body.is-admin .pubhead{display:none}
 .brand{letter-spacing:.32em;font-weight:700;font-size:11px;color:var(--muted)}
-h1{font-weight:600;font-size:26px;letter-spacing:-.01em;margin:6px 0 4px}
-h2{font-size:15px;font-weight:600;margin:0 0 12px;letter-spacing:-.005em}
+h1{font-weight:600;font-size:28px;letter-spacing:-.025em;margin:6px 0 4px}
+h2{font-size:14.5px;font-weight:600;margin:0 0 12px;letter-spacing:-.01em}
+section.pagehead{grid-column:span 12}.pagehead{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin:4px 0 22px;padding-bottom:18px;border-bottom:1px solid var(--line)}
+.pagehead h1{margin:6px 0 0;font-size:26px}.pagehead p{margin:6px 0 0;color:var(--muted);font-size:13.5px;max-width:620px}
 .sub{color:var(--muted);margin:0 0 22px}.sub2{color:var(--muted);font-size:13px;margin:-6px 0 14px;max-width:760px}
 .grid{display:grid;grid-template-columns:repeat(12,1fr);gap:14px}
-.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:18px 20px;min-width:0}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:var(--r);padding:20px 22px;min-width:0}
 .c12{grid-column:span 12}.c8{grid-column:span 8}.c6{grid-column:span 6}.c4{grid-column:span 4}
 @media(max-width:1100px){.c8,.c6,.c4{grid-column:span 12}}
 @media(min-width:1101px){body:not(.is-admin) .c4{grid-column:span 6}}
@@ -49,7 +66,7 @@ body:not(.is-admin) .admin-only{display:none!important}body.is-admin .public-onl
 .hero{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .phase{font-size:20px;font-weight:600;display:flex;align-items:center;gap:10px}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
-.ok .dot{background:var(--accent);box-shadow:0 0 10px rgba(198,255,0,.5)}.busy .dot{background:var(--cyan);animation:p 1.2s infinite}.bad .dot{background:var(--orange)}
+.ok .dot{background:var(--accent)}.busy .dot{background:var(--cyan);animation:p 1.2s infinite}.bad .dot{background:var(--orange)}
 @keyframes p{50%{opacity:.35}}
 .steps{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
 .step{font-size:11.5px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
@@ -58,19 +75,20 @@ body:not(.is-admin) .admin-only{display:none!important}body.is-admin .public-onl
 .note,.viewnote{color:var(--muted);font-size:12.5px;margin-top:8px}
 .msg{margin-top:12px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);font-size:13px;display:none}
 .msg.show{display:block}.msg.bad{border-color:#5a2616;color:#ffb9a3;background:#1c1210}.msg.info{border-color:#1d4a50;color:#a8eef5;background:#0f191b}
-button{background:var(--text);color:#111;border:0;border-radius:9px;padding:8px 14px;font:inherit;font-size:13.5px;font-weight:600;cursor:pointer;transition:opacity .15s,background .15s}
-button:hover{opacity:.9}button.ghost{background:transparent;color:var(--text);border:1px solid var(--line2)}button.ghost:hover{background:var(--raise);opacity:1}
+button{background:var(--text);color:var(--accent-ink);border:0;border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s,background .15s,border-color .15s}
+button:hover{opacity:.9}button.ghost{background:transparent;color:var(--text);border:1px solid var(--line2)}button.ghost:hover{background:var(--raise);border-color:#3a444a;opacity:1}
+button.primary{background:var(--accent);color:var(--accent-ink)}
 button.danger{background:transparent;color:var(--orange);border:1px solid #5a2616}button:disabled{opacity:.35;cursor:not-allowed}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 label{display:block;font-size:12.5px;color:var(--muted);margin:12px 0 5px}
-input,select,textarea{width:100%;background:#101013;color:var(--text);border:1px solid var(--line);border-radius:9px;padding:9px 11px;font:inherit;font-size:14px}
-textarea{resize:vertical;font:13px/1.5 "JetBrains Mono",ui-monospace,Menlo,monospace}
-input:focus,select:focus,textarea:focus,button:focus-visible{outline:2px solid rgba(212,255,77,.55);outline-offset:1px;border-color:transparent}
+input,select,textarea{width:100%;background:var(--sunk);color:var(--text);border:1px solid var(--line2);border-radius:8px;padding:9px 11px;font:inherit;font-size:14px}
+textarea{resize:vertical;font:13px/1.5 var(--mono)}
+input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible,summary:focus-visible{outline:2px solid var(--accent-line);outline-offset:1px;border-color:transparent}
 .toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
 .toggle:last-child{border-bottom:0}.toggle span{font-size:14px}.toggle small{display:block;color:var(--muted);font-size:12px}
 .sw{position:relative;width:40px;height:23px;flex:none;margin:0}.sw input{opacity:0;width:0;height:0}
 .sw b{position:absolute;inset:0;background:#2a2a31;border-radius:99px;transition:.2s}.sw b:after{content:"";position:absolute;left:3px;top:3px;width:17px;height:17px;border-radius:50%;background:#9a9aa6;transition:.2s}
-.sw input:checked+b{background:#3d4d12}.sw input:checked+b:after{transform:translateX(17px);background:var(--accent)}
+.sw input:checked+b{background:#36481a}.sw input:checked+b:after{transform:translateX(17px);background:var(--accent)}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}@media(max-width:640px){.f2{grid-template-columns:1fr}}
 table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{color:var(--muted);font-weight:500;font-size:12px}td.m{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;white-space:nowrap;font-size:12px}
@@ -84,32 +102,63 @@ details.adv{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}de
 body.is-admin[data-view="chat"] main{padding:0;overflow:hidden;display:flex;flex-direction:column}
 body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{display:contents}
 #chatCard{background:transparent;border:0;border-radius:0;padding:0;display:flex;flex-direction:column;flex:1;min-height:0}
-.chathead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:12px 20px;border-bottom:1px solid var(--line)}
+.chathead{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:10px 20px;border-bottom:1px solid var(--line);min-height:56px}
+#chatTitle{flex:1;min-width:0;font-size:14px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;letter-spacing:-.01em}
 .chathead select{width:auto;background:transparent;border-color:transparent;font-weight:600;padding:6px 8px}
 .chathead select:hover{background:var(--raise)}
 #convSel{display:none}
 .msgs{flex:1;min-height:0;overflow:auto;padding:28px 20px 12px;scroll-behavior:smooth}
-.msgs>*{max-width:760px;margin-left:auto;margin-right:auto}
-.m{margin-bottom:22px}.m .who{display:none}
-.m .txt{white-space:pre-wrap;overflow-wrap:anywhere;font-size:15.5px;line-height:1.65}
-.m.user{display:flex;justify-content:flex-end}.m.user .txt{background:var(--raise);border:1px solid var(--line);padding:10px 15px;border-radius:18px 18px 4px 18px;max-width:85%}
-.m.assistant .txt{color:var(--text)}
-.m pre{position:relative;background:#0a0a0c;border:1px solid var(--line);border-radius:10px;padding:34px 14px 12px;overflow:auto;font-size:13px;line-height:1.5;white-space:pre;margin:10px 0;cursor:copy}
-.m pre:before{content:"Copy";position:absolute;top:7px;right:10px;font:500 11.5px "Inter",system-ui,sans-serif;color:var(--muted)}
-.m pre.copied:before{content:"Copied";color:var(--accent)}
-.m code{font-size:13px;background:#202026;padding:1.5px 5px;border-radius:5px}
-#msgs .note{text-align:center;margin-top:18vh;font-size:15px;color:var(--muted)}
-#msgs .note:before{content:"VELLUR AI";display:block;font-size:24px;font-weight:600;color:var(--text);letter-spacing:-.01em;margin-bottom:6px}
-.composer{max-width:800px;width:calc(100% - 32px);margin:0 auto 10px;background:var(--panel);border:1px solid var(--line2);border-radius:20px;padding:10px 12px 8px;box-shadow:0 8px 30px rgba(0,0,0,.35)}
-.composer:focus-within{border-color:#4a4a55}
+.msgs>*{max-width:740px;margin-left:auto;margin-right:auto}
+.m{margin-bottom:26px}.m .who{display:none}
+.m .txt{white-space:pre-wrap;overflow-wrap:anywhere;font-size:15.5px;line-height:1.68}
+.m.user{display:flex;flex-direction:column;align-items:flex-end}.m.user .txt{background:var(--raise);border:1px solid var(--line2);padding:10px 15px;border-radius:16px 16px 4px 16px;max-width:85%}
+.m.assistant .txt{color:var(--text);white-space:normal}
+.m.assistant .txt>:first-child{margin-top:0}.m.assistant .txt>:last-child{margin-bottom:0}
+.m .txt p{margin:0 0 12px}.m .txt ul,.m .txt ol{margin:0 0 12px;padding-left:22px}.m .txt li{margin:3px 0}.m .txt li::marker{color:var(--faint)}
+.m .txt h3,.m .txt h4{font-size:15.5px;font-weight:600;letter-spacing:-.01em;margin:20px 0 8px}.m .txt h3{font-size:17px}
+.m .txt blockquote{margin:0 0 12px;padding:2px 0 2px 14px;border-left:2px solid var(--line2);color:var(--soft)}
+.m .txt hr{border:0;border-top:1px solid var(--line);margin:18px 0}
+.m .txt a{color:var(--accent);text-decoration:none;border-bottom:1px solid var(--accent-line)}.m .txt a:hover{border-bottom-color:var(--accent)}
+.m pre{position:relative;background:var(--sunk);border:1px solid var(--line);border-radius:9px;padding:34px 14px 12px;overflow:auto;font-size:13px;line-height:1.55;white-space:pre;margin:12px 0;cursor:copy}
+.m pre:before{content:attr(data-lang) "  ·  copy";position:absolute;top:9px;left:14px;font:500 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+.m pre.copied:before{content:"copied";color:var(--accent)}
+.m code{font-size:13px;background:#1b2125;border:1px solid var(--line);padding:1px 5px;border-radius:5px}
+.m pre code{background:transparent;border:0;padding:0}
+.mmeta{display:flex;align-items:center;gap:10px;margin-top:8px;font:500 11px/1 var(--mono);color:var(--faint);letter-spacing:.02em;min-height:24px}
+.mmeta .sp{flex:1}
+.mmeta button{background:transparent;border:1px solid transparent;color:var(--faint);padding:4px 8px;border-radius:6px;font:500 11px var(--mono);min-height:0}
+.mmeta button:hover{border-color:var(--line2);color:var(--text);opacity:1}
+.m.assistant .mmeta{opacity:.0;transition:opacity .15s}.m.assistant:hover .mmeta,.m.assistant:focus-within .mmeta,.m.assistant.last .mmeta{opacity:1}
+.typing{display:inline-flex;gap:4px;padding:8px 0}.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
+.typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
+@keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
+.err{border:1px solid #4a2418;background:#160f0c;border-radius:10px;padding:11px 14px;color:#ffc9b6;font-size:14px;white-space:normal}
+.err b{display:block;color:#ffdccf;font-weight:600;margin-bottom:2px}
+.err details{margin-top:6px;font-size:12px;color:#d9a593}.err summary{cursor:pointer}
+.chatempty{margin:14vh auto 0;text-align:left;max-width:620px!important}
+.chatempty .label{color:var(--accent)}
+.chatempty h3{font-size:32px;line-height:1.15;font-weight:600;letter-spacing:-.03em;margin:14px 0 10px}
+.chatempty p{color:var(--muted);font-size:15px;margin:0 0 22px;max-width:520px}
+.starters{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.starter{text-align:left;background:transparent;border:1px solid var(--line);color:var(--soft);border-radius:10px;padding:12px 14px;font-weight:400;font-size:13.5px;line-height:1.4}
+.starter b{display:block;font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
+.starter:hover{border-color:var(--line2);background:var(--panel);color:var(--text);opacity:1}
+.composer{max-width:780px;width:calc(100% - 32px);margin:0 auto 10px;background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:10px 12px 8px;box-shadow:0 10px 40px rgba(0,0,0,.45)}
+.composer:focus-within{border-color:#3d474d}
 .composer textarea{border:0;background:transparent;padding:4px 6px;font:15.5px/1.5 "Inter",-apple-system,system-ui,sans-serif;resize:none;max-height:200px;outline:0}
 .composer textarea:focus{outline:0}
 .cbar{display:flex;align-items:center;gap:8px;margin-top:4px}
 .cbar .grow{flex:1;min-width:0;font-size:12px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;padding:0;margin:0;background:transparent;color:var(--soft);border:1px solid var(--line2);cursor:pointer;flex:none}
 .iconbtn:hover{background:var(--raise)}
-#btnSend{width:34px;height:34px;border-radius:50%;padding:0;background:var(--accent);color:#111;display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:0}
+#btnSend{width:34px;height:34px;border-radius:50%;padding:0;background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:0}
+#btnSend.stop{background:var(--text)}
+.modelpick{width:auto;max-width:56%;border-radius:99px;padding:6px 28px 6px 12px;font-size:12.5px;font-weight:500;background:var(--raise);border-color:var(--line2)}
 #chatFile,#agFile{display:none}
+.agimgs{display:flex;align-items:center;gap:6px;padding:8px 20px;border-bottom:1px solid var(--line);overflow-x:auto;flex:none}
+.agimgs:before{content:"Generated";font:500 10px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-right:6px;flex:none}
+.agimgs a{flex:none;display:block;width:44px;height:44px;border-radius:7px;overflow:hidden;border:1px solid var(--line2)}
+.agimgs img{width:100%;height:100%;object-fit:cover;display:block}
 .atts{display:flex;flex-wrap:wrap;gap:6px;padding:5px 2px 7px}
 .atts:empty{display:none}
 .att{position:relative;display:flex;align-items:center;gap:7px;max-width:230px;min-height:40px;padding:5px 8px;border:1px solid var(--line2);border-radius:12px;background:var(--raise);font-size:12px;overflow:hidden}
@@ -126,14 +175,30 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .msgatts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .msgatts a{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line2);border-radius:9px;background:var(--panel);color:var(--text);text-decoration:none;font-size:11.5px}
 .msgatts img{width:30px;height:30px;object-fit:cover;border-radius:5px}
-.msgimgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px;max-width:560px}
-.msgimgs a{display:block;border:1px solid var(--line2);border-radius:12px;overflow:hidden;background:#0b0b0d}
-.msgimgs img{display:block;width:100%;height:auto;max-height:420px;object-fit:contain}
-.imgcard{margin-top:10px;padding:12px 14px;border:1px solid var(--line2);border-radius:12px;background:var(--panel);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
-.imgcard b{font-size:14px}.imgcard button{min-height:0;padding:7px 12px}
+.msgimgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px;max-width:520px}
+.msgimgs a{display:block;border:1px solid var(--line2);border-radius:10px;overflow:hidden;background:var(--sunk)}
+.msgimgs img{display:block;width:100%;height:auto;max-height:440px;object-fit:contain}
+.msgimgs:has(> a:only-child){max-width:420px}
+.imgcard{margin-top:4px;border:1px solid var(--line2);border-radius:12px;background:var(--panel);max-width:520px;overflow:hidden;white-space:normal}
+.imgcard .ih{display:flex;align-items:center;gap:10px;padding:12px 14px;border-bottom:1px solid var(--line)}
+.imgcard .ih b{flex:1;font-size:14px;font-weight:600}
+.imgcard .ib{padding:12px 14px;display:flex;flex-direction:column;gap:10px}
+.imgcard .prompt{font-size:13.5px;color:var(--soft);line-height:1.5;max-height:5.4em;overflow:hidden}
+.imgcard dl{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;margin:0;font-size:12.5px}.imgcard dt{color:var(--faint);font:500 10.5px/1.6 var(--mono);letter-spacing:.08em;text-transform:uppercase}.imgcard dd{margin:0;color:var(--soft)}
+.imgcard .warnline{color:var(--warn);font-size:12.5px;line-height:1.5}
+.imgcard .acts{display:flex;gap:8px;flex-wrap:wrap}.imgcard .acts button{min-height:0;padding:7px 12px}
+.imgcard .stage{aspect-ratio:1/1;background:var(--sunk);display:grid;place-items:center;color:var(--muted);font-size:13px;position:relative;overflow:hidden}
+.imgcard .stage:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(200,255,61,.05) 50%,transparent 70%);animation:sweep 1.8s linear infinite}
+@keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
+.imgcard .stage span{position:relative;font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase}
+.imgcard.done{border:0;background:transparent}.imgcard.done .msgimgs{margin-top:0}
 .caps{display:flex;gap:4px;flex-wrap:wrap;margin:5px 0 0}
 .cap{font-size:10.5px;line-height:1;padding:4px 6px;border-radius:99px;border:1px solid var(--line2);color:var(--soft);white-space:nowrap}
-.cap.vision{color:#a8eef5;border-color:#1d4a50}.cap.image_generation{color:#ffd76a;border-color:#5a4a16}.cap.coding{color:#b7f08a;border-color:#3d4d12}
+.cap.vision{color:#a8eef5;border-color:#1d4a50}.cap.image_generation{color:#ffd76a;border-color:#5a4a16}.cap.coding{color:#cdf58a;border-color:#3a4a1a}
+.mgroup{margin-top:18px}.mgroup>.label{display:flex;align-items:center;gap:8px;margin-bottom:8px}.mgroup>.label i{font-style:normal;color:var(--muted)}
+.suggest{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-top:10px}
+.suggest .modelcard{display:flex;flex-direction:column;gap:6px}.suggest .modelcard .row{margin-top:auto}
+.modelcard.cur{border-color:var(--accent-line)}
 .modelgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:10px;max-height:460px;overflow:auto}
 .modelcard{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:10px 11px;min-width:0}
 .modelcard b{display:block;font-size:12.5px;font-weight:600;overflow-wrap:anywhere}.modelcard .note{margin:3px 0 0;font-size:11px}
@@ -236,7 +301,8 @@ body.studio-open #pvToggle{background:var(--raise)}
 .agempty p{color:var(--muted);font-size:14.5px;margin:0 auto 18px;max-width:460px;line-height:1.55}
 .agempty .chips{justify-content:center}
 #agFoot{max-width:800px;width:calc(100% - 32px);margin:0 auto 12px;font-size:12px;color:var(--muted)}
-#agFoot summary{cursor:pointer;list-style:none;text-align:center}#agFoot details[open] summary{text-align:left;margin-bottom:6px}
+#agFoot summary{cursor:pointer;list-style:none;text-align:center}#agFoot summary::-webkit-details-marker{display:none}
+#ghBox.needs summary{color:var(--soft)}#ghBox.needs summary:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;background:var(--warn);margin-right:8px;vertical-align:middle}#agFoot details[open] summary{text-align:left;margin-bottom:6px}
 #taskList{flex:1;overflow:auto;display:none;flex-direction:column;gap:1px;min-height:40px}
 #taskList button{display:flex;align-items:center;gap:8px;background:transparent;border:0;color:var(--soft);text-align:left;padding:7px 10px;border-radius:8px;font:inherit;font-size:13.5px;cursor:pointer;flex:none;font-weight:400}
 #taskList button span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -277,7 +343,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   <nav id="tabs">
     <button data-view="chat"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>Agent</button>
     <a class="navbtn" href="/autopilot/studio/" style="text-decoration:none"><svg class="ic" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>Precision Studio</a>
-    <a class="navbtn" id="nav3D" href="/autopilot/3d/" target="_blank" rel="noopener" style="text-decoration:none"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg>3D Studio</a>
+    <a class="navbtn" id="nav3D" href="/autopilot/3d/" target="_blank" rel="noopener" style="text-decoration:none"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg>3D Studio<span class="ext">↗</span></a>
     <div class="sep"></div>
     <button data-view="models"><svg class="ic" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>Models</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>Costs</button><button data-view="gpu"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>GPU</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button>
   </nav>
@@ -298,6 +364,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   </div>
 
   <div class="grid">
+    <section class="c12 admin-only pagehead" data-tab="gpu"><div><span class="label">VELLUR · GPU</span><h1>GPU</h1><p>Optional private GPU. Nothing paid starts unless you allow it.</p></div></section>
     <section class="card c12" data-tab="gpu">
       <div class="hero">
         <div>
@@ -354,6 +421,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       </dl>
     </section>
 
+    <section class="c12 admin-only pagehead" data-tab="costs"><div><span class="label">VELLUR · Costs</span><h1>Costs</h1><p>Every request is recorded. Provider-reported costs are kept apart from VELLUR's own estimates.</p></div></section>
     <section class="card c4" data-tab="gpu costs">
       <h2>Budget — <span id="bMonth"></span></h2>
       <div style="font-size:22px;font-weight:600"><span id="bTotal">$0.00</span> <span style="color:var(--muted);font-size:14px">of <span id="bBudget">$0</span></span></div>
@@ -409,8 +477,9 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
 
     <section class="admin-only" id="chatCard" data-tab="chat">
       <div class="chathead">
-        <div class="row"><select id="convSel"></select><button class="ghost" id="convNew">New chat</button><button class="ghost" id="convDel">Delete</button></div>
+        <select id="convSel"></select><span id="chatTitle">New conversation</span>
         <span class="note" id="chatTarget" style="margin:0"></span>
+        <button class="ghost" id="convNew">New chat</button><button class="iconbtn" id="convDel" title="Delete this conversation" aria-label="Delete this conversation"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
       </div>
       <div class="msgs" id="msgs"></div>
       <div class="composer">
@@ -418,7 +487,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         <textarea id="chatIn" rows="1" placeholder="Message VELLUR AI…"></textarea>
         <div class="cbar">
           <label class="iconbtn" for="chatFile" title="Attach images, PDFs, documents, code or 3D files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></label><input type="file" id="chatFile" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.json,.xml,.yaml,.yml,.toml,.py,.js,.ts,.tsx,.jsx,.css,.html,.sh,.sql,.zip,.glb,.gltf,.obj,.stl,.blend">
-          <select id="chatModel" style="width:auto;border-radius:99px;padding:6px 10px;font-size:13px"></select>
+          <select id="chatModel" class="modelpick" aria-label="Model"></select>
           <span class="grow" id="chatFileNote"></span>
           <button id="btnSend" aria-label="Send"><svg class="ic" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
         </div>
@@ -437,7 +506,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         <button class="ghost" id="cpToggle" title="Checkpoints: saved versions of this project you can return to" style="display:none"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg><span>Versions</span></button>
         <button class="ghost" id="pvToggle" title="Show or hide the live preview"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg><span>Preview</span></button>
       </div>
-      <div id="agImages" class="msgimgs" hidden></div>
+      <div id="agImages" class="agimgs" hidden></div>
       <div id="cpPanel" hidden><div class="cphead"><b>Saved versions</b><button class="ghost" id="cpSave">Save checkpoint now</button><button class="iconbtn" id="cpClose" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div id="cpList"></div><p class="note">A checkpoint is saved automatically after every run. Restoring keeps the current state as a checkpoint too, so you can always go back.</p></div>
       <div class="msgs" id="agMsgs"></div>
       <div class="composer" id="agComposer">
@@ -458,7 +527,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
             <div class="note">Preferences are saved on the server. Publishing requires server support; installing VELLUR still requires approval.</div>
             <div class="note" id="agToolsNote" role="status" aria-live="polite"></div>
           </div></details>
-          <select id="tModel" style="width:auto;border-radius:99px;padding:6px 10px;font-size:13px" aria-label="Model"></select>
+          <select id="tModel" class="modelpick" aria-label="Model"></select>
           <span class="grow" id="agNote"></span>
           <button id="agSend" aria-label="Send"><svg class="ic" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
         </div>
@@ -483,27 +552,20 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
      </aside>
     </section>
 
-    <section class="card c12 admin-only" data-tab="models">
-      <h2>Model routing</h2>
-      <p class="sub2">Each public model name tries its targets in order: <code>provider:model-id</code> or <code>gpu</code>. Empty chat/max lists use the coder list. A later <em>paid</em> target is used only if “Paid fallback” is on (GPU tab).</p>
-      <div id="routes"></div>
-      <div class="row" style="margin-top:10px"><button id="routesSave">Save routing</button><span class="note" id="routesNote" style="margin:0"></span></div>
-      <div id="effective" class="note"></div>
-      <label style="margin-top:14px">Manual prices, one per line: <code>provider:model-id  input  output</code> (USD per million tokens; needed for paid models when the provider does not publish prices)</label>
-      <textarea id="prices" rows="3"></textarea>
-      <div class="row" style="margin-top:8px"><button class="ghost" id="pricesSave">Save prices</button></div>
-    </section>
+    <section class="c12 admin-only pagehead" data-tab="models"><div><span class="label">VELLUR · Models</span><h1>Models</h1><p>Which AI answers chat, writes code and creates images, and what each one costs.</p></div></section>
     <section class="card c12 admin-only" data-tab="models">
       <h2>Models and capabilities</h2>
       <p class="sub2">Discovered models are grouped by what they can actually do. Vision means the model can read images; Image generation means it can create them. A model is never used for a task it does not declare.</p>
       <div id="imageSetup" class="setup" hidden></div>
       <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap"><input id="modelFilter" placeholder="Filter models…" style="max-width:240px"><button class="ghost" id="modelsRefresh">Refresh list</button><span class="note" id="modelsNote" style="margin:0"></span></div>
-      <div class="modelgrid" id="modelCards"></div>
+      <div id="modelCards"></div>
     </section>
     <section class="card c12 admin-only" data-tab="models">
       <h2>Image generation</h2>
       <p class="sub2">Optional and off until an image-output model is configured. The model must declare image output; VELLUR does not guess. Paid images need confirmation and are capped per request.</p>
       <div id="imageStatus" class="note"></div>
+      <div class="label" style="margin-top:16px">Verified image models</div>
+      <div class="suggest" id="imageSuggest"></div>
       <div class="f2" style="margin-top:10px">
         <div><label>Maximum USD per image request</label><input id="imageMaxUsd" type="number" min="0" max="100" step="0.01"></div>
         <div><label>Maximum USD per agent image</label><input id="agentImageMaxUsd" type="number" min="0" max="100" step="0.01"></div>
@@ -524,6 +586,16 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       <pre class="box" id="catalogBox" style="display:none"></pre>
     </section>
 
+    <section class="card c12 admin-only" data-tab="models">
+      <h2>Routing (advanced)</h2>
+      <p class="sub2">Each public model name tries its targets in order: <code>provider:model-id</code> or <code>gpu</code>. Empty chat/max lists use the coder list. A later <em>paid</em> target is used only if “Paid fallback” is on (GPU tab).</p>
+      <div id="routes"></div>
+      <div class="row" style="margin-top:10px"><button id="routesSave">Save routing</button><span class="note" id="routesNote" style="margin:0"></span></div>
+      <div id="effective" class="note"></div>
+      <label style="margin-top:14px">Manual prices, one per line: <code>provider:model-id  input  output</code> (USD per million tokens; needed for paid models when the provider does not publish prices)</label>
+      <textarea id="prices" rows="3"></textarea>
+      <div class="row" style="margin-top:8px"><button class="ghost" id="pricesSave">Save prices</button></div>
+    </section>
     <section class="card c8 admin-only" data-tab="costs">
       <h2>This month by model</h2>
       <div style="overflow:auto"><table><thead><tr><th>Target</th><th>Requests</th><th>Failed</th><th>Tokens in / out</th><th>Cost</th><th>Source</th><th>Avg time</th></tr></thead><tbody id="cTargets"></tbody></table></div>
@@ -538,6 +610,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       <dl class="kv" style="margin-top:12px;max-width:460px"><dt>Variable + in-budget fixed</dt><dd id="cTotal">—</dd><dt>Other fixed (outside budget)</dt><dd id="cFixedOut">—</dd><dt>All-in monthly total</dt><dd id="cAll">—</dd></dl>
     </section>
 
+    <section class="c12 admin-only pagehead" data-tab="activity"><div><span class="label">VELLUR · Activity</span><h1>Activity</h1><p>Versions of VELLUR and the controller's event log.</p></div></section>
     <section class="card c12 admin-only" data-tab="activity">
       <h2>VELLUR version</h2>
       <p class="sub2">New versions of VELLUR are never installed by themselves. You approve an exact version here; the server installs it only after its automated tests passed, and returns to the previous version if the new one fails its checks.</p>
@@ -632,8 +705,37 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   };
   // ── workspace (after login) ──────────────────────────────────────────────────────────────────
   const esc = (t) => String(t).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-  const md = (t) => esc(t).split(/```/).map((part, i) => i % 2 ? "<pre>" + part.replace(/^[a-zA-Z0-9_+-]*\n/, "") + "</pre>"
-    : part.replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")).join("");
+  // Markdown subset for model answers: fenced code, headings, lists, quotes, rules, bold/italic/code, https links.
+  // Input is escaped first, so nothing the model writes can become markup it did not ask for.
+  function inline(t) {
+    const codes = [];
+    t = t.replace(/`([^`\n]+)`/g, (_, c) => { codes.push(c); return "\u0000" + (codes.length - 1) + "\u0000"; });
+    t = t.replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>").replace(/(^|[\s(])\*([^*\s][^*\n]*?)\*(?=[\s).,;:!?]|$)/g, "$1<em>$2</em>")
+      .replace(/\[([^\]\n]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer">$1</a>');
+    return t.replace(/\u0000(\d+)\u0000/g, (_, i) => "<code>" + codes[Number(i)] + "</code>");
+  }
+  function blocks(t) {
+    const out = []; let para = [], list = null;
+    const flushP = () => { if (para.length) { out.push("<p>" + para.map(inline).join("<br>") + "</p>"); para = []; } };
+    const flushL = () => { if (list) { out.push("<" + list.t + ">" + list.items.map(x => "<li>" + inline(x) + "</li>").join("") + "</" + list.t + ">"); list = null; } };
+    for (const raw of t.split("\n")) {
+      const line = raw.replace(/\s+$/, ""); let m;
+      if (!line.trim()) { flushP(); flushL(); continue; }
+      if ((m = line.match(/^(#{1,4})\s+(.*)$/))) { flushP(); flushL(); const h = m[1].length <= 2 ? "h3" : "h4"; out.push("<" + h + ">" + inline(m[2]) + "</" + h + ">"); continue; }
+      if (/^(-{3,}|\*{3,}|_{3,})$/.test(line.trim())) { flushP(); flushL(); out.push("<hr>"); continue; }
+      if ((m = line.match(/^\s*[-*•]\s+(.*)$/))) { flushP(); if (!list || list.t !== "ul") { flushL(); list = { t: "ul", items: [] }; } list.items.push(m[1]); continue; }
+      if ((m = line.match(/^\s*\d{1,3}[.)]\s+(.*)$/))) { flushP(); if (!list || list.t !== "ol") { flushL(); list = { t: "ol", items: [] }; } list.items.push(m[1]); continue; }
+      if ((m = line.match(/^&gt;\s?(.*)$/))) { flushP(); flushL(); out.push("<blockquote>" + inline(m[1]) + "</blockquote>"); continue; }
+      if (list && /^\s{2,}\S/.test(raw)) { list.items[list.items.length - 1] += " " + line.trim(); continue; }
+      flushL(); para.push(line);
+    }
+    flushP(); flushL(); return out.join("");
+  }
+  const md = (t) => esc(t).split(/```/).map((part, i) => {
+    if (!(i % 2)) return blocks(part);
+    const m = part.match(/^([a-zA-Z0-9_+-]*)\n/);
+    return '<pre data-lang="' + ((m && m[1]) || "code") + '"><code>' + part.slice(m ? m[0].length : 0).replace(/\n$/, "") + "</code></pre>";
+  }).join("");
   const send = (path, method, body) => api(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
   // ── attachments: upload once, then reference by id from chat or an agent task ────────────────
   let ATT_MAX_MB = 25, ATT_MAX = 10;
@@ -704,12 +806,32 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     el.addEventListener("paste", (e) => { const f = [...((e.clipboardData || {}).files || [])]; if (f.length) { e.preventDefault(); addFiles(f, list, rerender, note); } });
   }
   const attsReady = (list) => list.every(a => a.id && !a.pending && !a.error);
-  const ROLE_NAMES = ["vellur-coder", "vellur-chat", "vellur-max", "vellur-image"];
-  function fillModels(sel, value) { sel.innerHTML = ""; ROLE_NAMES.forEach(r => sel.add(new Option(r, r))); if (value) sel.value = value; }
+  // Public model names grouped by what they are for. Image generation is never offered to the coding agent.
+  const ROLE_INFO = { "vellur-chat": "Chat", "vellur-max": "Max", "vellur-coder": "Coder", "vellur-image": "Image" };
+  const ROLE_HELP = { "vellur-chat": "everyday questions, economical", "vellur-max": "hardest problems, strongest model",
+    "vellur-coder": "code and technical work", "vellur-image": "creates images (confirmed before any paid request)" };
+  let ROUTE_HINT = {};
+  const shortModel = (t) => String(t || "").replace(/^[^:]+:/, "").split("/").pop();
+  function fillModels(sel, value, kind) {
+    const keep = value || sel.value; sel.innerHTML = "";
+    const groups = kind === "agent" ? [["Coding agent", ["vellur-coder", "vellur-max", "vellur-chat"]]]
+      : [["Chat models", ["vellur-chat", "vellur-max"]], ["Coding models", ["vellur-coder"]], ["Image models", ["vellur-image"]]];
+    for (const [label, roles] of groups) {
+      const og = document.createElement("optgroup"); og.label = label;
+      roles.forEach(r => { const hint = ROUTE_HINT[r]; const o = new Option(ROLE_INFO[r] + (hint ? " · " + shortModel(hint) : ""), r); o.title = ROLE_HELP[r] + (hint ? " → " + hint : ""); og.appendChild(o); });
+      sel.appendChild(og);
+    }
+    if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
+  }
+  async function loadRouteHints() {
+    try { const l = await send("llm", "GET"); ROUTE_HINT = {};
+      Object.entries(l.effective || {}).forEach(([r, rows]) => { const u = rows.find(x => x.usable); if (u) ROUTE_HINT[r] = u.target; });
+      fillModels($("chatModel")); fillModels($("tModel"), null, "agent"); } catch (e) {}
+  }
   let VIEW = "chat";
   function setView(v) {
     if (VIEW === "agent" && v !== "agent") closeStream();
-    VIEW = v; document.body.dataset.view = v; if ($("sideLabel")) $("sideLabel").textContent = v === "agent" ? "Agent tasks" : "Conversations"; document.body.classList.remove("nav-open"); $("topTitle").textContent = v[0].toUpperCase() + v.slice(1); try { sessionStorage.setItem("vellurView", v); } catch (e) {}
+    VIEW = v; document.body.dataset.view = v; if ($("sideLabel")) $("sideLabel").textContent = v === "agent" ? "Agent tasks" : "Conversations"; document.body.classList.remove("nav-open"); $("topTitle").textContent = v[0].toUpperCase() + v.slice(1); $("topNew").style.visibility = ["chat", "agent"].includes(v) ? "" : "hidden"; try { sessionStorage.setItem("vellurView", v); } catch (e) {}
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
     document.querySelectorAll("section[data-tab]").forEach(sec => { sec.hidden = !sec.dataset.tab.split(" ").includes(v); });
     ({ chat: loadConvs, agent: loadAgent, models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {} })[v]();
@@ -726,58 +848,146 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     if (!images || !images.length) return "";
     return '<div class="msgimgs">' + images.map(im => `<a href="${esc(im.url)}" target="_blank" rel="noopener" title="${esc(im.prompt || "generated image")}"><img loading="lazy" src="${esc(im.preview_url || im.url)}" alt="${esc(im.prompt || "generated image")}" width="${im.width || ""}" height="${im.height || ""}"></a>`).join("") + "</div>";
   }
-  function addMsg(role, text, atts, images) {
+  const SEND_ICON = '<svg class="ic" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg>';
+  const STOP_ICON = '<svg class="ic" viewBox="0 0 24 24"><rect x="7" y="7" width="10" height="10" rx="1.5" fill="currentColor"/></svg>';
+  const TYPING = '<span class="typing" aria-label="Thinking"><i></i><i></i><i></i></span>';
+  const reqId = () => "req_" + Array.from(crypto.getRandomValues(new Uint8Array(12)), b => b.toString(16).padStart(2, "0")).join("");
+  const errBox = (title, text) => `<div class="err" role="alert"><b>${esc(title)}</b>${esc(text || "")}</div>`;
+  function costText(m) {
+    if (!m || !m.cost_source) return "";
+    if (m.cost_source === "plan") return "free";
+    if (m.cost_source === "gpu") return "GPU";
+    if (m.cost_source === "unpriced" || m.cost_source === "unknown") return "price unknown";
+    return (m.cost_source === "estimate" ? "≈ $" : "$") + Number(m.cost_usd || 0).toFixed(4);
+  }
+  function setMeta(txt, meta, copyText) {     // model · tokens · cost, plus Copy; under every answer
+    const holder = txt.parentNode; if (!holder) return;
+    let row = holder.querySelector(".mmeta"); if (!row) { row = document.createElement("div"); row.className = "mmeta"; holder.appendChild(row); }
+    const bits = [meta && meta.target ? shortModel(meta.target) : "", meta && meta.out_tokens ? meta.out_tokens + " tok" : "", costText(meta)].filter(Boolean);
+    row.innerHTML = bits.map(b => `<span>${esc(b)}</span>`).join("<span>·</span>") + '<span class="sp"></span>' + (copyText ? '<button type="button" data-copy>Copy</button>' : "");
+    if (meta && meta.target) row.title = meta.target + (meta.cost_source ? " · cost source: " + meta.cost_source : "");
+    const c = row.querySelector("[data-copy]"); if (c) c.onclick = () => navigator.clipboard && navigator.clipboard.writeText(copyText).then(() => { c.textContent = "Copied"; setTimeout(() => { c.textContent = "Copy"; }, 1400); });
+  }
+  function addMsg(role, text, atts, images, meta) {
     const d = document.createElement("div"); d.className = "m " + role;
     d.innerHTML = '<div class="who">' + (role === "user" ? "You" : "VELLUR AI") + '</div><div class="txt"></div>';
-    d.querySelector(".txt").innerHTML = md(text || "") + msgAtts(atts) + msgImgs(images);
-    $("msgs").appendChild(d); $("msgs").scrollTop = $("msgs").scrollHeight; return d.querySelector(".txt");
+    const imageOnly = images && images.length && /^Generated image/.test(text || "");
+    const body = role === "user" ? esc(text || "") : (imageOnly ? "" : md(text || ""));
+    d.querySelector(".txt").innerHTML = body + msgAtts(atts) + (images && images.length ? '<div class="imgcard done">' + msgImgs(images) + "</div>" : "");
+    $("msgs").querySelectorAll(".m.last").forEach(x => x.classList.remove("last"));
+    if (role === "assistant") d.classList.add("last");
+    $("msgs").appendChild(d); $("msgs").scrollTop = $("msgs").scrollHeight;
+    const txt = d.querySelector(".txt");
+    if (role === "assistant" && meta) setMeta(txt, meta, imageOnly ? "" : text);
+    return txt;
+  }
+  const STARTERS = [["Write", "Draft a short, warm email in Romanian announcing a new service to existing clients."],
+    ["Explain", "Explain how DNS works, step by step, for someone who is not a developer."],
+    ["Analyse", "Summarise the attached file and list the three things that matter most."],
+    ["Image", "Generate an image of a minimalist obsidian desk lamp on a dark stone table, soft studio light."]];
+  function chatEmpty() {
+    $("msgs").innerHTML = `<div class="chatempty"><span class="label">VELLUR · Workspace</span><h3>What are we working on?</h3><p>Ask, write, analyse a file or describe an image to create. Answers stream in and every conversation is saved.</p><div class="starters">${STARTERS.map(([k, t]) => `<button class="starter" type="button"><b>${k}</b>${esc(t)}</button>`).join("")}</div></div>`;
+    $("msgs").querySelectorAll(".starter").forEach((b, i) => b.onclick = () => {
+      $("chatIn").value = STARTERS[i][1]; grow(); $("chatIn").focus();
+      if (STARTERS[i][0] === "Analyse") $("chatFile").click();
+    });
+  }
+  // ── image generation in chat: confirm → generating → image | error (retry) ──────────────────
+  function priceLine(e) {
+    if (e.free) return "Free (plan)";
+    if (e.estimated_usd != null) return "$" + Number(e.estimated_usd).toFixed(4) + (e.price_source === "manual" ? " (your price)" : " (provider catalog)");
+    return "Not published by the provider";
+  }
+  function imageConfirm(out, prompt, e) {
+    const rid = reqId();      // one id per card: a double click or a resend can never pay twice
+    out.innerHTML = `<div class="imgcard"><div class="ih"><b>Generate this image?</b><span class="oc warn">Paid</span></div><div class="ib"><div class="prompt">${esc(prompt)}</div><dl><dt>Model</dt><dd>${esc(e.model || "")}</dd><dt>Size</dt><dd>${esc(e.size || "")}</dd><dt>Price</dt><dd>${esc(priceLine(e))}</dd><dt>Limits</dt><dd>$${Number(e.limit_usd || 0).toFixed(2)} per request${e.budget_remaining_usd != null ? " · $" + Number(e.budget_remaining_usd).toFixed(2) + " left this month" : ""}</dd></dl>${e.cost_known ? "" : `<div class="warnline">This model does not publish a price per image (some are billed per megapixel), so the cost cannot be shown in advance. ${e.cost_reported_by_provider ? "The real cost is recorded as soon as the provider reports it." : "Set a manual image price in Models so it can be tracked."}</div>`}<div class="acts"><button class="primary" type="button" data-go>${e.cost_known ? "Generate · $" + Number(e.estimated_usd).toFixed(4) : "Generate anyway"}</button><button class="ghost" type="button" data-no>Cancel</button></div></div></div>`;
+    out.querySelector("[data-no]").onclick = () => { out.innerHTML = '<span class="note">Cancelled. Nothing was generated or charged.</span>'; };
+    out.querySelector("[data-go]").onclick = (ev) => { ev.currentTarget.disabled = true; runImage(out, prompt, e, rid); };
+  }
+  function imagePending(out, label) {
+    const t0 = Date.now();
+    out.innerHTML = `<div class="imgcard"><div class="ih"><b>Generating image…</b><span class="note" data-t style="margin:0">0s</span></div><div class="stage"><span>${esc(label || "image model")}</span></div><div class="ib" hidden><div class="acts"><button class="ghost" type="button" data-stop>Stop waiting</button></div></div></div>`;
+    const tick = setInterval(() => { const t = out.querySelector("[data-t]"); if (!t) return clearInterval(tick); t.textContent = Math.round((Date.now() - t0) / 1000) + "s"; }, 1000);
+    return tick;
+  }
+  function imageDone(out, g) {
+    out.innerHTML = '<div class="imgcard done">' + msgImgs(g.images) + "</div>" + (g.warning ? `<div class="warnline" style="margin-top:8px;color:var(--warn);font-size:12.5px">${esc(g.warning)}</div>` : "");
+    setMeta(out, { target: g.target, cost_usd: g.cost_usd, cost_source: g.cost_source }, "");
+  }
+  async function runImage(out, prompt, e, rid) {
+    const ctl = new AbortController(), tick = imagePending(out, e.model);
+    const ib = out.querySelector(".ib"); ib.hidden = false; out.querySelector("[data-stop]").onclick = () => ctl.abort();
+    try {
+      const g = await api("images/generate", { method: "POST", signal: ctl.signal, body: JSON.stringify({ prompt, model: "vellur-image", size: e.size || "1024x1024", n: 1, confirm: true, conversation_id: CONV, request_id: rid }) });
+      imageDone(out, g);
+    } catch (er) {
+      if (er.name === "AbortError") out.innerHTML = errBox("Stopped waiting", "The provider may still finish this image. If it does, it is saved in this conversation and appears when you reopen it.");
+      else { out.innerHTML = errBox("The image could not be generated", er.message) ; const b = document.createElement("button"); b.className = "ghost"; b.type = "button"; b.style.marginTop = "10px"; b.textContent = "Try again"; b.onclick = () => runImage(out, prompt, e, reqId()); out.firstChild.appendChild(b); }
+    } finally { clearInterval(tick); }
   }
   async function loadConvs(selectId) {
     clearChatAtts();
     const list = (await send("conversations", "GET")).conversations; const sel = $("convSel"); sel.innerHTML = "";
     list.forEach(c => sel.add(new Option(c.title, c.id)));
-    if (!list.length) { CONV = null; $("msgs").innerHTML = '<div class="note">Ask anything, or attach a file to analyse.</div>'; fillModels($("chatModel"), "vellur-chat"); return; }
+    if (!list.length) { CONV = null; $("chatTitle").textContent = "New conversation"; chatEmpty(); fillModels($("chatModel"), "vellur-chat"); return; }
     await openConv(selectId || CONV || list[0].id);
   }
   async function openConv(id) {
     clearChatAtts();
-    const c = await send("conversations/" + id, "GET"); CONV = c.id; $("convSel").value = c.id; fillModels($("chatModel"), c.model);
-    $("msgs").innerHTML = ""; c.messages.forEach(m => addMsg(m.role, m.content, (m.meta || {}).attachments || [], (m.meta || {}).images || []));
-    if (!c.messages.length) $("msgs").innerHTML = '<div class="note">Ask anything, or attach a file to analyse.</div>';
+    const c = await send("conversations/" + id, "GET"); CONV = c.id; $("convSel").value = c.id; fillModels($("chatModel"), c.model); $("chatTitle").textContent = c.title;
+    $("msgs").innerHTML = ""; c.messages.forEach(m => { const meta = m.meta || {}; addMsg(m.role, m.content, meta.attachments || [], meta.images || [], m.role === "assistant" ? meta : null); });
+    if (!c.messages.length) chatEmpty();
   }
   $("convSel").onchange = () => openConv($("convSel").value);
-  $("convNew").onclick = async () => { const c = await send("conversations", "POST", { model: $("chatModel").value }); await loadConvs(c.id); $("chatIn").focus(); };
+  // A new conversation never starts in image mode: images are a deliberate choice, not a leftover from the last chat.
+  const textModel = () => $("chatModel").value === "vellur-image" ? "vellur-chat" : $("chatModel").value;
+  $("convNew").onclick = async () => { const c = await send("conversations", "POST", { model: textModel() }); await loadConvs(c.id); $("chatIn").focus(); };
   $("convDel").onclick = async () => { if (CONV && confirm("Delete this conversation?")) { await send("conversations/" + CONV, "DELETE"); CONV = null; await loadConvs(); } };
+  let CHAT_ABORT = null;
+  function chatBusy(on) { const b = $("btnSend"); b.classList.toggle("stop", on); b.innerHTML = on ? STOP_ICON : SEND_ICON; b.setAttribute("aria-label", on ? "Stop the answer" : "Send"); b.title = on ? "Stop" : "Send"; }
   $("btnSend").onclick = async () => {
+    if (CHAT_ABORT) { CHAT_ABORT.abort(); return; }
     const text = $("chatIn").value.trim(); if (!text && !chatAtts.length) return;
     if (!attsReady(chatAtts)) { $("chatFileNote").textContent = "Wait for the attachments to finish uploading."; return; }
-    const ids = chatAtts.map(a => a.id), shown = chatAtts.slice();
-    $("btnSend").disabled = true;
+    const ids = chatAtts.map(a => a.id), shown = chatAtts.slice(), model = $("chatModel").value;
+    const ctl = new AbortController(); CHAT_ABORT = ctl; chatBusy(true);
+    let out = null, acc = "", tick = null;
     try {
-      if (!CONV) { const c = await send("conversations", "POST", { model: $("chatModel").value }); CONV = c.id; $("msgs").innerHTML = ""; }
-      if ($("msgs").querySelector(".note")) $("msgs").innerHTML = "";
+      if (!CONV) { const c = await send("conversations", "POST", { model }); CONV = c.id; $("msgs").innerHTML = ""; }
+      if ($("msgs").querySelector(".chatempty")) $("msgs").innerHTML = "";
       $("chatIn").value = ""; chatAtts.length = 0; renderChatAtts(); $("chatFile").value = ""; $("chatFileNote").textContent = "";
-      addMsg("user", text, shown); const out = addMsg("assistant", "…"); let acc = "", errText = "";
-      const r = await fetch("/autopilot/api/conversations/" + CONV + "/messages", { method: "POST", credentials: "same-origin",
-        headers: { "Content-Type": "application/json", "X-Vellur-Request": "1" }, body: JSON.stringify({ content: text, model: $("chatModel").value, attachments: ids }) });
+      addMsg("user", text, shown); out = addMsg("assistant", "");
+      if (model === "vellur-image") tick = imagePending(out, ROUTE_HINT["vellur-image"] ? shortModel(ROUTE_HINT["vellur-image"]) : "image model"); else out.innerHTML = TYPING;
+      let errText = "", done = null, card = false, image = false;
+      const r = await fetch("/autopilot/api/conversations/" + CONV + "/messages", { method: "POST", credentials: "same-origin", signal: ctl.signal,
+        headers: { "Content-Type": "application/json", "X-Vellur-Request": "1" }, body: JSON.stringify({ content: text, model, attachments: ids, request_id: reqId() }) });
       if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || ("HTTP " + r.status)); }
       const reader = r.body.getReader(), dec = new TextDecoder(); let buf = "", thinking = false;
-      for (;;) { const { value, done } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true });
+      for (;;) { const { value, done: end } = await reader.read(); if (end) break; buf += dec.decode(value, { stream: true });
         let i; while ((i = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
           if (!line.startsWith("data:")) continue; const d = line.slice(5).trim(); if (d === "[DONE]") continue;
-          try { const j = JSON.parse(d); if (j.vellur_error) { errText = j.vellur_error; continue; }
-            if (j.vellur_image_confirm) { const e = j.vellur_image_confirm; out.innerHTML = `<div class="imgcard"><b>Generate this image?</b><div class="note">${esc(e.provider || "")} ${esc(e.model || "")} · ${esc(e.size || "")} · ${e.estimated_usd == null ? "price unknown" : "$" + Number(e.estimated_usd).toFixed(4)}${e.requires_confirmation ? " (paid)" : ""}</div><button class="ghost" type="button">Generate image</button><span class="note"></span></div>`; out.querySelector("button").onclick = async (ev) => { const b = ev.currentTarget; b.disabled = true; b.textContent = "Generating…"; try { const g = await send("images/generate", "POST", { prompt: j.prompt, model: "vellur-image", size: e.size || "1024x1024", n: 1, confirm: true, conversation_id: CONV }); out.innerHTML = md("Generated image") + msgImgs(g.images); } catch (er) { out.querySelector(".note:last-child").textContent = er.message; b.disabled = false; b.textContent = "Generate image"; } }; continue; }
-            if (j.vellur_image) { out.innerHTML = md("Generated image") + msgImgs(j.vellur_image.images); continue; }
-            if (j.vellur_done) continue;
-            const delta = (j.choices && j.choices[0] && j.choices[0].delta) || {};
-            if (delta.content) acc += delta.content; else if (delta.reasoning_content || delta.reasoning) thinking = true; } catch (e) {}
-          if (!out.querySelector(".imgcard")) out.innerHTML = acc ? md(acc) : (thinking ? "<span class='note'>thinking…</span>" : "…"); $("msgs").scrollTop = $("msgs").scrollHeight; } }
-      if (errText) out.innerHTML = '<span class="badc">⚠ ' + esc(errText) + "</span>"; else if (!acc && !out.querySelector(".msgimgs") && !out.querySelector(".imgcard")) out.textContent = "(empty answer)";
+          let j; try { j = JSON.parse(d); } catch (e) { continue; }
+          if (j.vellur_error) { errText = j.vellur_error; continue; }
+          if (j.vellur_image_confirm) { clearInterval(tick); card = true; imageConfirm(out, j.prompt, j.vellur_image_confirm); continue; }
+          if (j.vellur_image) { clearInterval(tick); image = true; imageDone(out, j.vellur_image); continue; }
+          if (j.vellur_done) { done = j; continue; }
+          const delta = (j.choices && j.choices[0] && j.choices[0].delta) || {};
+          if (delta.content) acc += delta.content; else if (delta.reasoning_content || delta.reasoning) thinking = true;
+          if (!card && !image) { out.innerHTML = acc ? md(acc) : (thinking ? TYPING + ' <span class="note" style="display:inline">thinking…</span>' : TYPING); if (stickChat()) $("msgs").scrollTop = $("msgs").scrollHeight; } } }
+      clearInterval(tick);
+      if (errText) out.innerHTML = errBox(model === "vellur-image" ? "The image could not be generated" : "No answer", errText);
+      else if (!acc && !image && !card) out.innerHTML = errBox("Empty answer", "The model answered with no text. Reasoning models sometimes use their whole output limit for thinking; try again or switch to another model.");
+      if (done && acc) setMeta(out, done, acc);
       const cur = $("convSel").selectedOptions[0]; if (!cur || cur.text === "New conversation" || String(cur.value) !== String(CONV)) await loadConvsQuiet();
-    } catch (e) { addMsg("assistant", "⚠ " + e.message); } finally { $("btnSend").disabled = false; }
+    } catch (e) {
+      clearInterval(tick);
+      if (e.name === "AbortError") { if (out) { out.innerHTML = (acc ? md(acc) : "") + '<p class="note" style="margin-top:6px">Stopped. ' + (acc ? "The part above is saved." : "Nothing was saved.") + "</p>"; if (acc) setMeta(out, null, acc); } }
+      else if (out) out.innerHTML = errBox("Something went wrong", e.message); else addMsg("assistant", "⚠ " + e.message);
+    } finally { CHAT_ABORT = null; chatBusy(false); }
   };
-  async function loadConvsQuiet() { const list = (await send("conversations", "GET")).conversations; const sel = $("convSel"); sel.innerHTML = ""; list.forEach(c => sel.add(new Option(c.title, c.id))); sel.value = CONV; }
-  $("chatIn").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !matchMedia("(pointer:coarse)").matches) { e.preventDefault(); $("btnSend").click(); } });
+  const stickChat = () => { const b = $("msgs"); return b.scrollHeight - b.scrollTop - b.clientHeight < 200; };
+  async function loadConvsQuiet() { const list = (await send("conversations", "GET")).conversations; const sel = $("convSel"); sel.innerHTML = ""; list.forEach(c => sel.add(new Option(c.title, c.id))); sel.value = CONV; const c = list.find(x => String(x.id) === String(CONV)); if (c) $("chatTitle").textContent = c.title; }
+  $("chatIn").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && !matchMedia("(pointer:coarse)").matches) { e.preventDefault(); if (!CHAT_ABORT) $("btnSend").click(); } });
   $("memSave").onclick = async () => { try { await send("settings", "PUT", { memory: $("memory").value }); $("memNote").textContent = "saved"; } catch (e) { $("memNote").textContent = e.message; } };
 
   // agent
@@ -978,12 +1188,12 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   async function loadAgent() {
     try { AGENT = await send("agent", "GET"); } catch (e) { AGENT = { available: false, why: e.message, tasks: [] }; }
     if (PREFS) syncAgentPrefs(PREFS);
-    TASKS = AGENT.tasks || []; renderTasks(); fillModels($("tModel"), $("tModel").value || "vellur-coder");
+    TASKS = AGENT.tasks || []; renderTasks(); fillModels($("tModel"), $("tModel").value || "vellur-coder", "agent");
     const gh = AGENT.github || {};
     if (gh.ok) $("ghNote").textContent = "GitHub connected as " + (gh.login || "token") + " ✓ · change token";
-    else if (AGENT.github_token_set) { $("ghNote").textContent = "GitHub token saved, but not verified: " + (gh.message || "check failed"); $("ghBox").open = true; }
+    else if (AGENT.github_token_set) $("ghNote").textContent = "GitHub token saved, but not verified: " + (gh.message || "check failed") + " ▸";
     else $("ghNote").textContent = "Connect GitHub to work on your repositories ▸";
-    if (!AGENT.github_token_set) $("ghBox").open = true;
+    $("ghBox").classList.toggle("needs", !gh.ok);
     $("agVision").checked = !!AGENT.vision;
     $("tLimits").textContent = AGENT.max_minutes + " min, $" + AGENT.max_usd + " (GPU tab → settings).";
     if (!REPOS_LOADED) loadRepos();
@@ -1282,35 +1492,56 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   };
 
   // models
-  let MODELS = [], CAPS = {};
-  const capLabels = (c) => (c || []).map(x => `<span class="cap ${esc(x)}">${esc((CAPS[x] || x).replace(/_/g, " "))}</span>`).join("");
+  let MODELS = [], IMG = {}, ROUTES = {};
+  // The server's `capabilities` field is a summary of counts, not labels: labels live here (this mix-up crashed Models).
+  const CAP_NAMES = { text_input: "text in", text_output: "text out", chat: "chat", coding: "coding", reasoning: "reasoning", tool_call: "tools",
+    vision: "vision", image_generation: "image generation", image_edit: "image editing", audio_input: "audio in", audio_output: "audio out", embedding: "embeddings" };
+  const SHOW_CAPS = ["coding", "reasoning", "tool_call", "vision", "image_generation", "image_edit", "embedding"];
+  const capLabels = (c) => (c || []).filter(x => SHOW_CAPS.includes(x)).map(x => `<span class="cap ${esc(x)}">${esc(CAP_NAMES[x] || String(x).replace(/_/g, " "))}</span>`).join("");
+  const kindOf = (x) => x.image_generation ? "image" : (x.capabilities || []).includes("coding") ? "coding" : "chat";
+  const priceOf = (x) => x.target === "gpu" ? "billed per GPU hour while it runs" : x.image_generation ? (x.image_price != null ? "$" + (+x.image_price).toFixed(4) + " / image" : "price per image not published")
+    : (x.in == null ? "price unknown" : (+x.in === 0 && +x.out === 0) ? "free" : "$" + (+x.in).toFixed(2) + " in · $" + (+x.out).toFixed(2) + " out / M");
+  async function useForImages(target) {
+    const routes = Object.assign({}, ROUTES, { "vellur-image": [target] });
+    renderLLM(await send("llm/routes", "PUT", routes)); await loadLLM();
+    $("imageNote").textContent = target + " is now the image model.";
+  }
   function renderModels(m, imageStatus) {
-    MODELS = m.models || []; CAPS = m.capabilities || {};
+    MODELS = m.models || []; if (imageStatus) IMG = imageStatus;
     const q = ($("modelFilter").value || "").toLowerCase();
     const rows = MODELS.filter(x => !q || (x.target + " " + (x.labels || []).join(" ")).toLowerCase().includes(q));
-    $("modelCards").innerHTML = rows.map(x => `<div class="modelcard" data-target="${esc(x.target)}"><b>${esc(x.target)}</b><div class="note">${esc(x.provider_display || x.provider)} · ${x.ctx ? "ctx " + Number(x.ctx).toLocaleString() : "ctx ?"} · ${x.in == null ? "price unknown" : "$" + (+x.in).toFixed(4) + " in / $" + (+x.out).toFixed(4) + " out per M"}${x.image_price != null ? " · $" + (+x.image_price).toFixed(4) + "/image" : ""}</div><div class="caps">${capLabels(x.capabilities)}</div><div class="row"><button class="ghost" data-act="test">Test</button><button class="ghost" data-act="route">Use</button>${x.usable ? "" : '<span class="note" style="margin:0">not usable now</span>'}</div></div>`).join("") || '<div class="note">No models discovered yet. Save a provider key and press “Models” next to it.</div>';
-    $("modelCards").querySelectorAll("[data-target]").forEach(card => {
-      const target = card.dataset.target;
-      card.querySelector('[data-act="test"]').onclick = async () => { $("modelsNote").textContent = "Testing " + target + "…"; try { const r = await send("llm/test", "POST", { target }); $("modelsNote").textContent = r.ok ? "OK: " + (r.answer || "answered") : "Failed: " + (r.detail || ""); } catch (e) { $("modelsNote").textContent = e.message; } };
-      card.querySelector('[data-act="route"]').onclick = () => {
-        const x = MODELS.find(m => m.target === target) || {};
-        const role = x.image_generation ? "vellur-image" : x.vision ? "vellur-chat" : "vellur-coder";
-        const box = document.querySelector(`[data-route="${role}"]`); if (!box) return;
-        const lines = box.value.split("\n").map(v => v.trim()).filter(Boolean);
+    const card = (x) => `<div class="modelcard" data-target="${esc(x.target)}"><b>${esc(x.target)}</b><div class="note">${esc(x.provider_display || x.provider)} · ${x.ctx ? Number(x.ctx).toLocaleString() + " ctx · " : ""}${esc(priceOf(x))}</div><div class="caps">${capLabels(x.capabilities)}</div><div class="row"><button class="ghost" data-act="test">Test</button>${x.image_generation && IMG.target === x.target ? '<span class="oc ok">Image model</span><button class="ghost" data-act="route" hidden></button>' : `<button class="ghost" data-act="route">${x.image_generation ? "Use for images" : "Add to route"}</button>`}${x.usable ? "" : '<span class="note" style="margin:0">not usable now</span>'}</div></div>`;
+    const groups = [["chat", "Chat models", "Conversation and writing"], ["coding", "Coding models", "Used by the agent and OpenCode"], ["image", "Image models", "Create images; never used for text"]];
+    $("modelCards").innerHTML = rows.length ? groups.map(([k, title, sub]) => { const list = rows.filter(x => kindOf(x) === k); return list.length ? `<div class="mgroup"><div class="label">${title} <i>${list.length} · ${sub}</i></div><div class="modelgrid">${list.slice(0, 120).map(card).join("")}</div></div>` : ""; }).join("")
+      : '<div class="note">No models discovered yet. Save a provider key and press “Models” next to it.</div>';
+    $("modelCards").querySelectorAll("[data-target]").forEach(cardEl => {
+      const target = cardEl.dataset.target;
+      cardEl.querySelector('[data-act="test"]').onclick = async () => { $("modelsNote").textContent = "Testing " + target + "…"; try { const r = await send("llm/test", "POST", { target }); $("modelsNote").textContent = r.ok ? "OK: " + (r.answer || "answered") : "Failed: " + (r.detail || ""); } catch (e) { $("modelsNote").textContent = e.message; } };
+      cardEl.querySelector('[data-act="route"]').onclick = async () => {
+        const x = MODELS.find(mm => mm.target === target) || {};
+        if (x.image_generation) { try { await useForImages(target); } catch (e) { $("modelsNote").textContent = e.message; } return; }
+        const role = x.vision ? "vellur-chat" : "vellur-coder";
+        const area = document.querySelector(`[data-route="${role}"]`); if (!area) return;
+        const lines = area.value.split("\n").map(v => v.trim()).filter(Boolean);
         if (!lines.includes(target)) lines.push(target);
-        box.value = lines.join("\n"); box.scrollIntoView({ block: "center", behavior: "smooth" });
+        area.value = lines.join("\n"); area.scrollIntoView({ block: "center", behavior: "smooth" });
         $("routesNote").textContent = "Added to " + role + " — press Save routing.";
       };
     });
-    const img = (imageStatus || {});
+    const img = IMG || {};
     $("imageSetup").hidden = !!img.available;
-    if (!img.available) { $("imageSetup").textContent = "Image generation is not configured. Add an image-output model (Image generation badge), set the vellur-image route above and save its provider key. Until then Chat and Agent explain that images are unavailable instead of pretending to create one."; }
-    $("imageStatus").innerHTML = img.available ? `<span class="good">Ready:</span> ${esc(img.target)} · ${img.price_per_image == null ? "price unknown (set one below)" : "$" + (+img.price_per_image).toFixed(4) + " per image"}${img.free ? " · free plan" : ""}` : '<span class="badc">Not available:</span> no image-output model is configured.';
+    if (!img.available) $("imageSetup").textContent = "Image generation is not configured yet. Pick one of the verified image models below (it needs an OpenRouter key), or any model with the “image generation” badge.";
+    const src = { manual: "your manual price", catalog: "provider catalog" }[img.price_source] || "";
+    $("imageStatus").innerHTML = img.available ? `<span class="good">Ready:</span> ${esc(img.target)} · asks for ${esc((img.modalities || []).join(" + ") || "image")} output · ${img.price_per_image == null ? "price per image not published: every paid image is confirmed first and the provider's reported cost is recorded" : "$" + (+img.price_per_image).toFixed(4) + " per image (" + esc(src) + ")"}${img.free ? " · free plan" : ""}` : '<span class="badc">Not available:</span> no usable image-output model is configured.';
+    const cur = (img.target || "");
+    $("imageSuggest").innerHTML = (img.suggested || []).map(x => { const known = MODELS.find(mm => mm.target === x.target); return `<div class="modelcard${cur === x.target ? " cur" : ""}"><b>${esc(x.name)}</b><div class="note">${esc(x.maker)} · ${esc(x.note)}</div><div class="note mono" style="font-size:11px">${esc(x.target)}</div><div class="note">${known ? esc(priceOf(known)) : "price shown after the OpenRouter model list is loaded"}</div><div class="row">${cur === x.target ? '<span class="oc ok">In use</span>' : `<button class="ghost" data-use="${esc(x.target)}">Use for images</button>`}</div></div>`; }).join("");
+    $("imageSuggest").querySelectorAll("[data-use]").forEach(b => b.onclick = async () => { b.disabled = true; try { await useForImages(b.dataset.use); } catch (e) { $("imageNote").textContent = e.message; b.disabled = false; } });
   }
   const pnote = (text, kind) => { const m = $("provMsg"); m.textContent = text || ""; m.className = "msg" + (text ? " show " + (kind || "bad") : ""); };
   function renderLLM(l) {
+    ROUTES = Object.assign({}, l.routes || {});
     $("routes").innerHTML = Object.entries(l.roles).map(([r, label]) => `<label>${esc(r)} — ${esc(label)}</label><textarea data-route="${r}" rows="2" placeholder="one target per line, e.g. openrouter:deepseek/deepseek-v4.1-flash">${esc((l.routes[r] || []).join("\n"))}</textarea>`).join("");
-    $("effective").innerHTML = Object.entries(l.effective).map(([r, rows]) => "<b>" + esc(r) + "</b>: " + rows.map(x => `<span class="${x.usable ? "good" : "badc"}">${esc(x.target)}${x.usable ? (x.price ? " ($" + x.price[0] + " / $" + x.price[1] + " per M)" : "") : " — " + esc(x.why)}</span>`).join(" → ")).join("<br>");
+    $("effective").innerHTML = Object.entries(l.effective).map(([r, rows]) => "<b>" + esc(r) + "</b>: " + rows.map(x => `<span class="${x.usable ? "good" : "badc"}">${esc(x.target)}${x.usable ? (x.price && r !== "vellur-image" ? " ($" + x.price[0] + " / $" + x.price[1] + " per M)" : "") : " — " + esc(x.why)}</span>`).join(" → ")).join("<br>");
     $("prices").value = Object.entries(l.prices).map(([t, p]) => t + "  " + p[0] + "  " + p[1]).join("\n");
     $("provs").innerHTML = l.providers.map(p => `<tr data-prov="${esc(p.name)}"><td><b>${esc(p.display)}</b><div class="note" style="margin:2px 0 0;max-width:260px">${esc(p.note || (p.custom ? "custom provider" : ""))}</div><div class="caps">${capLabels(p.capabilities)}${p.vision_models ? `<span class="cap vision">${p.vision_models} vision</span>` : ""}${p.image_models ? `<span class="cap image_generation">${p.image_models} image</span>` : ""}</div></td>
       <td><select data-f="plan"><option value="per_token">per token</option><option value="free">free tier</option><option value="subscription">subscription</option></select></td>
@@ -1358,7 +1589,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       await send("settings", "PUT", { image_prices, image_max_usd: Number($("imageMaxUsd").value), agent_image_max_usd: Number($("agentImageMaxUsd").value), image_confirm_paid: $("imageConfirmPaid").checked, agent_image_generation: $("agentImageGeneration").checked });
       await loadLLM(); $("imageNote").textContent = "saved";
     } catch (e) { $("imageNote").textContent = e.message; } };
-  $("modelFilter").oninput = () => renderModels({ models: MODELS, capabilities: CAPS });
+  $("modelFilter").oninput = () => renderModels({ models: MODELS });
   $("modelsRefresh").onclick = async () => { $("modelsNote").textContent = "Refreshing…"; try { for (const p of (await send("llm", "GET")).providers.filter(x => x.key_set)) { try { await send("llm/providers/" + p.name + "/catalog", "POST", {}); } catch (e) {} } await loadLLM(); $("modelsNote").textContent = "Updated"; } catch (e) { $("modelsNote").textContent = e.message; } };
 
   // costs
@@ -1373,7 +1604,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       await send("settings", "PUT", { fixed_costs: rows }); $("fixedNote").textContent = "saved"; await loadCosts(); } catch (e) { $("fixedNote").textContent = e.message; } };
   // ── shell: sidebar conversations, budget, mobile drawer, copy, autosize ──────────────────────
   function sideBudget(s) { const b = s.budget; if (!b || !$("sideBudget")) return;
-    $("sideBudget").innerHTML = "<b>" + money(b.total_usd) + "</b> of " + money(b.budget_usd) + " this month<div class='bar" + (b.percent >= 90 ? " hot" : b.percent >= 75 ? " warn" : "") + "'><i style='width:" + Math.min(100, b.percent) + "%'></i></div>"; }
+    $("sideBudget").innerHTML = "<span class='label'>Spend · " + esc(b.month || "this month") + "</span><b>" + money(b.total_usd) + "</b> of " + money(b.budget_usd) + "<div class='bar" + (b.percent >= 90 ? " hot" : b.percent >= 75 ? " warn" : "") + "'><i style='width:" + Math.min(100, b.percent) + "%'></i></div>"; }
   function syncConvList() { const box = $("convList"); box.innerHTML = "";
     [...$("convSel").options].forEach(o => { const b = document.createElement("button"); b.textContent = o.text; b.className = String(o.value) === String($("convSel").value) ? "on" : "";
       b.onclick = () => { if (VIEW !== "chat") setView("chat"); openConv(o.value).then(syncConvList); document.body.classList.remove("nav-open"); }; box.appendChild(b); }); }
@@ -1383,8 +1614,9 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     if (VIEW !== "chat") setView("chat"); $("convNew").click(); document.body.classList.remove("nav-open"); };
   $("sideNew").onclick = newChat; $("topNew").onclick = newChat;
   $("navOpen").onclick = () => document.body.classList.add("nav-open"); $("scrim").onclick = () => document.body.classList.remove("nav-open");
-  $("msgs").addEventListener("click", (e) => { const pre = e.target.closest("pre"); if (!pre || !navigator.clipboard) return;
-    navigator.clipboard.writeText(pre.textContent).then(() => { pre.classList.add("copied"); setTimeout(() => pre.classList.remove("copied"), 1400); }); });
+  const copyPre = (e) => { const pre = e.target.closest(".m pre"); if (!pre || !navigator.clipboard) return;
+    navigator.clipboard.writeText(pre.textContent).then(() => { pre.classList.add("copied"); setTimeout(() => pre.classList.remove("copied"), 1400); }); };
+  $("msgs").addEventListener("click", copyPre); $("agMsgs").addEventListener("click", copyPre);
   const grow = () => { const t = $("chatIn"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; };
   $("chatIn").addEventListener("input", grow); $("btnSend").addEventListener("click", () => setTimeout(grow, 50));
   async function loadHistory() {
@@ -1438,7 +1670,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     if (ADMIN) {
       let v = "chat"; try { v = sessionStorage.getItem("vellurView") || "chat"; } catch (e) {}
       $("memory").value = (S && S.settings && S.settings.memory) || "";
-      setView(v); setInterval(() => { if (VIEW === "activity") loadHistory(); }, 15000);
+      setView(v); loadRouteHints(); setInterval(() => { if (VIEW === "activity") loadHistory(); }, 15000);
     }
   })();
 })();
