@@ -202,20 +202,23 @@ def pump(t, stream, path):
             out.write((json.dumps(ev) + "\n").encode())
 
 
+def initialize_repo(repo):
+    if not os.path.isdir(os.path.join(repo, ".git")):
+        git(repo, "init", "-q", "-b", "main")
+        with open(os.path.join(repo, ".git", "info", "exclude"), "a") as f:
+            f.write("\n__pycache__/\n*.pyc\nnode_modules/\n.pytest_cache/\n.mypy_cache/\n.ruff_cache/\n.venv/\n"
+                    ".next/\n.turbo/\n.cache/\n.DS_Store\n")
+        git(repo, "add", "-A")
+        git(repo, "commit", "-q", "--allow-empty", "-m", "baseline")
+        git(repo, "tag", BASE)
+
+
 def run_task(tid):
     t = tasks[tid]
     d, repo, home = t["dir"], os.path.join(t["dir"], "repo"), os.path.join(t["dir"], "home")
     log = open(os.path.join(d, "log"), "ab", buffering=0)
     try:
-        if not os.path.isdir(os.path.join(repo, ".git")):
-            git(repo, "init", "-q", "-b", "main")
-            # build caches and installed dependencies are never part of the result (only untracked files are affected)
-            with open(os.path.join(repo, ".git", "info", "exclude"), "a") as f:
-                f.write("\n__pycache__/\n*.pyc\nnode_modules/\n.pytest_cache/\n.mypy_cache/\n.ruff_cache/\n.venv/\n"
-                        ".next/\n.turbo/\n.cache/\n.DS_Store\n")
-            git(repo, "add", "-A")
-            git(repo, "commit", "-q", "--allow-empty", "-m", "baseline")
-            git(repo, "tag", BASE)
+        initialize_repo(repo)
         cfg = os.path.join(home, "opencode.json")
         with open(cfg, "w") as f:
             json.dump(opencode_config(t["meta"]), f)
@@ -322,8 +325,9 @@ def file_summary(repo):
              "removed": nums.get(p, (None, None))[1]} for p in sorted(status)][:500]
 
 
-def changed_files(repo):
-    raw = git(repo, "diff", "--cached", "--no-renames", "--name-status", "-z", base(repo), check=False).decode(errors="replace")
+def changed_files(repo, tree=None):
+    args = (base(repo), tree) if tree else ("--cached", base(repo))
+    raw = git(repo, "diff", "--no-renames", "--name-status", "-z", *args).decode(errors="replace")
     parts = [x for x in raw.split("\0") if x]
     files, total = [], 0
     if len(parts) // 2 > MAX_FILES:
@@ -332,6 +336,17 @@ def changed_files(repo):
         full = os.path.join(repo, path)
         if status.startswith("D"):
             files.append({"path": path, "deleted": True})
+            continue
+        if tree:
+            entry = git(repo, "ls-tree", "-z", tree, "--", path).split(b"\t", 1)[0].split()
+            if len(entry) != 3 or entry[0] not in (b"100644", b"100755", b"120000"):
+                raise RuntimeError(f"unsupported file mode: {path}")
+            size = int(git(repo, "cat-file", "-s", entry[2].decode()).strip())
+            total += size
+            if size > MAX_FILE or total > MAX_FILES_TOTAL:
+                raise RuntimeError(f"changed file too large to publish: {path}")
+            content = git(repo, "cat-file", "blob", entry[2].decode())
+            files.append({"path": path, "mode": entry[0].decode(), "content_b64": base64.b64encode(content).decode()})
             continue
         if os.path.islink(full):
             files.append({"path": path, "mode": "120000", "content_b64": base64.b64encode(os.readlink(full).encode()).decode()})
@@ -344,6 +359,16 @@ def changed_files(repo):
             files.append({"path": path, "mode": "100755" if os.access(full, os.X_OK) else "100644",
                           "content_b64": base64.b64encode(f.read()).decode()})
     return files
+
+
+def validation_snapshot(t):
+    repo = os.path.join(t["dir"], "repo")
+    git(repo, "add", "-A")
+    tree = git(repo, "write-tree").decode().strip()
+    files = changed_files(repo, tree)
+    if not files:
+        return {"status": "skipped", "reason": "no changes"}
+    return {"status": "failed", "reason": "independent immutable validation is not configured", "tree": tree, "files": files}
 
 
 # ── live preview: the owner looks at the project while the agent works ───────────────────────────
@@ -650,6 +675,7 @@ class H(BaseHTTPRequestHandler):
             if t["state"] != "created":
                 return self.send(409, {"error": "already started"})
             safe_extract(self.body(MAX_SOURCE), repo)
+            initialize_repo(repo)
             return self.send(200, {"ok": True})
         if method == "POST" and action == "start":
             if t["state"] != "created":
@@ -711,6 +737,10 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, {"id": sha, "changed": t["changed"], "checkpoints": checkpoints(repo)})
         if method == "GET" and action == "preview-info":
             return self.send(200, preview_info(tid, t))
+        if method == "POST" and action == "validate":
+            if t["state"] in ("created", "running"):
+                return self.send(409, {"error": "running"})
+            return self.send(200, validation_snapshot(t))
         if method == "POST" and action == "rebaseline":
             # the owner published the changes: they become the new baseline, so later reports show only new work
             if t["state"] in ("created", "running"):

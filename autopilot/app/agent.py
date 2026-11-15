@@ -201,6 +201,12 @@ class GitHub:
     async def default_branch(self, repo: str) -> str:
         return (await self._req("GET", f"/repos/{repo}")).json()["default_branch"]
 
+    async def canonical(self, repo: str) -> str:
+        full = (await self._req("GET", f"/repos/{repo}")).json().get("full_name")
+        if not isinstance(full, str) or not REPO_RE.match(full):
+            raise AgentError("github", "GitHub did not return a canonical repository identity", 502)
+        return full
+
     async def tarball(self, repo: str, ref: str) -> bytes:
         r = await self._req("GET", f"/repos/{repo}/tarball/{ref}")
         if len(r.content) > MAX_TARBALL:
@@ -232,14 +238,25 @@ class GitHub:
             await self._req("POST", f"/repos/{repo}/git/refs", json={"ref": f"refs/heads/{branch}", "sha": commit})
         return commit
 
-    async def publish_direct(self, repo: str, base: str, expected_sha: str, files: list, message: str) -> str:
+    async def publish_direct(self, repo: str, base: str, expected_sha: str, files: list, message: str, before_update=None) -> str:
         """Commit straight onto the base branch — only as a fast-forward from the commit the workspace started from."""
+        if not expected_sha:
+            raise AgentError("moved", "the original GitHub commit is unknown", 409)
         head = await self.head_sha(repo, base)
-        if expected_sha and head != expected_sha:
+        if head != expected_sha:
             raise AgentError("moved", f"{base} changed on GitHub since this workspace started, so publishing directly could "
                                       "overwrite newer work. Create a pull request instead.", 409)
         commit = await self._commit(repo, head, files, message)
-        await self._req("PATCH", f"/repos/{repo}/git/refs/heads/{base}", json={"sha": commit, "force": False})
+        if await self.head_sha(repo, base) != expected_sha:
+            raise AgentError("moved", f"{base} changed on GitHub during publishing.", 409)
+        if before_update:
+            before_update(commit)
+        try:
+            await self._req("PATCH", f"/repos/{repo}/git/refs/heads/{base}", json={"sha": commit, "force": False})
+        except AgentError as e:
+            if e.code == "github" and (e.message.startswith("GitHub unreachable") or e.message.startswith("GitHub answered HTTP 5")):
+                raise AgentError("publication_unknown", "GitHub update result is unknown; reconcile before publishing again", 502)
+            raise
         return commit
 
     async def open_pr(self, repo: str, head: str, base: str, title: str, body: str) -> str:
@@ -394,7 +411,7 @@ class AgentManager:
         text = (text or "").strip()
         if not 1 <= len(text) <= 20000:
             raise AgentError("invalid", "write a message (up to 20000 characters)")
-        if t["state"] not in FINAL:
+        if t["state"] not in FINAL or tid in self._jobs:
             raise AgentError("busy", "the agent is still working on this task; wait or stop it first", 409)
         if model and model not in ROLES:
             raise AgentError("invalid", "unknown model")
@@ -435,6 +452,9 @@ class AgentManager:
                 self._ev(tid, run, "notice", text="The model's reply was cut off at its output limit. "
                                                   "VELLUR asked it automatically to continue in smaller steps.")
                 await self._one_run(tid, CONTINUE_PROMPT, False, tag, visual_inspection)
+            t = self.task(tid)
+            if t["state"] in ("publishing", "cancelling") and t["outcome"] == "completed":
+                await self._auto_publish(tid)
         except asyncio.CancelledError:
             raise
         except Exception as e:  # noqa: BLE001
@@ -509,6 +529,8 @@ class AgentManager:
             await self._import_events(tid)
             await self._import_shots(tid, run)
             final = info["state"]
+            if self.task(tid)["state"] == "cancelling" and not limit_note:
+                final = "cancelled"
             if limit_note.startswith("cost limit"):
                 final = "over_budget"
             elif limit_note.startswith("time limit"):
@@ -523,7 +545,8 @@ class AgentManager:
             if final == "failed" and not error:
                 error = f"the agent process exited with code {info.get('exit')}"
             report = self._report(tid, run, final, error, files, self.router.tag_cost(tag) - cost0)
-            self._set(tid, state=final, outcome=report["outcome"], report=json.dumps(report),
+            state = "publishing" if final == "done" and report["outcome"] == "completed" else final
+            self._set(tid, state=state, outcome=report["outcome"], report=json.dumps(report),
                       files_changed=len(files) or int(info.get("changed") or 0), ended=time.time(), error=error)
             self._ev(tid, run, "report", **report)
             self.db.event("info" if report["outcome"] == "completed" else "warn", "agent",
@@ -534,6 +557,43 @@ class AgentManager:
             self._ev(tid, run, "error", message=e.message)
         finally:
             self.router.revoke_tag(tag)
+
+    async def _auto_publish(self, tid: int) -> None:
+        t = self.task(tid)
+        st = self.ctrl.settings.get()
+        result = {"status": "skipped"}
+        if t["state"] != "publishing":
+            result["reason"] = "publication cancelled"
+        elif st.get("agent_auto_publish", True) is not True:
+            result["reason"] = "automatic publishing disabled"
+        elif self.db.kv_get(f"task_rebaseline_failed_{tid}"):
+            result["reason"] = "published baseline needs manual reconciliation"
+        elif not t["repo"] or not t["base"] or not t.get("base_sha") or not self.github_token():
+            result["reason"] = "repository, branch, baseline or GitHub token unavailable"
+        else:
+            canonical, self_canonical = None, None
+            if self.env.self_repo:
+                gh = GitHub(self.github_token(), self.github_transport)
+                try:
+                    self_canonical = await gh.canonical(self.env.self_repo)
+                    canonical = await gh.canonical(t["repo"])
+                except AgentError as e:
+                    result["reason"] = "canonical repository identity unavailable: " + e.message
+                finally:
+                    await gh.c.aclose()
+            self_repo = canonical is not None and self_canonical is not None and canonical.lower() == self_canonical.lower()
+            if "reason" not in result and self_repo and t["base"] == "main" and str(st.get("agent_auto_publish_main_repo") or "").lower() != (canonical or "").lower():
+                result["reason"] = "VELLUR main requires explicit canonical repository approval"
+            if "reason" not in result:
+                result["reason"] = "independent immutable validation is not configured"
+        report = self.task(tid)["report"]
+        report["publication"] = result
+        if t["state"] == "cancelling":
+            report.update(outcome="cancelled", why="You stopped this run.", process="cancelled")
+            self._set(tid, state="cancelled", outcome="cancelled", report=json.dumps(report))
+        else:
+            self._set(tid, state="done", report=json.dumps(report))
+        self._ev(tid, int(t["runs"] or 1), "publication", **result)
 
     async def _import_events(self, tid: int) -> None:
         cursor = int(self.task(tid)["cursor"] or 0)
@@ -676,6 +736,8 @@ class AgentManager:
 
     async def publish(self, tid: int) -> dict:
         """Owner-initiated: push the result as a branch and open (or update) a draft pull request."""
+        if tid in self._jobs:
+            raise AgentError("busy", "the task is still finishing", 409)
         t = self.task(tid)
         if not t:
             raise AgentError("not_found", "unknown task", 404)
@@ -745,7 +807,7 @@ class AgentManager:
         t = self.task(tid)
         if not t:
             raise AgentError("not_found", "unknown task", 404)
-        if t["state"] not in FINAL:
+        if t["state"] not in FINAL or tid in self._jobs:
             raise AgentError("busy", "the agent is working; a checkpoint is saved automatically when it finishes", 409)
         label = " ".join((label or "").split())[:100] or "Checkpoint"
         r = (await self._runner("POST", f"/tasks/{tid}/checkpoints", json={"label": label})).json()
@@ -756,7 +818,7 @@ class AgentManager:
         t = self.task(tid)
         if not t:
             raise AgentError("not_found", "unknown task", 404)
-        if t["state"] not in FINAL:
+        if t["state"] not in FINAL or tid in self._jobs:
             raise AgentError("busy", "stop the agent before restoring an earlier version", 409)
         if not re.fullmatch(r"[0-9a-f]{40}", cid or ""):
             raise AgentError("invalid", "unknown checkpoint")
@@ -767,6 +829,15 @@ class AgentManager:
         return {"id": r["id"], "checkpoints": r["checkpoints"], "task": self.task(tid)}
 
     async def publish_direct(self, tid: int) -> dict:
+        if tid in self._jobs:
+            raise AgentError("busy", "the task is still finishing", 409)
+        self._jobs[tid] = asyncio.current_task()
+        try:
+            return await self._publish_direct_locked(tid)
+        finally:
+            self._jobs.pop(tid, None)
+
+    async def _publish_direct_locked(self, tid: int) -> dict:
         """Owner-initiated: commit the result straight onto the branch the workspace started from (no pull request)."""
         t = self.task(tid)
         if not t:
@@ -779,14 +850,21 @@ class AgentManager:
         title = "VELLUR agent: " + " ".join(t["prompt"].split())[:70]
         gh = GitHub(self.github_token(), self.github_transport)
         try:
-            commit = await gh.publish_direct(t["repo"], t["base"], t.get("base_sha") or "", files,
-                                             title + f"\n\nTask {tid}, model {t['model']}. Published from VELLUR Studio.")
+            try:
+                commit = await gh.publish_direct(t["repo"], t["base"], t.get("base_sha") or "", files,
+                                                 title + f"\n\nTask {tid}, model {t['model']}. Published from VELLUR Studio.",
+                                                 before_update=lambda sha: self.db.kv_set(f"task_rebaseline_failed_{tid}", True))
+            except AgentError as e:
+                if e.code != "publication_unknown":
+                    self.db.kv_set(f"task_rebaseline_failed_{tid}", False)
+                raise
         finally:
             await gh.c.aclose()
-        with contextlib.suppress(AgentError):
-            await self._runner("POST", f"/tasks/{tid}/rebaseline")
+        self._set(tid, base_sha=commit)
+        await self._runner("POST", f"/tasks/{tid}/rebaseline")
+        self.db.kv_set(f"task_rebaseline_failed_{tid}", False)
         self.db.kv_set(f"task_diff_{tid}", {"stat": "", "diff": ""})
-        self._set(tid, base_sha=commit, files_changed=0)
+        self._set(tid, files_changed=0)
         url = f"https://github.com/{t['repo']}/commit/{commit}"
         self._ev(tid, int(t["runs"] or 1), "published", url=url, branch=t["base"], files=len(files))
         self.db.event("info", "agent", f"task {tid} published to {t['base']}", url=url)
@@ -795,12 +873,20 @@ class AgentManager:
     async def recover(self) -> None:
         """After a controller restart, tasks that were in flight cannot be resumed: mark them and stop the runner."""
         for r in self.db.all("SELECT id FROM tasks WHERE state NOT IN ('done','failed','cancelled','timeout','over_budget')"):
-            self._set(r["id"], state="failed", outcome="failed", error="the controller restarted while this task was running",
+            tid, t = r["id"], self.task(r["id"])
+            if t["state"] == "publishing":
+                report = t["report"]
+                report["publication"] = {"status": "failed", "reason": "publication was interrupted; verify GitHub before retrying"}
+                self.db.kv_set(f"task_rebaseline_failed_{tid}", True)
+                self._set(tid, state="done", report=json.dumps(report), ended=time.time())
+                self._ev(tid, int(t["runs"] or 1), "publication", **report["publication"])
+                continue
+            self._set(tid, state="failed", outcome="failed", error="the controller restarted while this task was running",
                       ended=time.time())
-            self._ev(r["id"], int(self.task(r["id"])["runs"] or 1), "error",
+            self._ev(tid, int(self.task(tid)["runs"] or 1), "error",
                      message="The server restarted while this task was running. Send a follow-up to continue.")
             with contextlib.suppress(Exception):
-                await self._runner("POST", f"/tasks/{r['id']}/cancel")
+                await self._runner("POST", f"/tasks/{tid}/cancel")
 
     async def close(self) -> None:
         for j in list(self._jobs.values()):

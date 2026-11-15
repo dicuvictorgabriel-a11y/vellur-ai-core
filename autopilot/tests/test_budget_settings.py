@@ -85,3 +85,33 @@ def test_settings_clamped_by_server_ceiling(parts):
     with pytest.raises(SettingsError):
         settings.update({"nonexistent": 1})
     assert settings.update({"idle_timeout_min": 30})["idle_timeout_min"] == 30
+
+
+def test_agent_preferences_persist_independently(parts):
+    db, settings, _ = parts
+    keys = ("agent_visual_inspection", "agent_auto_screenshots", "agent_auto_publish", "agent_auto_publish_main_repo")
+    assert tuple(settings.get()[k] for k in keys) == (False, False, True, "")
+    settings.update({"agent_visual_inspection": True})
+    settings.update({"agent_auto_screenshots": True, "agent_auto_publish": False})
+    settings.update({"agent_auto_publish_main_repo": "Owner/vellur-ai-core"})
+    restored = Settings(db, settings.env).get()
+    assert tuple(restored[k] for k in keys) == (True, True, False, "Owner/vellur-ai-core")
+    settings.update({"agent_visual_inspection": False, "agent_auto_publish_main_repo": ""})
+    restored = settings.get()
+    assert tuple(restored[k] for k in keys) == (False, True, False, "")
+
+
+@pytest.mark.parametrize("key", ["agent_visual_inspection", "agent_auto_screenshots", "agent_auto_publish"])
+@pytest.mark.parametrize("value", [0, 1, "true", None, [], {}])
+def test_agent_boolean_preferences_reject_non_booleans(parts, key, value):
+    _, settings, _ = parts
+    with pytest.raises(SettingsError):
+        settings.update({key: value})
+
+
+@pytest.mark.parametrize("value", [None, 1, True, [], " owner/repo", "owner/repo ", "owner/repo\n", "owner/..", "owner/repo/extra", "https://github.com/owner/repo", "owner/"])
+def test_main_repo_preference_rejects_invalid_values(parts, value):
+    _, settings, _ = parts
+    with pytest.raises(SettingsError):
+        settings.update({"agent_auto_publish_main_repo": value})
+    assert settings.get()["agent_auto_publish_main_repo"] == ""

@@ -84,6 +84,10 @@ DEFAULT_SETTINGS: dict = {
     "agent_max_minutes": 30,
     "agent_max_usd": 2.0,
     "agent_vision": False,           # the model behind the agent accepts images: it may open screenshots to inspect them
+    "agent_visual_inspection": False,
+    "agent_auto_screenshots": False,
+    "agent_auto_publish": True,
+    "agent_auto_publish_main_repo": "",
 }
 
 ROLES: dict = {

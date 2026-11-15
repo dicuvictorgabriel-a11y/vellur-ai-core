@@ -44,15 +44,15 @@ class TaskBody(BaseModel):
     model: str = "vellur-coder"
     repo: str = ""
     base: str = ""
-    visual_inspection: bool = False
-    auto_screenshots: bool = False
+    visual_inspection: Optional[bool] = None
+    auto_screenshots: Optional[bool] = None
 
 
 class FollowBody(BaseModel):
     text: str
     model: Optional[str] = None
-    visual_inspection: bool = False
-    auto_screenshots: bool = False
+    visual_inspection: Optional[bool] = None
+    auto_screenshots: Optional[bool] = None
 
 
 class CheckpointBody(BaseModel):
@@ -94,6 +94,11 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     def err(e) -> JSONResponse:
         return JSONResponse(status_code=getattr(e, "status", 400),
                             content={"error": getattr(e, "code", "invalid"), "message": getattr(e, "message", str(e))})
+
+    def visual_prefs(body) -> tuple:
+        st = ctrl.settings.get()
+        return (st["agent_visual_inspection"] if body.visual_inspection is None else body.visual_inspection,
+                st["agent_auto_screenshots"] if body.auto_screenshots is None else body.auto_screenshots)
 
     # ── conversations ───────────────────────────────────────────────────────────────────────────
     @app.get("/autopilot/api/conversations", dependencies=[Depends(admin)])
@@ -283,7 +288,8 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     @app.post("/autopilot/api/agent/tasks", dependencies=[Depends(admin_write)])
     async def create_task(body: TaskBody):
         try:
-            return await agent.create(body.prompt, body.model, body.repo, body.base, body.visual_inspection, body.auto_screenshots)
+            visual, shots = visual_prefs(body)
+            return await agent.create(body.prompt, body.model, body.repo, body.base, visual, shots)
         except AgentError as e:
             return err(e)
 
@@ -297,7 +303,8 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     @app.post("/autopilot/api/agent/tasks/{tid}/messages", dependencies=[Depends(admin_write)])
     async def task_message(tid: int, body: FollowBody):
         try:
-            return await agent.message(tid, body.text, body.model, body.visual_inspection, body.auto_screenshots)
+            visual, shots = visual_prefs(body)
+            return await agent.message(tid, body.text, body.model, visual, shots)
         except AgentError as e:
             return err(e)
 

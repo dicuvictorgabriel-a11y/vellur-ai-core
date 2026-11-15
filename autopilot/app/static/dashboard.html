@@ -194,6 +194,9 @@ body.studio-open #pvToggle{background:var(--raise)}
 #agOther{margin-bottom:6px;display:none}
 #agSend{width:34px;height:34px;border-radius:50%;padding:0;background:var(--accent);color:#111;display:inline-flex;align-items:center;justify-content:center;flex:none}
 #agSend.stop{background:var(--text)}
+#agTools{position:relative;flex:none}#agTools summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid var(--line2);border-radius:50%;color:var(--soft)}#agTools summary::-webkit-details-marker{display:none}#agTools summary:hover{background:var(--raise)}#agTools summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+#agToolsPanel{position:absolute;bottom:calc(100% + 8px);left:0;z-index:16;width:min(320px,calc(100vw - 56px));max-height:55vh;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.5)}
+#agToolsPanel label{display:flex;align-items:flex-start;gap:8px;margin:8px 0;color:var(--soft);font-size:12.5px}#agToolsPanel input{width:auto;flex:none;margin:3px 0 0}
 .agempty{text-align:center;margin-top:12vh}.agempty h3{font-size:24px;font-weight:600;letter-spacing:-.01em;margin:0 0 6px}
 .agempty p{color:var(--muted);font-size:14.5px;margin:0 auto 18px;max-width:460px;line-height:1.55}
 .agempty .chips{justify-content:center}
@@ -402,11 +405,15 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         </div>
         <input id="agOther" placeholder="owner/name" autocomplete="off">
         <textarea id="agIn" rows="1" placeholder="Describe what you want built or changed…"></textarea>
-        <div class="row" style="gap:14px;margin:6px 0;flex-wrap:wrap">
-          <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--soft)"><input type="checkbox" id="agInspect" style="width:auto"> AI visual inspection (this run; enable image support below)</label>
-          <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--soft)"><input type="checkbox" id="agAutoShots" style="width:auto"> Automatic screenshots (this run)</label>
-        </div>
         <div class="cbar">
+          <details id="agTools"><summary title="Agent tools" aria-label="Agent tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg></summary><div id="agToolsPanel">
+            <label><input type="checkbox" id="agInspect" disabled> <span>AI visual inspection <small>(requires model image support below)</small></span></label>
+            <label><input type="checkbox" id="agAutoShots" disabled> <span>Automatic screenshots</span></label>
+            <label><input type="checkbox" id="agAutoPublish" disabled> <span>Automatic publishing preference</span></label>
+            <label><input type="checkbox" id="agMainPublish" disabled> <span>Allow auto-publishing to main for <b id="agMainRepo">VELLUR</b></span></label>
+            <div class="note">Preferences are saved on the server. Publishing requires server support; installing VELLUR still requires approval.</div>
+            <div class="note" id="agToolsNote" role="status" aria-live="polite"></div>
+          </div></details>
           <select id="tModel" style="width:auto;border-radius:99px;padding:6px 10px;font-size:13px" aria-label="Model"></select>
           <span class="grow" id="agNote"></span>
           <button id="agSend" aria-label="Send"><svg class="ic" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
@@ -525,6 +532,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     const vast = (s.providers || []).find(p => p.provider === "vastai");
     $("vastState").textContent = vast ? (vast.configured ? "API key configured on the server." : vast.detail) : "—";
     $("btnCheckVast").disabled = !(vast && vast.configured);
+    if (s.settings) syncAgentPrefs(s.settings);
     if (!dirty && s.settings) fillSettings(s.settings, s.profiles);
   }
   function fillSettings(st, profiles) {
@@ -626,6 +634,29 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   // agent
   // ── agent: one conversation per task, live timeline from the server's event log ─────────────
   let TASK = null, TASKS = [], REPOS_LOADED = false, AGENT = {}, ES = null, LAST_EV = 0, CUR = null, RUN_T0 = 0, TICK = null, EXPLORE = null;
+  const PREF_CONTROLS = { agent_visual_inspection: "agInspect", agent_auto_screenshots: "agAutoShots", agent_auto_publish: "agAutoPublish", agent_auto_publish_main_repo: "agMainPublish" };
+  let PREFS = null, PREF_PENDING = new Set();
+  function syncAgentPrefs(st) {
+    if (!PREFS) PREFS = {};
+    for (const [key, id] of Object.entries(PREF_CONTROLS)) {
+      if (!PREF_PENDING.has(key)) PREFS[key] = st[key];
+      const main = key === "agent_auto_publish_main_repo";
+      $(id).checked = main ? !!AGENT.self_repo && PREFS[key] === AGENT.self_repo : !!PREFS[key];
+      $(id).disabled = PREF_PENDING.has(key) || (main && !AGENT.self_repo);
+    }
+    $("agMainRepo").textContent = AGENT.self_repo || "VELLUR";
+  }
+  for (const [key, id] of Object.entries(PREF_CONTROLS)) $(id).onchange = async () => {
+    const input = $(id), previous = PREFS[key], main = key === "agent_auto_publish_main_repo";
+    const value = main ? (input.checked ? AGENT.self_repo : "") : input.checked;
+    if (main && input.checked && previous && previous !== value && !confirm("Replace the existing main-branch opt-in for " + previous + " with " + value + "?")) { syncAgentPrefs(PREFS); return; }
+    PREF_PENDING.add(key); input.disabled = true; $("agToolsNote").textContent = "Saving…";
+    try { const saved = await send("settings", "PUT", { [key]: value }); PREFS[key] = saved[key]; $("agToolsNote").textContent = "Saved"; }
+    catch (e) { PREFS[key] = previous; $("agToolsNote").textContent = "Not saved: " + e.message; }
+    finally { PREF_PENDING.delete(key); syncAgentPrefs(PREFS); }
+  };
+  document.addEventListener("click", (e) => { if (!$("agTools").contains(e.target)) $("agTools").open = false; });
+  $("agTools").addEventListener("keydown", (e) => { if (e.key === "Escape" && $("agTools").open) { $("agTools").open = false; $("agTools").querySelector("summary").focus(); } });
   const FINAL_STATES = ["done", "failed", "cancelled", "timeout", "over_budget"];
   const OUTCOME = { completed: ["Completed", "ok"], partial: ["Partly done", "warn"], blocked: ["Blocked", "warn"], unverified: ["Not confirmed", "warn"],
     incomplete: ["Cut off", "warn"], needs_attention: ["Checks failing", "bad"], failed: ["Failed", "bad"], stopped: ["Stopped by limit", "bad"], cancelled: ["Stopped", ""] };
@@ -658,6 +689,24 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   const stick = () => { const b = box(); return b.scrollHeight - b.scrollTop - b.clientHeight < 160; };
   function put(el, wasAtEnd) { const w = $("agWorking"); w ? box().insertBefore(el, w) : box().appendChild(el); if (wasAtEnd) box().scrollTop = box().scrollHeight; return el; }
   function div(cls, html) { const d = document.createElement("div"); d.className = cls; d.innerHTML = html; return d; }
+  function publicationText(p) {
+    const labels = { published: "Automatically published", skipped: "Automatic publishing skipped", failed: "Automatic publishing failed" };
+    let h = `<b>${esc(labels[p.status] || "Publication status: " + (p.status || "unknown"))}</b>`;
+    if (p.branch) h += " · branch <code>" + esc(p.branch) + "</code>";
+    if (p.commit) h += " · commit <code>" + esc(p.commit) + "</code>";
+    if (p.reason) h += "<br>" + esc(p.reason);
+    if (p.command) h += "<br>Validation: <code>" + esc(p.command) + "</code>";
+    if (p.rebaseline && p.rebaseline !== "ok") h += "<br>Workspace reconciliation: " + esc(p.rebaseline);
+    return h;
+  }
+  function updateReportPublication(run, publication) {
+    if (!publication) return;
+    box().querySelectorAll(".report").forEach(el => {
+      if (String(el.dataset.run) !== String(run)) return;
+      const area = el.querySelector(".publication");
+      if (area) { area.hidden = false; area.innerHTML = "<h5>Publication</h5><div class='txt'>" + publicationText(publication) + "</div>"; }
+    });
+  }
   function renderEvent(e) {
     const d = e.data || {}, end = stick();
     if (e.kind !== "tool" || !toolView(d).explore) EXPLORE = null;
@@ -673,6 +722,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     if (e.kind === "checkpoint") return put(div("sysline", "Checkpoint saved: " + esc(d.label)), end);
     if (e.kind === "restored") { pvRefreshSoon(); return put(div("alert info", "Restored the project to “" + esc(d.label) + "”. The state before restoring was saved as a checkpoint."), end); }
     if (e.kind === "published") return put(div("alert info", `Published ${d.files} file${d.files === 1 ? "" : "s"} to <b>${esc(d.branch)}</b>: <a href="${esc(d.url)}" target="_blank" rel="noopener" style="color:var(--accent)">view the commit ↗</a>`), end);
+    if (e.kind === "publication") { updateReportPublication(e.run, d); return put(div(d.status === "failed" ? "alert" : "alert info", publicationText(d)), end); }
     if (e.kind === "report") return put(reportCard(d), end);
     if (e.kind !== "tool") return null;
     if (d.tool === "todowrite" && d.todos) {
@@ -701,6 +751,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     if (r.shots && r.shots.length) h += `<h5>Screenshots</h5><div class="shots">${r.shots.map(n => `<img src="${shotUrl(n)}" alt="${esc(n)}" loading="lazy">`).join("")}</div>`;
     else h += `<h5>Preview</h5><div class="txt">No screenshots were taken in this task. Screenshots are optional; see notices for unavailable capabilities.</div>`;
     if (r.errors && r.errors.length) h += `<h5>Errors</h5><div class="txt badc">${r.errors.map(esc).join("\n")}</div>`;
+    h += `<div class="publication"${r.publication ? "" : " hidden"}>${r.publication ? "<h5>Publication</h5><div class='txt'>" + publicationText(r.publication) + "</div>" : ""}</div>`;
     h += `<div class="foot"><span>This run ${money4(r.cost_run_usd)}</span><span>Task total ${money4(r.cost_total_usd)}</span><span>${r.tool_calls || 0} actions</span><span>${(r.tokens || {}).output || 0} output tokens</span></div>`;
     h += `<div class="acts"></div><pre class="box" style="display:none"></pre>`;
     el.innerHTML = h; el.dataset.run = r.run; fillActs(el); return el;
@@ -762,6 +813,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   }
   async function loadAgent() {
     try { AGENT = await send("agent", "GET"); } catch (e) { AGENT = { available: false, why: e.message, tasks: [] }; }
+    if (PREFS) syncAgentPrefs(PREFS);
     TASKS = AGENT.tasks || []; renderTasks(); fillModels($("tModel"), $("tModel").value || "vellur-coder");
     $("ghNote").textContent = AGENT.github_token_set ? "GitHub connected ✓ · change token" : "Connect GitHub to work on your repositories ▸";
     if (!AGENT.github_token_set) $("ghBox").open = true;
@@ -776,7 +828,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   function newTask() {
     closeStream(); TASK = null; CUR = null; EXPLORE = null; try { sessionStorage.setItem("vellurTask", ""); } catch (e) {}
     const ex = ["Explain how this repository is organised and suggest 3 improvements (no changes).", "Find one real bug, fix it and add a test.", "Improve the mobile layout of the main page and show me before/after screenshots."];
-    box().innerHTML = `<div class="agempty"><h3>What should we build?</h3><p>Pick a repository, describe the task in your own words and watch the agent work. Nothing reaches GitHub until you approve it.</p><div class="chips">${ex.map(x => `<button class="chip">${esc(x)}</button>`).join("")}</div>${AGENT.available === false ? `<div class="alert" style="margin-top:18px;text-align:left">${esc(AGENT.why || "The agent is not available.")}</div>` : ""}</div>`;
+    box().innerHTML = `<div class="agempty"><h3>What should we build?</h3><p>Pick a repository, describe the task in your own words and watch the agent work. Publishing depends on your preferences and server support.</p><div class="chips">${ex.map(x => `<button class="chip">${esc(x)}</button>`).join("")}</div>${AGENT.available === false ? `<div class="alert" style="margin-top:18px;text-align:left">${esc(AGENT.why || "The agent is not available.")}</div>` : ""}</div>`;
     box().querySelectorAll(".agempty .chip").forEach(c => c.onclick = () => { $("agIn").value = c.textContent; $("agIn").focus(); agGrow(); });
     if (AGENT.self_repo && [...$("tRepoSel").options].some(o => o.value === AGENT.self_repo)) {     // VELLUR can work on VELLUR
       const c = document.createElement("button"); c.className = "chip"; c.style.borderColor = "#3d4d12"; c.textContent = "Improve VELLUR itself";
@@ -791,6 +843,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     if (t.legacy) { renderLegacy(t); loadPreview(); return; }
     const r = await send("agent/tasks/" + id + "/events?after=0", "GET");
     r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; });
+    if (t.report && t.report.publication) updateReportPublication(t.report.run, t.report.publication);
     box().scrollTop = box().scrollHeight; loadPreview();
     if (!FINAL_STATES.includes(t.state)) live();
   }
@@ -877,7 +930,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       const a = (b.activity || [])[0];   // the command running right now (OpenCode shows a command only when it ends)
       if (a && !FINAL_STATES.includes(b.state)) working(true, "Running now: " + a.cmd.slice(0, 80) + " · for " + fmtDur(a.elapsed_s) + ", CPU " + fmtDur(a.cpu_s));
       const row = TASKS.find(x => x.id === b.id); if (row) { Object.assign(row, b); renderTasks(); }
-      if (FINAL_STATES.includes(b.state)) { working(false); CUR = await send("agent/tasks/" + TASK, "GET"); header(); composer(); const last = [...box().querySelectorAll(".report")].pop(); if (last) fillActs(last); } });
+      if (FINAL_STATES.includes(b.state)) { working(false); CUR = await send("agent/tasks/" + TASK, "GET"); header(); composer(); if (CUR.report && CUR.report.publication) updateReportPublication(CUR.report.run, CUR.report.publication); const last = [...box().querySelectorAll(".report")].pop(); if (last) fillActs(last); } });
     ES.addEventListener("end", () => { closeStream(); });
   }
   document.addEventListener("visibilitychange", () => {      // phones pause background tabs: catch up when visible again
@@ -885,6 +938,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   });
   async function agSend() {
     if (CUR && !FINAL_STATES.includes(CUR.state)) { if (!confirm("Stop the agent now?")) return; await send("agent/tasks/" + TASK + "/cancel", "POST", {}); return; }
+    if (!PREFS || PREF_PENDING.has("agent_visual_inspection") || PREF_PENDING.has("agent_auto_screenshots")) { $("agNote").textContent = "Wait for visual preferences to finish loading or saving."; return; }
     const text = $("agIn").value.trim(); if (!text) return; $("agNote").textContent = ""; $("agSend").disabled = true;
     try {
       if (!CUR) {
@@ -895,7 +949,6 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         CUR = await send("agent/tasks/" + TASK, "GET"); header(); composer();
         const r = await send("agent/tasks/" + TASK + "/events?after=" + LAST_EV, "GET"); r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; }); live();
       }
-      $("agInspect").checked = false; $("agAutoShots").checked = false;
     } catch (e) { $("agNote").textContent = e.message; }
     finally { composer(); }
   }

@@ -89,6 +89,13 @@ class Settings:
             if k in STRUCTURED:
                 clean[k] = STRUCTURED[k](v)
                 continue
+            if k == "agent_auto_publish_main_repo":
+                if not isinstance(v, str) or (v and not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9-]{0,38}/[A-Za-z0-9._-]{1,100}", v)):
+                    raise SettingsError("agent_auto_publish_main_repo must be empty or an exact owner/name")
+                if v and v.split("/", 1)[1] in (".", ".."):
+                    raise SettingsError("invalid repository name")
+                clean[k] = v
+                continue
             try:
                 if isinstance(d, bool):
                     if not isinstance(v, bool):

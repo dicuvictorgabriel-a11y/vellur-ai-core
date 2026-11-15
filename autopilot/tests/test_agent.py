@@ -1,6 +1,8 @@
 import asyncio
 import base64
 import json
+import importlib.util
+from pathlib import Path
 
 import httpx
 import pytest
@@ -118,6 +120,10 @@ class FakeGitHub:
 
     def handler(self, req: httpx.Request):
         self.auth.add(req.headers.get("authorization"))
+        if req.method == "PATCH" and getattr(self, "patch_error", False):
+            raise httpx.ConnectError("connection lost", request=req)
+        if req.method == "PATCH" and getattr(self, "patch_status", None):
+            return httpx.Response(self.patch_status, json={"message": "not a fast forward"})
         p, body = req.url.path, json.loads(req.content or b"{}")
         self.calls.append((req.method, p, body))
         if p == "/user/repos":
@@ -125,8 +131,14 @@ class FakeGitHub:
                                              {"full_name": "o/s", "default_branch": "dev", "private": False}])
         if p == "/repos/o/r/branches":
             return httpx.Response(200, json=[{"name": "feature"}, {"name": "main"}])
-        if p == "/repos/o/r":
-            return httpx.Response(200, json={"default_branch": "main"})
+        if p in ("/repos/o/r", "/repos/old/r"):
+            if getattr(self, "canonical_missing", False):
+                return httpx.Response(200, json={"default_branch": "main"})
+            return httpx.Response(200, json={"default_branch": "main", "full_name": "o/r"})
+        if p.startswith("/repos/") and p.count("/") == 3:
+            if getattr(self, "canonical_missing", False):
+                return httpx.Response(200, json={"default_branch": "main"})
+            return httpx.Response(200, json={"default_branch": "main", "full_name": p[7:]})
         if p in ("/repos/o/r/tarball/main", "/repos/o/r/tarball/" + self.head):
             return httpx.Response(200, content=b"TARBALL")
         if p == "/repos/o/r/git/ref/heads/main":
@@ -161,7 +173,7 @@ def agents(rig):
 
 async def wait_final(mgr, tid):
     for _ in range(500):
-        if mgr.task(tid)["state"] in ("done", "failed", "cancelled", "timeout", "over_budget"):
+        if mgr.task(tid)["state"] in ("done", "failed", "cancelled", "timeout", "over_budget") and tid not in mgr._jobs:
             return mgr.task(tid)
         await asyncio.sleep(0.01)
     raise AssertionError("task did not finish")
@@ -188,7 +200,7 @@ async def test_task_runs_and_publishes_only_on_request(agents):
     assert rep["tests"] == [{"command": "python -m pytest -q", "exit": 0, "status": "completed", "test": True}]
     assert [f["path"] for f in rep["files"]] == ["app.py", "old.txt"] and rep["tokens"] == {"input": 150, "output": 50}
     kinds = [e["kind"] for e in (await admin.get(f"/autopilot/api/agent/tasks/{tid}/events", headers=ADMIN)).json()["events"]]
-    assert kinds[0] == "user" and "tool" in kinds and "text" in kinds and kinds[-1] == "report"
+    assert kinds[0] == "user" and "tool" in kinds and "text" in kinds and "report" in kinds
     p = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)
     assert p.json()["pr_url"] == "https://github.com/o/r/pull/5" and p.json()["branch"] == f"vellur/task-{tid}"
     tree = [b for m, path, b in gh.calls if path.endswith("/git/trees")][0]
@@ -268,6 +280,18 @@ async def test_validation_unavailable_and_recovery(agents, rig):
     with pytest.raises(Exception) as e:
         await m2.create("valid prompt here", "vellur-coder")
     assert e.value.code == "unavailable"
+
+
+async def test_recovery_never_leaves_publishing_and_requires_reconciliation(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    tid = (await mgr.create("Make a change", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    mgr._set(tid, state="publishing")
+    await mgr.recover()
+    t = mgr.task(tid)
+    assert t["state"] == "done" and t["outcome"] == "completed"
+    assert t["report"]["publication"]["status"] == "failed"
+    assert ctrl.db.kv_get(f"task_rebaseline_failed_{tid}") is True
 
 
 async def test_cut_off_reply_is_continued_automatically_and_never_reported_as_success(agents):
@@ -395,13 +419,53 @@ async def test_publish_directly_only_as_fast_forward(agents):
     r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish-direct", headers=WRITE)
     assert r.status_code == 409 and r.json()["error"] == "moved"
     assert not any(m == "PATCH" for m, p, _ in gh.calls)
+    assert not ctrl.db.kv_get(f"task_rebaseline_failed_{tid}")
     gh.head = "base1"
     r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish-direct", headers=WRITE)
     assert r.status_code == 200 and r.json()["base_sha"] == "commit1" and r.json()["files_changed"] == 0
     patch = [b for m, p, b in gh.calls if m == "PATCH" and p == "/repos/o/r/git/refs/heads/main"][0]
     assert patch == {"sha": "commit1", "force": False} and runner.rebaselined is True
-    assert [e["kind"] for e in mgr.events(tid)][-1] == "published"
-    assert not any(p.endswith("/pulls") for _, p, _ in gh.calls)       # no pull request involved
+    assert not ctrl.db.kv_get(f"task_rebaseline_failed_{tid}")
+
+
+async def test_publish_direct_keeps_uncertainty_only_on_unknown_network_errors(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    mgr.set_github_token("github_pat_" + "a" * 30)
+    tid = (await mgr.create("Add a health endpoint", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    gh.patch_error = True
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish-direct", headers=WRITE)
+    assert r.status_code == 502 and r.json()["error"] == "publication_unknown"
+    assert ctrl.db.kv_get(f"task_rebaseline_failed_{tid}") is True
+    gh.patch_error = False
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish-direct", headers=WRITE)
+    assert r.status_code == 200 and not ctrl.db.kv_get(f"task_rebaseline_failed_{tid}")
+
+
+async def test_publish_direct_clears_reconciliation_after_known_refusal(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    mgr.set_github_token("github_pat_" + "a" * 30)
+    tid = (await mgr.create("Add a health endpoint", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    gh.patch_status = 422
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish-direct", headers=WRITE)
+    assert r.status_code == 502 and r.json()["error"] == "github"
+    assert not ctrl.db.kv_get(f"task_rebaseline_failed_{tid}")
+
+
+async def test_stop_race_cancels_publication_without_publishing(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    mgr.set_github_token("github_pat_" + "a" * 30)
+    tid = (await mgr.create("Make a change", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    mgr._set(tid, state="publishing", outcome="completed")
+    await mgr.cancel(tid)
+    await mgr._auto_publish(tid)
+    t = mgr.task(tid)
+    assert t["state"] == "cancelled" and t["outcome"] == "cancelled"
+    assert t["report"]["publication"] == {"status": "skipped", "reason": "publication cancelled"}
+    assert not any(m == "PATCH" for m, _, _ in gh.calls)
+    assert not any(p.endswith("/pulls") for _, p, _ in gh.calls)
 
 
 async def test_checkpoints_save_and_restore(agents):
@@ -456,6 +520,92 @@ async def test_visual_inspection_requires_capability_and_is_explicit_on_create(a
     await wait_final(mgr, r.json()["id"])
     assert runner.meta["vision"] is True and runner.meta["auto_screenshots"] is True
     assert "explicitly requested AI visual inspection" in runner.meta["prompt"]
+
+
+async def test_saved_visual_preferences_apply_when_request_omits_them(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    ctrl.settings.update({"agent_vision": True, "agent_visual_inspection": True, "agent_auto_screenshots": True})
+    url = "/autopilot/api/agent/tasks"
+    r = await admin.post(url, headers=WRITE, json={"prompt": "Inspect the page"})
+    assert r.status_code == 200
+    tid = r.json()["id"]
+    await wait_final(mgr, tid)
+    assert runner.meta["vision"] is True and runner.meta["auto_screenshots"] is True
+    await asyncio.sleep(0.05)
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/messages", headers=WRITE, json={"text": "Continue"})
+    assert r.status_code == 200
+    await wait_final(mgr, tid)
+    assert runner.messages[-1]["vision"] is True and runner.messages[-1]["auto_screenshots"] is True
+    await asyncio.sleep(0.05)
+    r = await admin.post(url, headers=WRITE, json={"prompt": "Inspect the page", "visual_inspection": False, "auto_screenshots": False})
+    assert r.status_code == 200
+    await wait_final(mgr, r.json()["id"])
+    assert runner.meta["vision"] is False and runner.meta["auto_screenshots"] is False
+
+
+async def test_auto_publication_always_fails_closed_without_immutable_validation(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    mgr.set_github_token("github_pat_" + "a" * 30)
+    tid = (await mgr.create("Make a change", "vellur-coder", "o/r"))["id"]
+    t = await wait_final(mgr, tid)
+    assert t["report"]["publication"] == {"status": "skipped", "reason": "independent immutable validation is not configured"}
+    assert t["files_changed"] == 2 and not any(m == "PATCH" for m, _, _ in gh.calls)
+
+
+async def test_auto_publication_self_repo_identity_and_opt_in_fail_closed(agents):
+    ctrl, router, mgr, runner, gh, admin = agents(self_repo="o/r")
+    mgr.set_github_token("github_pat_" + "a" * 30)
+    tid = (await mgr.create("Make a change", "vellur-coder", "o/r"))["id"]
+    t = await wait_final(mgr, tid)
+    assert t["report"]["publication"]["reason"] == "VELLUR main requires explicit canonical repository approval"
+    ctrl.db.settings_put({"agent_auto_publish_main_repo": "o/r"})
+    tid = (await mgr.create("Make another change", "vellur-coder", "o/r"))["id"]
+    t = await wait_final(mgr, tid)
+    assert t["report"]["publication"]["reason"] == "independent immutable validation is not configured"
+    assert not any(m == "PATCH" for m, _, _ in gh.calls)
+    gh.canonical_missing = True
+    tid = (await mgr.create("Make a third change", "vellur-coder", "o/r"))["id"]
+    t = await wait_final(mgr, tid)
+    assert t["report"]["publication"]["reason"].startswith("canonical repository identity unavailable")
+
+
+async def test_auto_publication_self_repo_rename_cannot_bypass_opt_in(agents):
+    ctrl, router, mgr, runner, gh, admin = agents(self_repo="old/r")
+    mgr.set_github_token("github_pat_" + "a" * 30)
+    tid = (await mgr.create("Make a change", "vellur-coder", "o/r"))["id"]
+    t = await wait_final(mgr, tid)
+    assert t["report"]["publication"]["reason"] == "VELLUR main requires explicit canonical repository approval"
+    assert not any(m == "PATCH" for m, _, _ in gh.calls)
+
+
+async def test_auto_publication_does_not_republish_on_upstream_movement(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    mgr.set_github_token("github_pat_" + "a" * 30)
+    gh.head = "newer2"
+    tid = (await mgr.create("Make a change", "vellur-coder", "o/r"))["id"]
+    t = await wait_final(mgr, tid)
+    assert t["report"]["publication"]["status"] == "skipped"
+    assert t["files_changed"] == 2 and not any(m == "PATCH" for m, _, _ in gh.calls)
+
+
+def test_runner_summary_is_fail_closed_and_never_runs_mutable_validation(tmp_path):
+    spec = importlib.util.spec_from_file_location("agent_runner_validation", Path(__file__).resolve().parents[2] / "agent" / "runner.py")
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / ".vellur").mkdir()
+    sentinel = tmp_path / "ran"
+    (repo / ".vellur" / "validate.json").write_text(json.dumps({"command": f"touch {sentinel}"}))
+    (repo / "data").write_text("old")
+    runner.initialize_repo(str(repo))
+    (repo / "data").write_text("good")
+    result = runner.validation_snapshot({"dir": str(tmp_path)})
+    assert result["status"] == "failed" and result["reason"] == "independent immutable validation is not configured"
+    assert base64.b64decode(result["files"][0]["content_b64"]) == b"good"
+    assert not sentinel.exists()
+    (repo / "data").write_text("bad")
+    assert runner.validation_snapshot({"dir": str(tmp_path)})["status"] == "failed"
 
 
 def test_optional_screenshot_notice_is_not_an_error():
