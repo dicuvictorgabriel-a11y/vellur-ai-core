@@ -40,8 +40,8 @@ Install click → the host installer.
 1. Agent → New task → "Improve VELLUR itself" (or pick `vellur-ai-core`). Describe the change.
 2. The agent works in a persistent workspace; the Live Preview shows the real dashboard from that workspace
    (`.vellur/preview.json` → `dev/preview.sh`), signed in as a demo owner with demo data.
-3. Every run ends with a checkpoint and desktop + mobile screenshots. "Versions" lists checkpoints; any can be
-   restored, and a restore can be undone.
+3. Every run ends with a checkpoint. Screenshots and AI visual inspection are separate, optional choices for each run.
+   "Versions" lists checkpoints; any can be restored, and a restore can be undone.
 4. Happy with it: "Publish to main" in the report. GitHub runs the tests.
 5. Activity → VELLUR version → "Install version …" (enabled when the tests passed). The server installs it within
    two minutes and reports the result there. "Return to the previous version" undoes it.

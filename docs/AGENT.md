@@ -32,7 +32,7 @@ reply is at the output limit (16 384 tokens), it was cut off. The raw log is und
   the conversation. If the browser is missing, the command says so and the agent must report it. Nothing is
   exposed to the internet: dev servers run only inside the isolated container.
 - **Controller** (`autopilot/app/agent.py`): imports the events into the `task_events` table (persistent history),
-  sends the agent a working guide (explore, plan, small steps, run checks, take screenshots, finish with a fixed report
+  sends the agent a working guide (explore, plan, small steps, run checks, finish with a fixed report
   and a `STATUS:` line), and builds a **final report** from recorded facts only.
 - **Outcome is judged, not assumed.** Process state (`done`, `failed`, …) is separate from `outcome`:
   `completed` (agent says COMPLETE and its last checks passed), `partial`, `blocked`, `unverified` (no final report),
@@ -49,8 +49,8 @@ reply is at the output limit (16 384 tokens), it was cut off. The raw log is und
 
 | Method | Path | |
 |---|---|---|
-| POST | `/autopilot/api/agent/tasks` | new task `{prompt, model, repo, base}` |
-| POST | `/autopilot/api/agent/tasks/{id}/messages` | follow-up `{text, model?}` (same session) |
+| POST | `/autopilot/api/agent/tasks` | new task `{prompt, model, repo, base, visual_inspection?, auto_screenshots?}` |
+| POST | `/autopilot/api/agent/tasks/{id}/messages` | follow-up `{text, model?, visual_inspection?, auto_screenshots?}` (same session) |
 | GET | `/autopilot/api/agent/tasks/{id}` | task, latest report, diagnostics, `can_publish`, `can_message` |
 | GET | `/autopilot/api/agent/tasks/{id}/events?after=` | timeline (polling) |
 | GET | `/autopilot/api/agent/tasks/{id}/stream?after=` | timeline (SSE) |
@@ -63,7 +63,7 @@ reply is at the output limit (16 384 tokens), it was cut off. The raw log is und
 - One task runs at a time. Limits apply **per run** (each follow-up has its own minutes and dollars).
 - The quality of the work depends on the model routed to `vellur-coder`. Free models often stop early or call tools
   badly; the report will now show it (`unverified`, `incomplete`) instead of `done`.
-- The image build downloads the browser; if that download fails, the agent works without screenshots.
+- The image build skips the browser by default. Build with `AGENT_BROWSER=1` when browser-based testing or screenshots are needed; if unavailable, optional captures are reported separately from test failures.
 - Tested here end to end with real OpenCode 1.19.5, the real runner and controller and a scripted (non-model) server,
   including real screenshots, follow-ups, restart of the runner and page reloads. Not yet tested with a real model
   provider or on the VPS.
@@ -85,8 +85,7 @@ The Agent tab is now a studio: the conversation on the left, the **live preview*
   contains a random token that only a logged-in owner can create and that expires after 12 hours. Nothing listens
   publicly: the dev server is reachable only through the controller. Limits: WebSockets (hot reload) are not proxied,
   responses are capped at 20 MB, and links that scripts build as root-absolute paths may not resolve.
-- **Visual verification.** After every run the runner takes real desktop and mobile screenshots of the preview
-  (`auto-run<N>-desktop/mobile`), shown in the report; the agent can take more with `vellur-screenshot`.
+- **Visual verification.** Live preview remains independent of screenshots. Automatic desktop and mobile captures are off by default; select **Automatic screenshots** for one run to request them. **AI visual inspection** is a separate per-run choice and requires enabling image support for the selected model and its fallbacks in Agent settings. The agent uses `vellur-screenshot` and reads the image when available; capture alone does not prove inspection. Neither option carries over to the next message.
 - **Publishing without pull requests.** The report has **Publish to <branch>**: one confirmed click commits the
   changes straight onto the branch the workspace started from. It is done only as a fast-forward: if the branch
   changed on GitHub meanwhile, VELLUR refuses and offers a pull request instead. After publishing, the workspace

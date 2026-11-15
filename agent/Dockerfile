@@ -3,10 +3,10 @@
 # No production secrets, no GitHub token, no Docker socket.
 # node:22-bookworm already contains git, python3, curl and build tools. Playwright's Chromium headless shell
 # (~250 MB on disk with its system libraries, memory only while a screenshot is taken) is installed for
-# `vellur-screenshot`; build with AGENT_BROWSER=0 to skip it.
+# `vellur-screenshot`; build with AGENT_BROWSER=1 to install it.
 FROM docker.io/library/node:22-bookworm
 ARG OPENCODE_VERSION=1.19.5
-ARG AGENT_BROWSER=1
+ARG AGENT_BROWSER=0
 ARG PLAYWRIGHT_VERSION=1.55.0
 ENV PLAYWRIGHT_BROWSERS_PATH=/opt/pw-browsers
 # The browser is optional: if its download fails the image still builds and `vellur-screenshot` explains that

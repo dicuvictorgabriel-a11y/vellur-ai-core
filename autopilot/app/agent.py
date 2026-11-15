@@ -46,15 +46,17 @@ How to work:
   as live progress updates.
 - Work in small steps. Never write a very large file in a single tool call (one reply is limited to about 16 000
   tokens): create big files in several parts or edit existing files piece by piece.
-- After changing code, run the project's tests, type checks, linters or build, and fix what fails.
-- For visible (frontend) changes, build or start the app locally in the background and take REAL screenshots with
-  `vellur-screenshot <url-or-html-file> <name> [desktop|mobile]` (see `vellur-screenshot --help`), desktop and mobile.
-  Never describe screenshots you did not take. If a screenshot is impossible, say why in the report.
+- After changing code, run lightweight code checks and functional tests, type checks, linters or build as appropriate,
+  and fix what fails. Basic static website checks do not require Chromium. Do not install browser dependencies unless
+  an explicitly requested browser-based test requires them.
+- Do not take screenshots or inspect images automatically. If the owner explicitly requests screenshots or visual
+  inspection, use `vellur-screenshot <url-or-html-file> <name> [desktop|mobile]` when available. Report an unavailable
+  optional screenshot capability separately from a failed test. Never describe screenshots you did not take.
 - The owner watches a LIVE PREVIEW of the project next to this conversation. A static site (an index.html in the
   project root or in dist/, build/, public/) is shown automatically. If the project needs a server, create
   `.vellur/preview.json` like {"command": "npm run dev -- --port $PORT --host 127.0.0.1", "dir": "."}; the command must
   listen on $PORT and VELLUR starts it for you. You can open the same preview at $VELLUR_PREVIEW_URL (curl or
-  vellur-screenshot). Desktop and mobile pictures of it are taken automatically after every run.
+  vellur-screenshot). The preview is independent of optional screenshots and visual inspection.
 - Do not commit, push or deploy. The owner reviews your changes and publishes them from VELLUR.
 
 Always finish with this report (in the owner's language when their notes ask for one):
@@ -72,6 +74,9 @@ CONTINUE_PROMPT = ("Your previous reply was cut off because it reached the outpu
                    "stopped. Write large files in several smaller parts or edit them piece by piece.")
 FOLLOWUP_SUFFIX = ("\n\n(When you are done, finish again with the report: ## Summary, ## Done, ## Not done, ## Tests and the "
                    "STATUS line.)")
+VISUAL_PROMPT = ("\n\nThe owner explicitly requested AI visual inspection for this run. Use vellur-screenshot on the "
+                 "live preview, open the resulting image with the read tool, inspect it and report your observations. "
+                 "If screenshots or image inspection are unavailable, report that as unverified, not as a passed test.")
 
 
 def _loads(v, default):
@@ -119,7 +124,7 @@ def normalize(ev: dict):
         msg = ((err.get("data") or {}).get("message") or err.get("name") or "error") if isinstance(err, dict) else str(err)
         return "error", {"message": str(msg)[:2000]}
     if typ == "raw":
-        return "raw", {"text": str(ev.get("text", ""))[:2000]}
+        return ("notice" if ev.get("category") == "screenshot_notice" else "raw"), {"text": str(ev.get("text", ""))[:2000]}
     return None, None
 
 
@@ -357,7 +362,8 @@ class AgentManager:
             raise AgentError("budget", "monthly budget is used up")
 
     # ── API ─────────────────────────────────────────────────────────────────────────────────────
-    async def create(self, prompt: str, model: str, repo: str = "", base: str = "") -> dict:
+    async def create(self, prompt: str, model: str, repo: str = "", base: str = "", visual_inspection: bool = False,
+                     auto_screenshots: bool = False) -> dict:
         prompt, repo, base = (prompt or "").strip(), (repo or "").strip(), (base or "").strip()
         if not 5 <= len(prompt) <= 20000:
             raise AgentError("invalid", "describe the task (5–20000 characters)")
@@ -367,6 +373,8 @@ class AgentManager:
             raise AgentError("invalid", "repository must look like owner/name")
         if base and not BRANCH_RE.match(base):
             raise AgentError("invalid", "invalid branch name")
+        if visual_inspection and not self.ctrl.settings.get().get("agent_vision"):
+            raise AgentError("vision_unavailable", "Enable image support for the selected model and its fallbacks before requesting AI visual inspection")
         self._check_can_run()
         now = time.time()
         cur = self.db.x("INSERT INTO tasks(created,updated,state,repo,base,model,prompt,outcome,runs) VALUES(?,?,?,?,?,?,?,?,?)",
@@ -374,10 +382,11 @@ class AgentManager:
         tid = cur.lastrowid
         self._ev(tid, 1, "user", text=prompt)
         self.db.event("info", "agent", f"task {tid} created", repo=repo, model=model)
-        self._jobs[tid] = asyncio.create_task(self._drive(tid, prompt, first=True))
+        self._jobs[tid] = asyncio.create_task(self._drive(tid, prompt, first=True, visual_inspection=visual_inspection, auto_screenshots=auto_screenshots))
         return self.task(tid)
 
-    async def message(self, tid: int, text: str, model: Optional[str] = None) -> dict:
+    async def message(self, tid: int, text: str, model: Optional[str] = None, visual_inspection: bool = False,
+                      auto_screenshots: bool = False) -> dict:
         """Follow-up: continue the same OpenCode session in the same workspace (the agent keeps its context)."""
         t = self.task(tid)
         if not t:
@@ -391,11 +400,13 @@ class AgentManager:
             raise AgentError("invalid", "unknown model")
         if not t["started"]:
             raise AgentError("expired", "this task never started an agent session; start a new task", 410)
+        if visual_inspection and not self.ctrl.settings.get().get("agent_vision"):
+            raise AgentError("vision_unavailable", "Enable image support for the selected model and its fallbacks before requesting AI visual inspection")
         self._check_can_run()
         run = int(t["runs"] or 1) + 1
         self._set(tid, state="queued", runs=run, error="", outcome="", model=model or t["model"], ended=None)
         self._ev(tid, run, "user", text=text)
-        self._jobs[tid] = asyncio.create_task(self._drive(tid, text, first=False))
+        self._jobs[tid] = asyncio.create_task(self._drive(tid, text, first=False, visual_inspection=visual_inspection, auto_screenshots=auto_screenshots))
         return self.task(tid)
 
     def _first_prompt(self, prompt: str, repo: str = "") -> str:
@@ -403,20 +414,18 @@ class AgentManager:
         memory = st["memory"].strip()
         notes = f"Notes from the owner (always follow them):\n{memory}\n\n" if memory else ""
         extra = ""
-        if st.get("agent_vision"):
-            extra += ("\n- You can see images: after taking a screenshot, open it with the read tool "
-                      "($VELLUR_SHOTS/<name>.png), look at it and fix what looks wrong before you report.")
         if repo and repo == self.env.self_repo:
             extra += ("\n- This repository is VELLUR AI Core itself, the application you are running in. You work on a "
                       "copy: the live server is not affected until the owner publishes and installs a release. Read "
                       "AGENTS.md first; never change the frozen login files; run the tests it names before reporting.")
         return f"{AGENT_GUIDE}{extra}\n\n{notes}Task from the owner:\n{prompt}"
 
-    async def _drive(self, tid: int, prompt: str, first: bool) -> None:
+    async def _drive(self, tid: int, prompt: str, first: bool, visual_inspection: bool = False,
+                     auto_screenshots: bool = False) -> None:
         """One run (first task message or follow-up), plus automatic continuations when the reply was cut off."""
         tag = f"task:{tid}"
         try:
-            await self._one_run(tid, prompt, first, tag)
+            await self._one_run(tid, prompt, first, tag, visual_inspection, auto_screenshots)
             for _ in range(AUTO_CONTINUE):
                 t = self.task(tid)
                 if not (t["state"] == "done" and t["report"].get("stop_reason") == "length"):
@@ -425,7 +434,7 @@ class AgentManager:
                 self._set(tid, state="queued", runs=run, outcome="")
                 self._ev(tid, run, "notice", text="The model's reply was cut off at its output limit. "
                                                   "VELLUR asked it automatically to continue in smaller steps.")
-                await self._one_run(tid, CONTINUE_PROMPT, False, tag)
+                await self._one_run(tid, CONTINUE_PROMPT, False, tag, visual_inspection)
         except asyncio.CancelledError:
             raise
         except Exception as e:  # noqa: BLE001
@@ -435,7 +444,8 @@ class AgentManager:
         finally:
             self._jobs.pop(tid, None)
 
-    async def _one_run(self, tid: int, prompt: str, first: bool, tag: str) -> None:
+    async def _one_run(self, tid: int, prompt: str, first: bool, tag: str, visual_inspection: bool = False,
+                       auto_screenshots: bool = False) -> None:
         t = self.task(tid)
         st = self.ctrl.settings.get()
         run = int(t["runs"] or 1)
@@ -458,17 +468,19 @@ class AgentManager:
                     finally:
                         await gh.c.aclose()
                     self._set(tid, base=base, base_sha=sha)
-                await self._runner("POST", "/tasks", json={"id": tid, "prompt": self._first_prompt(prompt, t["repo"]),
+                await self._runner("POST", "/tasks", json={"id": tid, "prompt": self._first_prompt(prompt, t["repo"]) + (VISUAL_PROMPT if visual_inspection else ""),
                                                            "model": t["model"], "proxy_url": self.env.agent_proxy_url,
                                                            "proxy_token": token, "max_minutes": st["agent_max_minutes"],
-                                                           "vision": bool(st.get("agent_vision"))})
+                                                           "vision": visual_inspection, "auto_screenshots": auto_screenshots})
                 if source is not None:
                     await self._runner("PUT", f"/tasks/{tid}/source", content=source)
                 await self._runner("POST", f"/tasks/{tid}/start")
             else:
                 await self._runner("POST", f"/tasks/{tid}/message", json={
-                    "prompt": prompt + FOLLOWUP_SUFFIX, "model": self.task(tid)["model"], "proxy_url": self.env.agent_proxy_url,
-                    "proxy_token": token, "max_minutes": st["agent_max_minutes"], "vision": bool(st.get("agent_vision"))})
+                    "prompt": prompt + FOLLOWUP_SUFFIX + (VISUAL_PROMPT if visual_inspection else ""),
+                    "model": self.task(tid)["model"], "proxy_url": self.env.agent_proxy_url,
+                    "proxy_token": token, "max_minutes": st["agent_max_minutes"], "vision": visual_inspection,
+                    "auto_screenshots": auto_screenshots})
             started = time.time()
             self._set(tid, state="running", started=t["started"] or started)
             self._ev(tid, run, "status", text="Agent started" if first else "Agent continues", state="running")

@@ -402,6 +402,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         </div>
         <input id="agOther" placeholder="owner/name" autocomplete="off">
         <textarea id="agIn" rows="1" placeholder="Describe what you want built or changed…"></textarea>
+        <div class="row" style="gap:14px;margin:6px 0;flex-wrap:wrap">
+          <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--soft)"><input type="checkbox" id="agInspect" style="width:auto"> AI visual inspection (this run; enable image support below)</label>
+          <label style="display:flex;gap:6px;align-items:center;font-size:12px;color:var(--soft)"><input type="checkbox" id="agAutoShots" style="width:auto"> Automatic screenshots (this run)</label>
+        </div>
         <div class="cbar">
           <select id="tModel" style="width:auto;border-radius:99px;padding:6px 10px;font-size:13px" aria-label="Model"></select>
           <span class="grow" id="agNote"></span>
@@ -409,7 +413,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         </div>
       </div>
       <div id="agFoot"><details id="ghBox"><summary id="ghNote">GitHub connection</summary>
-        <label style="display:flex;gap:8px;align-items:center;margin:4px 0 10px;font-size:13px;color:var(--soft)"><input type="checkbox" id="agVision" style="width:auto"> The agent's model can see images (it will open and inspect its own screenshots)</label>
+        <label style="display:flex;gap:8px;align-items:center;margin:4px 0 10px;font-size:13px;color:var(--soft)"><input type="checkbox" id="agVision" style="width:auto"> The selected model and its fallbacks support images (required for AI visual inspection)</label>
         <div class="row"><input id="ghToken" type="password" autocomplete="off" placeholder="GitHub fine-grained token (stored on the server, never shown again)" style="max-width:460px"><button class="ghost" id="ghSave">Save token</button></div>
         <p class="note">github.com → Settings → Developer settings → Fine-grained tokens. Repository access: the repositories you choose; permissions: Contents and Pull requests (read and write), Metadata (read). Limits per run: <span id="tLimits"></span></p>
       </details></div>
@@ -695,7 +699,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     h += `<h5>Files changed (${files.length})</h5>` + (files.length ? `<div class="flist">${files.slice(0, 40).map(f => `<span><em>${esc(f.path)}</em>${f.status === "D" ? "<b class='ddel'>deleted</b>" : f.added == null ? "<b class='dhdr'>binary</b>" : `<b class='dadd'>+${f.added}</b><b class='ddel'>−${f.removed}</b>`}</span>`).join("")}${files.length > 40 ? `<span><em>… and ${files.length - 40} more</em></span>` : ""}</div>` : `<div class="txt">No files were changed.</div>`);
     h += `<h5>Checks</h5>` + (tests.length ? `<div class="tl">${tests.map(c => `${c.exit === 0 ? "<span class='good'>✓</span>" : "<span class='badc'>✕</span>"} ${esc(c.command)}`).join("<br>")}</div>` : `<div class="txt">The agent ran no tests or checks${sec.tests ? ": " + esc(sec.tests.slice(0, 400)) : "."}</div>`);
     if (r.shots && r.shots.length) h += `<h5>Screenshots</h5><div class="shots">${r.shots.map(n => `<img src="${shotUrl(n)}" alt="${esc(n)}" loading="lazy">`).join("")}</div>`;
-    else h += `<h5>Preview</h5><div class="txt">No screenshots were taken in this task${files.some(f => /\.(html|css|tsx?|jsx?|vue|svelte)$/.test(f.path)) ? " (the agent did not use vellur-screenshot or it was unavailable; see its report)" : ""}.</div>`;
+    else h += `<h5>Preview</h5><div class="txt">No screenshots were taken in this task. Screenshots are optional; see notices for unavailable capabilities.</div>`;
     if (r.errors && r.errors.length) h += `<h5>Errors</h5><div class="txt badc">${r.errors.map(esc).join("\n")}</div>`;
     h += `<div class="foot"><span>This run ${money4(r.cost_run_usd)}</span><span>Task total ${money4(r.cost_total_usd)}</span><span>${r.tool_calls || 0} actions</span><span>${(r.tokens || {}).output || 0} output tokens</span></div>`;
     h += `<div class="acts"></div><pre class="box" style="display:none"></pre>`;
@@ -884,13 +888,14 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     const text = $("agIn").value.trim(); if (!text) return; $("agNote").textContent = ""; $("agSend").disabled = true;
     try {
       if (!CUR) {
-        const t = await send("agent/tasks", "POST", { prompt: text, model: $("tModel").value, repo: repoValue(), base: $("tBase").value });
+        const t = await send("agent/tasks", "POST", { prompt: text, model: $("tModel").value, repo: repoValue(), base: $("tBase").value, visual_inspection: $("agInspect").checked, auto_screenshots: $("agAutoShots").checked });
         $("agIn").value = ""; agGrow(); try { AGENT = await send("agent", "GET"); TASKS = AGENT.tasks || []; } catch (e) {} await openTask(t.id);
       } else {
-        await send("agent/tasks/" + TASK + "/messages", "POST", { text, model: $("tModel").value }); $("agIn").value = ""; agGrow();
+        await send("agent/tasks/" + TASK + "/messages", "POST", { text, model: $("tModel").value, visual_inspection: $("agInspect").checked, auto_screenshots: $("agAutoShots").checked }); $("agIn").value = ""; agGrow();
         CUR = await send("agent/tasks/" + TASK, "GET"); header(); composer();
         const r = await send("agent/tasks/" + TASK + "/events?after=" + LAST_EV, "GET"); r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; }); live();
       }
+      $("agInspect").checked = false; $("agAutoShots").checked = false;
     } catch (e) { $("agNote").textContent = e.message; }
     finally { composer(); }
   }

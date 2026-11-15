@@ -44,11 +44,15 @@ class TaskBody(BaseModel):
     model: str = "vellur-coder"
     repo: str = ""
     base: str = ""
+    visual_inspection: bool = False
+    auto_screenshots: bool = False
 
 
 class FollowBody(BaseModel):
     text: str
     model: Optional[str] = None
+    visual_inspection: bool = False
+    auto_screenshots: bool = False
 
 
 class CheckpointBody(BaseModel):
@@ -279,7 +283,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     @app.post("/autopilot/api/agent/tasks", dependencies=[Depends(admin_write)])
     async def create_task(body: TaskBody):
         try:
-            return await agent.create(body.prompt, body.model, body.repo, body.base)
+            return await agent.create(body.prompt, body.model, body.repo, body.base, body.visual_inspection, body.auto_screenshots)
         except AgentError as e:
             return err(e)
 
@@ -293,7 +297,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     @app.post("/autopilot/api/agent/tasks/{tid}/messages", dependencies=[Depends(admin_write)])
     async def task_message(tid: int, body: FollowBody):
         try:
-            return await agent.message(tid, body.text, body.model)
+            return await agent.message(tid, body.text, body.model, body.visual_inspection, body.auto_screenshots)
         except AgentError as e:
             return err(e)
 

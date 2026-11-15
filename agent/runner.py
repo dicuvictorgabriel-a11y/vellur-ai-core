@@ -256,9 +256,11 @@ def run_task(tid):
         t["exit"] = p.returncode
         with contextlib.suppress(Exception):
             checkpoint(repo, f"After run {t['run']}")          # every run ends with a recoverable checkpoint
-        if t["state"] == "running":
-            with contextlib.suppress(Exception):
+        if t["state"] == "running" and t["meta"].get("auto_screenshots") is True:
+            try:
                 auto_shots(tid, t)
+            except Exception as e:
+                screenshot_notice(t, f"automatic screenshots unavailable: {type(e).__name__}: {e}")
         git(repo, "add", "-A", check=False)
         names = git(repo, "diff", "--cached", "--no-renames", "--name-status", "-z", base(repo), check=False).decode(errors="replace")
         t["changed"] = len([x for x in names.split("\0") if x]) // 2
@@ -539,20 +541,39 @@ def preview_info(tid, t):
     return info
 
 
+def screenshot_notice(t, message):
+    text = f"[runner] screenshot notice: {message}"[:MAX_EVENT]
+    event = {"type": "raw", "category": "screenshot_notice", "text": text, "run": t["run"]}
+    with contextlib.suppress(OSError):
+        with open(os.path.join(t["dir"], "events.jsonl"), "ab") as out:
+            out.write((json.dumps(event) + "\n").encode())
+    with contextlib.suppress(OSError):
+        with open(os.path.join(t["dir"], "log"), "ab") as out:
+            out.write((text + "\n").encode())
+
+
 def auto_shots(tid, t):
-    """After each run: real desktop + mobile pictures of the preview, so every report shows the current result."""
     plan = preview_plan(t)
     if plan["mode"] == "none":
+        screenshot_notice(t, f"preview unavailable: {plan.get('why', 'no preview')}")
         return
-    if plan["mode"] == "command" and ensure_preview(tid, t, plan, wait=40):
-        return
+    if plan["mode"] == "command":
+        why = ensure_preview(tid, t, plan, wait=40)
+        if why:
+            screenshot_notice(t, f"preview unavailable: {why}")
+            return
     shots = os.path.join(t["dir"], "shots")
     os.makedirs(shots, exist_ok=True)
     port = int(os.environ.get("AGENT_PORT", "7070"))
     for size in ("desktop", "mobile"):
-        with contextlib.suppress(Exception):
-            subprocess.run(["vellur-screenshot", f"http://127.0.0.1:{port}/tasks/{tid}/preview/", f"auto-run{t['run']}-{size}", size],
-                           env=dict(os.environ, VELLUR_SHOTS=shots), capture_output=True, timeout=120)
+        try:
+            result = subprocess.run(["vellur-screenshot", f"http://127.0.0.1:{port}/tasks/{tid}/preview/", f"auto-run{t['run']}-{size}", size],
+                                    env=dict(os.environ, VELLUR_SHOTS=shots), capture_output=True, timeout=120)
+            if result.returncode:
+                detail = (result.stderr or result.stdout or b"").decode(errors="replace").strip()[-1000:]
+                screenshot_notice(t, f"{size} screenshot failed (exit {result.returncode}): {detail}")
+        except Exception as e:
+            screenshot_notice(t, f"{size} screenshot failed: {type(e).__name__}: {e}")
 
 
 def cleanup():
@@ -646,6 +667,7 @@ class H(BaseHTTPRequestHandler):
                 if not t.get("session"):
                     return self.send(410, {"error": "this task has no agent session to continue"})
                 t["meta"].update({k: body[k] for k in ("prompt", "proxy_token", "proxy_url", "model", "max_minutes", "vision") if k in body})
+                t["meta"]["auto_screenshots"] = body.get("auto_screenshots") is True
                 t.update(state="running", started=time.time(), ended=None, exit=None, error="", cancel=False,
                          run=int(t.get("run") or 1) + 1)
             threading.Thread(target=run_task, args=(tid,), daemon=True).start()

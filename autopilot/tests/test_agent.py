@@ -427,6 +427,38 @@ async def test_self_repository_and_vision_reach_the_agent(agents):
     ctrl.settings.update({"agent_vision": True})
     tid = (await mgr.create("Improve the dashboard", "vellur-coder", "o/r"))["id"]
     await wait_final(mgr, tid)
-    assert runner.meta["vision"] is True and "VELLUR AI Core itself" in runner.meta["prompt"] and "You can see images" in runner.meta["prompt"]
+    assert runner.meta["vision"] is False and runner.meta["auto_screenshots"] is False
+    assert "VELLUR AI Core itself" in runner.meta["prompt"] and "explicitly requested AI visual inspection" not in runner.meta["prompt"]
+    await asyncio.sleep(0.05)
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/messages", headers=WRITE,
+                         json={"text": "Inspect the page", "visual_inspection": True, "auto_screenshots": True})
+    assert r.status_code == 200
+    await wait_final(mgr, tid)
+    assert runner.messages[-1]["vision"] is True and runner.messages[-1]["auto_screenshots"] is True
+    assert "explicitly requested AI visual inspection" in runner.messages[-1]["prompt"]
+    await asyncio.sleep(0.05)
+    await mgr.message(tid, "Continue")
+    await wait_final(mgr, tid)
+    assert runner.messages[-1]["vision"] is False and runner.messages[-1]["auto_screenshots"] is False
     a = (await admin.get("/autopilot/api/agent", headers=ADMIN)).json()
     assert a["self_repo"] == "o/r" and a["vision"] is True
+
+
+async def test_visual_inspection_requires_capability_and_is_explicit_on_create(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    url = "/autopilot/api/agent/tasks"
+    body = {"prompt": "Inspect the page", "visual_inspection": True}
+    r = await admin.post(url, headers=WRITE, json=body)
+    assert r.status_code == 400 and r.json()["error"] == "vision_unavailable"
+    ctrl.settings.update({"agent_vision": True})
+    r = await admin.post(url, headers=WRITE, json={**body, "auto_screenshots": True})
+    assert r.status_code == 200
+    await wait_final(mgr, r.json()["id"])
+    assert runner.meta["vision"] is True and runner.meta["auto_screenshots"] is True
+    assert "explicitly requested AI visual inspection" in runner.meta["prompt"]
+
+
+def test_optional_screenshot_notice_is_not_an_error():
+    from app.agent import normalize
+    kind, data = normalize({"type": "raw", "category": "screenshot_notice", "text": "browser unavailable"})
+    assert kind == "notice" and data["text"] == "browser unavailable"
