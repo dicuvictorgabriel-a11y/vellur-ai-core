@@ -70,6 +70,7 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
                 router=None, agent=None) -> FastAPI:
     from .agent import AgentManager
     from .attachments import register as register_attachments
+    from .images import ImageService, register as register_images
     from .router import Router
     from .workspace import register as register_workspace
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -77,6 +78,8 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     router = router or Router(ctrl)
     agent = agent or AgentManager(ctrl, router)
     app.state.router, app.state.agent = router, agent
+    image_service = ImageService(ctrl, router)
+    app.state.images = image_service
 
     auth = Auth(ctrl.db)
     ALLOWED_DURING_CHANGE = {"/autopilot/api/auth/change", "/autopilot/api/auth/logout", "/autopilot/api/auth/me"}
@@ -315,6 +318,7 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
         return out
 
     register_attachments(app, ctrl, agent.attachments, admin, admin_write)
+    register_images(app, ctrl, router, image_service, admin, admin_write)
     register_workspace(app, ctrl, router, agent, admin, admin_write)
 
     return app

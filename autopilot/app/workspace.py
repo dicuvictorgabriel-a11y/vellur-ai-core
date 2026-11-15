@@ -2,19 +2,22 @@
 agent tasks. Registered from api.py with the same `admin` / `admin_write` guards as every other private endpoint."""
 from __future__ import annotations
 
+import hmac
 import json
+import os
 import time
 from typing import Optional
 
 import asyncio
 import re
 
-from fastapi import Depends, FastAPI, Request
+from fastapi import Depends, FastAPI, HTTPException, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel, Field
 
 from .agent import AgentError, AgentManager
 from .budget import month_key
+from .images import ImageError, ImageService, wants_image
 from .config import ROLES
 from .lifecycle import Controller
 from .release import Release, ReleaseError
@@ -34,10 +37,19 @@ class MsgBody(BaseModel):
     content: str = ""
     model: Optional[str] = None
     attachments: list[str] = Field(default_factory=list)
+    confirm_image: bool = False
+    image_size: str = "1024x1024"
 
 
 class TargetBody(BaseModel):
     target: str
+
+
+class AgentImageBody(BaseModel):
+    prompt: str
+    task_id: int
+    size: str = "1024x1024"
+    n: int = 1
 
 
 class TaskBody(BaseModel):
@@ -98,10 +110,20 @@ def _brief(t: dict) -> dict:
 def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager, admin, admin_write) -> None:
     db = ctrl.db
     attachments = agent.attachments
+    images = ImageService(ctrl, router)
 
     def err(e) -> JSONResponse:
-        return JSONResponse(status_code=getattr(e, "status", 400),
-                            content={"error": getattr(e, "code", "invalid"), "message": getattr(e, "message", str(e))})
+        body = {"error": getattr(e, "code", "invalid"), "message": getattr(e, "message", str(e))}
+        details = getattr(e, "data", None)
+        if details:
+            body["details"] = details
+        return JSONResponse(status_code=getattr(e, "status", 400), content=body)
+
+    def runner_only(request: Request) -> None:
+        secret = ctrl.env.agent_runner_secret
+        got = request.headers.get("x-runner-secret", "")
+        if not secret or len(secret) < 24 or not hmac.compare_digest(got.encode(), secret.encode()):
+            raise HTTPException(401, "runner authentication required")
 
     def visual_prefs(body) -> tuple:
         st = ctrl.settings.get()
@@ -142,6 +164,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     @app.delete("/autopilot/api/conversations/{cid}", dependencies=[Depends(admin_write)])
     async def delete_conversation(cid: int):
         attachments.delete_for_conversation(cid)
+        images.store.delete_for_conversation(cid)
         db.x("DELETE FROM messages WHERE conv_id=?", (cid,))
         db.x("DELETE FROM conversations WHERE id=?", (cid,))
         return {"ok": True}
@@ -171,7 +194,31 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         else:
             title = conv["title"]
         db.x("UPDATE conversations SET updated=?, model=?, title=? WHERE id=?", (now, model, title, cid))
-        vision = bool(ctrl.settings.get().get("agent_vision"))
+        has_images = any(r["kind"] == "image" and r["mime"] != "image/svg+xml" for r in rows)
+        make_image = model == "vellur-image" or (wants_image(content, has_images) and not rows)
+        if make_image:
+            async def image_gen():
+                try:
+                    result = await images.generate(content, "vellur-image", body.image_size, 1, body.confirm_image,
+                                                   f"image:chat:{cid}", conv_id=cid,
+                                                   max_usd=ctrl.settings.get().get("image_max_usd"))
+                except ImageError as e:
+                    if e.code == "image_confirmation":
+                        yield f"data: {json.dumps({'vellur_image_confirm': e.data, 'prompt': content})}\n\n".encode()
+                    else:
+                        yield f"data: {json.dumps({'vellur_error': e.message, 'code': e.code})}\n\n".encode()
+                    return
+                text = "Generated image"
+                db.x("INSERT INTO messages(conv_id,role,content,created,meta) VALUES(?,?,?,?,?)",
+                     (cid, "assistant", text, time.time(), json.dumps({"images": result["images"], "model": "vellur-image",
+                                                                       "target": result["target"], "cost_usd": result["cost_usd"],
+                                                                       "cost_source": result["cost_source"]})))
+                db.x("UPDATE conversations SET updated=? WHERE id=?", (time.time(), cid))
+                yield f"data: {json.dumps({'vellur_image': result, 'title': title})}\n\n".encode()
+                yield f"data: {json.dumps({'vellur_done': True, 'target': result['target'], 'title': title})}\n\n".encode()
+            return StreamingResponse(image_gen(), media_type="text/event-stream", headers={"Cache-Control": "no-store"})
+        vision = bool(ctrl.settings.get().get("agent_vision") or router.can_vision(model))
+        route_cap = "vision" if has_images and router.can_vision(model) else None
         history, used = [], 0
         for m in reversed(db.all("SELECT role, content, meta FROM messages WHERE conv_id=? ORDER BY id", (cid,))):
             mmeta = json.loads(m.get("meta") or "{}")
@@ -184,7 +231,8 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         memory = ctrl.settings.get()["memory"].strip()
         messages = ([{"role": "system", "content": "Notes from the owner (always apply):\n" + memory}] if memory else []) + history
         resp = await router.handle("POST", "chat/completions", "", {},
-                                   json.dumps({"model": model, "messages": messages, "stream": True}).encode(), f"chat:{cid}")
+                                   json.dumps({"model": model, "messages": messages, "stream": True}).encode(), f"chat:{cid}",
+                                   capability=route_cap)
 
         async def gen():
             if resp.status != 200:
@@ -225,13 +273,18 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         effective = {}
         for role in ROLES:
             rows = []
+            capability = "image_generation" if role == "vellur-image" else None
             for i, t in enumerate(router.chain(role)):
-                ok, code, why = router.usable(t, fallback=i > 0)
+                ok, code, why = router.usable(t, fallback=i > 0, capability=capability)
                 pr = router.price(t)
                 rows.append({"target": t, "usable": ok, "code": code, "why": why, "price": pr})
             effective[role] = rows
-        return {"roles": ROLES, "routes": st["routes"], "prices": st["prices"], "providers": router.providers_public(),
-                "effective": effective, "paid_fallback": st["paid_fallback"]}
+        return {"roles": ROLES, "routes": st["routes"], "prices": st["prices"],
+                "image_prices": st.get("image_prices", {}), "providers": router.providers_public(),
+                "effective": effective, "paid_fallback": st["paid_fallback"],
+                "capabilities": router.capability_summary(),
+                "images": {"max_usd": st.get("image_max_usd"), "confirm_paid": st.get("image_confirm_paid"),
+                           "agent": st.get("agent_image_generation"), "agent_max_usd": st.get("agent_image_max_usd")}}
 
     @app.get("/autopilot/api/llm", dependencies=[Depends(admin)])
     async def llm():
@@ -262,6 +315,39 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     @app.get("/autopilot/api/llm/providers/{name}/catalog", dependencies=[Depends(admin)])
     async def cached_catalog(name: str):
         return db.kv_get(f"llm_catalog_{name}") or {"models": [], "ts": None}
+
+    @app.post("/autopilot/api/agent/images", dependencies=[Depends(runner_only)])
+    async def agent_image(body: AgentImageBody):
+        st = ctrl.settings.get()
+        if not st.get("agent_image_generation"):
+            return JSONResponse(status_code=403, content={"error": "image_disabled",
+                                                          "message": "Image generation for agent tasks is disabled in Models."})
+        if not db.one("SELECT id FROM tasks WHERE id=?", (body.task_id,)):
+            return JSONResponse(status_code=404, content={"error": "not_found", "message": "unknown task"})
+        try:
+            return await images.generate(body.prompt, "vellur-image", body.size, body.n, True,
+                                         f"task:{body.task_id}", task_id=body.task_id,
+                                         max_usd=st.get("agent_image_max_usd"))
+        except ImageError as e:
+            return JSONResponse(status_code=e.status, content={"error": e.code, "message": e.message, **e.data})
+
+    @app.get("/autopilot/api/agent/images/{iid}/content", dependencies=[Depends(runner_only)])
+    async def agent_image_content(iid: str):
+        row = images.store.get(iid)
+        if not row:
+            return JSONResponse(status_code=404, content={"error": "not_found", "message": "unknown image"})
+        try:
+            path = images.store.path(row)
+            if not os.path.isfile(path):
+                raise OSError("missing")
+        except (OSError, ValueError):
+            return JSONResponse(status_code=404, content={"error": "not_found", "message": "image file is missing"})
+        return FileResponse(path, media_type=row["mime"], headers={"Cache-Control": "private, no-store",
+                                                                  "X-Content-Type-Options": "nosniff"})
+
+    @app.get("/autopilot/api/llm/models", dependencies=[Depends(admin)])
+    async def llm_models():
+        return {"models": router.models(), "capabilities": router.capability_summary()}
 
     @app.post("/autopilot/api/llm/test", dependencies=[Depends(admin_write)])
     async def test_target(body: TargetBody):
@@ -304,7 +390,8 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     async def agent_state():
         ok, why = agent.available()
         st = ctrl.settings.get()
-        return {"available": ok, "why": why, "github_token_set": bool(agent.github_token()), "tasks": agent.list(),
+        return {"available": ok, "why": why, "github_token_set": bool(agent.github_token()),
+                "github": await agent.github_status(), "tasks": agent.list(),
                 "self_repo": ctrl.env.self_repo, "vision": bool(st.get("agent_vision")),
                 "max_minutes": st["agent_max_minutes"], "max_usd": st["agent_max_usd"]}
 
@@ -546,10 +633,17 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     async def release_report(body: ReleaseReport):
         return release.report(body.installed, body.previous, body.last, body.clear)
 
+    @app.get("/autopilot/api/agent/github/check", dependencies=[Depends(admin)])
+    async def github_check(repo: str = "", branch: str = ""):
+        try:
+            return await agent.github_check(repo, branch)
+        except AgentError as e:
+            return err(e)
+
     @app.put("/autopilot/api/agent/github", dependencies=[Depends(admin_write)])
     async def github_token(body: TokenBody):
         try:
             agent.set_github_token(body.token)
         except AgentError as e:
             return err(e)
-        return {"github_token_set": bool(agent.github_token())}
+        return {"github_token_set": bool(agent.github_token()), "github": await agent.github_status()}

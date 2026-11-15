@@ -131,6 +131,7 @@ services:
     networks: [agents]
     environment:
       AGENT_RUNNER_SECRET: ${AGENT_RUNNER_SECRET:-}
+      VELLUR_IMAGE_URL: "http://autopilot:8080/autopilot/api/agent/images"
     volumes:
       - agent-work:/work
     tmpfs: ["/tmp:size=512m,exec"]

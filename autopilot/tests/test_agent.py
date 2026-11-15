@@ -131,24 +131,36 @@ class FakeGitHub:
     def __init__(self):
         self.calls, self.auth, self.head = [], set(), "base1"
         self.head_failures = 0
+        self.user_status, self.user_message = 200, "Bad credentials"
+        self.patch_headers, self.patch_message = {}, "not a fast forward"
+        self.branch_protected, self.repo_push = False, True
 
     def handler(self, req: httpx.Request):
         self.auth.add(req.headers.get("authorization"))
         if req.method == "PATCH" and getattr(self, "patch_error", False):
             raise httpx.ConnectError("connection lost", request=req)
         if req.method == "PATCH" and getattr(self, "patch_status", None):
-            return httpx.Response(self.patch_status, json={"message": "not a fast forward"})
+            return httpx.Response(self.patch_status, json={"message": self.patch_message}, headers=self.patch_headers)
         p, body = req.url.path, json.loads(req.content or b"{}")
         self.calls.append((req.method, p, body))
+        if p == "/user":
+            if self.user_status != 200:
+                return httpx.Response(self.user_status, json={"message": self.user_message})
+            return httpx.Response(200, json={"login": "octo", "id": 7})
         if p == "/user/repos":
             return httpx.Response(200, json=[{"full_name": "o/r", "default_branch": "main", "private": True},
                                              {"full_name": "o/s", "default_branch": "dev", "private": False}])
         if p == "/repos/o/r/branches":
             return httpx.Response(200, json=[{"name": "feature"}, {"name": "main"}])
+        if p == "/repos/o/r/branches/main":
+            return httpx.Response(200, json={"name": "main", "protected": self.branch_protected,
+                                             "commit": {"sha": self.head}})
         if p in ("/repos/o/r", "/repos/old/r"):
             if getattr(self, "canonical_missing", False):
                 return httpx.Response(200, json={"default_branch": "main"})
-            return httpx.Response(200, json={"default_branch": "main", "full_name": "o/r"})
+            return httpx.Response(200, json={"default_branch": "main", "full_name": "o/r",
+                                             "private": True, "permissions": {"admin": False, "push": self.repo_push,
+                                                                              "pull": True}})
         if p.startswith("/repos/") and p.count("/") == 3:
             if getattr(self, "canonical_missing", False):
                 return httpx.Response(200, json={"default_branch": "main"})
@@ -250,6 +262,74 @@ async def test_repository_and_branch_pickers(agents):
     bad = await admin.get("/autopilot/api/agent/branches", params={"repo": "not a repo"}, headers=ADMIN)
     assert bad.status_code == 400
     assert (await admin.get("/autopilot/api/agent/repos")).status_code in (401, 403)   # admin only
+
+
+async def test_github_connection_is_verified_and_access_is_diagnosable(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    token = "github_pat_" + "a" * 30
+    r = await admin.get("/autopilot/api/agent/github/check", headers=ADMIN)
+    assert r.status_code == 400 and r.json()["error"] == "github_auth"
+    gh.user_status, gh.user_message = 401, "Bad credentials"
+    await admin.put("/autopilot/api/agent/github", headers=WRITE, json={"token": token})
+    state = await admin.get("/autopilot/api/agent", headers=ADMIN)
+    j = state.json()
+    assert j["github_token_set"] is True and j["github"]["ok"] is False and "401" in j["github"]["message"]
+    assert token not in state.text
+    gh.user_status = 200
+    j = (await admin.get("/autopilot/api/agent", headers=ADMIN)).json()
+    assert j["github"] == {"ok": True, "checked": True, "login": "octo"}
+    gh.branch_protected = True
+    r = await admin.get("/autopilot/api/agent/github/check",
+                        params={"repo": "o/r", "branch": "main"}, headers=ADMIN)
+    j = r.json()
+    assert j["ok"] is True and j["login"] == "octo" and j["repo"]["canonical"] == "o/r"
+    assert j["repo"]["can_push"] is True and j["repo"]["branch"]["protected"] is True
+    assert token not in r.text
+
+
+async def test_github_errors_are_classified_instead_of_blaming_the_token(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    token = "github_pat_" + "a" * 30
+    mgr.set_github_token(token)
+    tid = (await mgr.create("Add a health endpoint", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    cases = [
+        (401, "Bad credentials", {}, "github_auth", "401"),
+        (403, "Resource not accessible by personal access token",
+         {"x-accepted-github-permissions": "contents=write"}, "github_forbidden", "contents: read and write"),
+        (403, "protected branch hook declined", {}, "github_protected", "branch protection"),
+        (403, "API rate limit exceeded", {"x-ratelimit-remaining": "0", "x-ratelimit-reset": "123"},
+         "github_rate_limited", "rate limit"),
+        (404, "Not Found", {}, "github_not_found", "not found"),
+        (422, "Update is not a fast forward", {}, "github_rejected", "422"),
+    ]
+    for status, message, headers, code, fragment in cases:
+        gh.patch_status, gh.patch_message, gh.patch_headers = status, message, headers
+        r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish-direct", headers=WRITE)
+        j = r.json()
+        assert r.status_code == 502 and j["error"] == code, (status, j)
+        assert fragment in (j["message"] + " " + json.dumps(j.get("details", {}))).lower(), (status, j)
+        assert token not in r.text
+        assert not ctrl.db.kv_get(f"task_rebaseline_failed_{tid}")
+
+
+async def test_publish_direct_names_missing_write_access_and_protected_branch(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    token = "github_pat_" + "a" * 30
+    mgr.set_github_token(token)
+    tid = (await mgr.create("Add a health endpoint", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    gh.patch_status, gh.patch_message = 403, "Resource not accessible by personal access token"
+    gh.repo_push = False
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish-direct", headers=WRITE)
+    j = r.json()
+    assert j["error"] == "github_forbidden" and "no write access" in j["message"]
+    assert j["details"]["access"]["can_push"] is False and token not in r.text
+    gh.patch_message, gh.repo_push, gh.branch_protected = "protected branch hook declined", True, True
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish-direct", headers=WRITE)
+    j = r.json()
+    assert j["error"] == "github_protected" and "is protected" in j["message"]
+    assert j["details"]["access"]["branch"]["protected"] is True and token not in r.text
 
 
 async def test_one_task_at_a_time_and_cancel(agents):
@@ -542,7 +622,7 @@ async def test_publish_direct_clears_reconciliation_after_known_refusal(agents):
     await wait_final(mgr, tid)
     gh.patch_status = 422
     r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish-direct", headers=WRITE)
-    assert r.status_code == 502 and r.json()["error"] == "github"
+    assert r.status_code == 502 and r.json()["error"] == "github_rejected"
     assert not ctrl.db.kv_get(f"task_rebaseline_failed_{tid}")
 
 

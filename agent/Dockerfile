@@ -23,6 +23,7 @@ RUN if [ "$AGENT_BROWSER" = "1" ]; then \
  && mkdir -p /work && chown agent:agent /work
 COPY runner.py /usr/local/bin/vellur-runner.py
 COPY vellur-screenshot /usr/local/bin/vellur-screenshot
+COPY vellur-image /usr/local/bin/vellur-image
 USER 10002
 WORKDIR /work
 ENV AGENT_WORK=/work NO_UPDATE_NOTIFIER=1

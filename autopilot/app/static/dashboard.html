@@ -126,6 +126,20 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .msgatts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .msgatts a{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line2);border-radius:9px;background:var(--panel);color:var(--text);text-decoration:none;font-size:11.5px}
 .msgatts img{width:30px;height:30px;object-fit:cover;border-radius:5px}
+.msgimgs{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;margin-top:10px;max-width:560px}
+.msgimgs a{display:block;border:1px solid var(--line2);border-radius:12px;overflow:hidden;background:#0b0b0d}
+.msgimgs img{display:block;width:100%;height:auto;max-height:420px;object-fit:contain}
+.imgcard{margin-top:10px;padding:12px 14px;border:1px solid var(--line2);border-radius:12px;background:var(--panel);display:flex;flex-direction:column;gap:8px;align-items:flex-start}
+.imgcard b{font-size:14px}.imgcard button{min-height:0;padding:7px 12px}
+.caps{display:flex;gap:4px;flex-wrap:wrap;margin:5px 0 0}
+.cap{font-size:10.5px;line-height:1;padding:4px 6px;border-radius:99px;border:1px solid var(--line2);color:var(--soft);white-space:nowrap}
+.cap.vision{color:#a8eef5;border-color:#1d4a50}.cap.image_generation{color:#ffd76a;border-color:#5a4a16}.cap.coding{color:#b7f08a;border-color:#3d4d12}
+.modelgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:10px;max-height:460px;overflow:auto}
+.modelcard{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:10px 11px;min-width:0}
+.modelcard b{display:block;font-size:12.5px;font-weight:600;overflow-wrap:anywhere}.modelcard .note{margin:3px 0 0;font-size:11px}
+.modelcard .row{margin-top:7px;gap:5px}.modelcard button{padding:4px 8px;font-size:11px;min-height:0}
+.setup{padding:10px 12px;border:1px solid #5a4a16;border-radius:11px;background:#1b180f;color:#ffd76a;font-size:12.5px;margin-top:8px}
+@media(max-width:640px){.msgimgs{grid-template-columns:1fr;max-width:100%}.modelgrid{grid-template-columns:1fr;max-height:none}}
 .chatfoot{max-width:800px;width:calc(100% - 32px);margin:0 auto 12px;font-size:12px;color:var(--muted)}
 .chatfoot details summary{cursor:pointer;list-style:none;text-align:center}.chatfoot details[open] summary{text-align:left;margin-bottom:6px}
 /* agent: a conversation with an AI developer */
@@ -423,6 +437,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         <button class="ghost" id="cpToggle" title="Checkpoints: saved versions of this project you can return to" style="display:none"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg><span>Versions</span></button>
         <button class="ghost" id="pvToggle" title="Show or hide the live preview"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg><span>Preview</span></button>
       </div>
+      <div id="agImages" class="msgimgs" hidden></div>
       <div id="cpPanel" hidden><div class="cphead"><b>Saved versions</b><button class="ghost" id="cpSave">Save checkpoint now</button><button class="iconbtn" id="cpClose" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div id="cpList"></div><p class="note">A checkpoint is saved automatically after every run. Restoring keeps the current state as a checkpoint too, so you can always go back.</p></div>
       <div class="msgs" id="agMsgs"></div>
       <div class="composer" id="agComposer">
@@ -450,8 +465,9 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       </div>
       <div id="agFoot"><details id="ghBox"><summary id="ghNote">GitHub connection</summary>
         <label style="display:flex;gap:8px;align-items:center;margin:4px 0 10px;font-size:13px;color:var(--soft)"><input type="checkbox" id="agVision" style="width:auto"> The selected model and its fallbacks support images (required for AI visual inspection)</label>
-        <div class="row"><input id="ghToken" type="password" autocomplete="off" placeholder="GitHub fine-grained token (stored on the server, never shown again)" style="max-width:460px"><button class="ghost" id="ghSave">Save token</button></div>
+        <div class="row"><input id="ghToken" type="password" autocomplete="off" placeholder="GitHub fine-grained token (stored on the server, never shown again)" style="max-width:460px"><button class="ghost" id="ghSave">Save token</button><button class="ghost" id="ghCheck">Check access</button></div>
         <p class="note">github.com → Settings → Developer settings → Fine-grained tokens. Repository access: the repositories you choose; permissions: Contents and Pull requests (read and write), Metadata (read). Limits per run: <span id="tLimits"></span></p>
+        <p class="note" id="ghCheckNote" role="status" aria-live="polite"></p>
       </details></div>
      </div>
      <aside id="studio">
@@ -476,6 +492,27 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       <label style="margin-top:14px">Manual prices, one per line: <code>provider:model-id  input  output</code> (USD per million tokens; needed for paid models when the provider does not publish prices)</label>
       <textarea id="prices" rows="3"></textarea>
       <div class="row" style="margin-top:8px"><button class="ghost" id="pricesSave">Save prices</button></div>
+    </section>
+    <section class="card c12 admin-only" data-tab="models">
+      <h2>Models and capabilities</h2>
+      <p class="sub2">Discovered models are grouped by what they can actually do. Vision means the model can read images; Image generation means it can create them. A model is never used for a task it does not declare.</p>
+      <div id="imageSetup" class="setup" hidden></div>
+      <div class="row" style="margin-top:8px;gap:8px;flex-wrap:wrap"><input id="modelFilter" placeholder="Filter models…" style="max-width:240px"><button class="ghost" id="modelsRefresh">Refresh list</button><span class="note" id="modelsNote" style="margin:0"></span></div>
+      <div class="modelgrid" id="modelCards"></div>
+    </section>
+    <section class="card c12 admin-only" data-tab="models">
+      <h2>Image generation</h2>
+      <p class="sub2">Optional and off until an image-output model is configured. The model must declare image output; VELLUR does not guess. Paid images need confirmation and are capped per request.</p>
+      <div id="imageStatus" class="note"></div>
+      <div class="f2" style="margin-top:10px">
+        <div><label>Maximum USD per image request</label><input id="imageMaxUsd" type="number" min="0" max="100" step="0.01"></div>
+        <div><label>Maximum USD per agent image</label><input id="agentImageMaxUsd" type="number" min="0" max="100" step="0.01"></div>
+        <div><label><input id="imageConfirmPaid" type="checkbox" style="width:auto"> Ask before every paid image</label></div>
+        <div><label><input id="agentImageGeneration" type="checkbox" style="width:auto"> Allow image generation in agent tasks</label></div>
+      </div>
+      <label style="margin-top:14px">Image prices, one per line: <code>provider:model-id  usd_per_image</code> (needed when the provider does not report an image price)</label>
+      <textarea id="imagePrices" rows="3" placeholder="openrouter:provider/image-model  0.04"></textarea>
+      <div class="row" style="margin-top:8px"><button class="ghost" id="imageSettingsSave">Save image settings</button><span class="note" id="imageNote" style="margin:0"></span></div>
     </section>
     <section class="card c12 admin-only" data-tab="models">
       <h2>Model providers</h2>
@@ -667,7 +704,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     el.addEventListener("paste", (e) => { const f = [...((e.clipboardData || {}).files || [])]; if (f.length) { e.preventDefault(); addFiles(f, list, rerender, note); } });
   }
   const attsReady = (list) => list.every(a => a.id && !a.pending && !a.error);
-  const ROLE_NAMES = ["vellur-coder", "vellur-chat", "vellur-max"];
+  const ROLE_NAMES = ["vellur-coder", "vellur-chat", "vellur-max", "vellur-image"];
   function fillModels(sel, value) { sel.innerHTML = ""; ROLE_NAMES.forEach(r => sel.add(new Option(r, r))); if (value) sel.value = value; }
   let VIEW = "chat";
   function setView(v) {
@@ -685,10 +722,14 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   const clearChatAtts = () => { chatAtts.length = 0; $("chatFile").value = ""; renderChatAtts(); $("chatFileNote").textContent = ""; };
   wireComposer($("chatCard").querySelector(".composer"), $("chatFile"), chatAtts, renderChatAtts,
     (t) => { $("chatFileNote").textContent = t || ""; });
-  function addMsg(role, text, atts) {
+  function msgImgs(images) {
+    if (!images || !images.length) return "";
+    return '<div class="msgimgs">' + images.map(im => `<a href="${esc(im.url)}" target="_blank" rel="noopener" title="${esc(im.prompt || "generated image")}"><img loading="lazy" src="${esc(im.preview_url || im.url)}" alt="${esc(im.prompt || "generated image")}" width="${im.width || ""}" height="${im.height || ""}"></a>`).join("") + "</div>";
+  }
+  function addMsg(role, text, atts, images) {
     const d = document.createElement("div"); d.className = "m " + role;
     d.innerHTML = '<div class="who">' + (role === "user" ? "You" : "VELLUR AI") + '</div><div class="txt"></div>';
-    d.querySelector(".txt").innerHTML = md(text || "") + msgAtts(atts);
+    d.querySelector(".txt").innerHTML = md(text || "") + msgAtts(atts) + msgImgs(images);
     $("msgs").appendChild(d); $("msgs").scrollTop = $("msgs").scrollHeight; return d.querySelector(".txt");
   }
   async function loadConvs(selectId) {
@@ -701,7 +742,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   async function openConv(id) {
     clearChatAtts();
     const c = await send("conversations/" + id, "GET"); CONV = c.id; $("convSel").value = c.id; fillModels($("chatModel"), c.model);
-    $("msgs").innerHTML = ""; c.messages.forEach(m => addMsg(m.role, m.content, (m.meta || {}).attachments || []));
+    $("msgs").innerHTML = ""; c.messages.forEach(m => addMsg(m.role, m.content, (m.meta || {}).attachments || [], (m.meta || {}).images || []));
     if (!c.messages.length) $("msgs").innerHTML = '<div class="note">Ask anything, or attach a file to analyse.</div>';
   }
   $("convSel").onchange = () => openConv($("convSel").value);
@@ -724,11 +765,14 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       for (;;) { const { value, done } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true });
         let i; while ((i = buf.indexOf("\n")) >= 0) { const line = buf.slice(0, i).trim(); buf = buf.slice(i + 1);
           if (!line.startsWith("data:")) continue; const d = line.slice(5).trim(); if (d === "[DONE]") continue;
-          try { const j = JSON.parse(d); if (j.vellur_error) { errText = j.vellur_error; continue; } if (j.vellur_done) continue;
+          try { const j = JSON.parse(d); if (j.vellur_error) { errText = j.vellur_error; continue; }
+            if (j.vellur_image_confirm) { const e = j.vellur_image_confirm; out.innerHTML = `<div class="imgcard"><b>Generate this image?</b><div class="note">${esc(e.provider || "")} ${esc(e.model || "")} · ${esc(e.size || "")} · ${e.estimated_usd == null ? "price unknown" : "$" + Number(e.estimated_usd).toFixed(4)}${e.requires_confirmation ? " (paid)" : ""}</div><button class="ghost" type="button">Generate image</button><span class="note"></span></div>`; out.querySelector("button").onclick = async (ev) => { const b = ev.currentTarget; b.disabled = true; b.textContent = "Generating…"; try { const g = await send("images/generate", "POST", { prompt: j.prompt, model: "vellur-image", size: e.size || "1024x1024", n: 1, confirm: true, conversation_id: CONV }); out.innerHTML = md("Generated image") + msgImgs(g.images); } catch (er) { out.querySelector(".note:last-child").textContent = er.message; b.disabled = false; b.textContent = "Generate image"; } }; continue; }
+            if (j.vellur_image) { out.innerHTML = md("Generated image") + msgImgs(j.vellur_image.images); continue; }
+            if (j.vellur_done) continue;
             const delta = (j.choices && j.choices[0] && j.choices[0].delta) || {};
             if (delta.content) acc += delta.content; else if (delta.reasoning_content || delta.reasoning) thinking = true; } catch (e) {}
-          out.innerHTML = acc ? md(acc) : (thinking ? "<span class='note'>thinking…</span>" : "…"); $("msgs").scrollTop = $("msgs").scrollHeight; } }
-      if (errText) out.innerHTML = '<span class="badc">⚠ ' + esc(errText) + "</span>"; else if (!acc) out.textContent = "(empty answer)";
+          if (!out.querySelector(".imgcard")) out.innerHTML = acc ? md(acc) : (thinking ? "<span class='note'>thinking…</span>" : "…"); $("msgs").scrollTop = $("msgs").scrollHeight; } }
+      if (errText) out.innerHTML = '<span class="badc">⚠ ' + esc(errText) + "</span>"; else if (!acc && !out.querySelector(".msgimgs") && !out.querySelector(".imgcard")) out.textContent = "(empty answer)";
       const cur = $("convSel").selectedOptions[0]; if (!cur || cur.text === "New conversation" || String(cur.value) !== String(CONV)) await loadConvsQuiet();
     } catch (e) { addMsg("assistant", "⚠ " + e.message); } finally { $("btnSend").disabled = false; }
   };
@@ -900,10 +944,21 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   }
   function header() {
     const t = CUR;
-    if (!t) { $("cpToggle").style.display = "none"; $("cpPanel").hidden = true; $("agTitle").textContent = "New task"; $("agMeta").textContent = "Describe what you want; the agent works in an isolated copy and shows you everything it does."; $("agPill").innerHTML = ""; return; }
+    if (!t) { $("cpToggle").style.display = "none"; $("cpPanel").hidden = true; $("agImages").hidden = true; $("agImages").innerHTML = ""; $("agTitle").textContent = "New task"; $("agMeta").textContent = "Describe what you want; the agent works in an isolated copy and shows you everything it does."; $("agPill").innerHTML = ""; return; }
     $("agTitle").textContent = t.title || t.prompt.split("\n")[0].slice(0, 90);
     $("agMeta").textContent = [(t.repo || "empty workspace") + (t.base ? " · " + t.base : ""), t.model, money4(t.cost_usd), t.runs > 1 ? t.runs + " runs" : ""].filter(Boolean).join(" · ");
     $("agPill").innerHTML = pillFor(t); $("cpToggle").style.display = t.legacy ? "none" : "";
+  }
+  async function loadTaskImages(id) {
+    const el = $("agImages"); el.hidden = true; el.innerHTML = "";
+    if (!id) return;
+    try {
+      const r = await send("images?task_id=" + encodeURIComponent(id), "GET");
+      if (String(TASK) !== String(id)) return;
+      const imgs = r.images || [];
+      el.innerHTML = imgs.map(im => `<a href="${esc(im.url)}" target="_blank" rel="noopener" title="${esc(im.prompt || "generated image")}"><img loading="lazy" src="${esc(im.preview_url || im.url)}" alt="${esc(im.prompt || "generated image")}" width="${im.width || ""}" height="${im.height || ""}"></a>`).join("");
+      el.hidden = !imgs.length;
+    } catch (e) {}
   }
   function composer() {
     const fresh = !CUR, busy = CUR && !FINAL_STATES.includes(CUR.state);
@@ -924,7 +979,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     try { AGENT = await send("agent", "GET"); } catch (e) { AGENT = { available: false, why: e.message, tasks: [] }; }
     if (PREFS) syncAgentPrefs(PREFS);
     TASKS = AGENT.tasks || []; renderTasks(); fillModels($("tModel"), $("tModel").value || "vellur-coder");
-    $("ghNote").textContent = AGENT.github_token_set ? "GitHub connected ✓ · change token" : "Connect GitHub to work on your repositories ▸";
+    const gh = AGENT.github || {};
+    if (gh.ok) $("ghNote").textContent = "GitHub connected as " + (gh.login || "token") + " ✓ · change token";
+    else if (AGENT.github_token_set) { $("ghNote").textContent = "GitHub token saved, but not verified: " + (gh.message || "check failed"); $("ghBox").open = true; }
+    else $("ghNote").textContent = "Connect GitHub to work on your repositories ▸";
     if (!AGENT.github_token_set) $("ghBox").open = true;
     $("agVision").checked = !!AGENT.vision;
     $("tLimits").textContent = AGENT.max_minutes + " min, $" + AGENT.max_usd + " (GPU tab → settings).";
@@ -951,6 +1009,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     sync3DLink();
     let t; try { t = await send("agent/tasks/" + id, "GET"); } catch (e) { newTask(); return; }
     CUR = t; header(); composer(); renderTasks(); box().innerHTML = "";
+    loadTaskImages(id);
     if (t.legacy) { renderLegacy(t); loadPreview(); return; }
     for (let after = 0; ;) {
       const r = await send("agent/tasks/" + id + "/events?after=" + after + "&limit=1000", "GET");
@@ -1151,7 +1210,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     ES = new EventSource("/autopilot/api/agent/tasks/" + TASK + "/stream?after=" + LAST_EV);
     ES.addEventListener("ev", (m) => { const e = JSON.parse(m.data); if (e.id <= LAST_EV) return; LAST_EV = e.id;
       renderEvent(e); if ((e.kind === "tool" && ["edit", "write", "multiedit", "patch", "apply_patch", "bash"].includes(e.data.tool)) || e.kind === "report") pvRefreshSoon();
-      if (e.kind === "tool") working(true, toolView(e.data).verb + " " + toolView(e.data).obj); if (e.kind === "report") working(false); });
+      if (e.kind === "tool") working(true, toolView(e.data).verb + " " + toolView(e.data).obj); if (e.kind === "report") { working(false); loadTaskImages(TASK); } });
     ES.addEventListener("task", async (m) => { const b = JSON.parse(m.data); Object.assign(CUR, b); header(); composer();
       const a = (b.activity || [])[0];   // the command running right now (OpenCode shows a command only when it ends)
       if (a && !FINAL_STATES.includes(b.state)) working(true, "Running now: " + a.cmd.slice(0, 80) + " · for " + fmtDur(a.elapsed_s) + ", CPU " + fmtDur(a.cpu_s));
@@ -1209,23 +1268,66 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   }
   $("tRepoSel").onchange = repoChanged; $("agOther").onchange = repoChanged;
   $("ghSave").onclick = async () => { try { await send("agent/github", "PUT", { token: $("ghToken").value }); $("ghToken").value = ""; $("ghBox").open = false; REPOS_LOADED = false; await loadAgent(); } catch (e) { $("ghNote").textContent = e.message; $("ghBox").open = true; } };
+  $("ghCheck").onclick = async () => {
+    const repo = repoValue(), branch = $("tBase").value || "";
+    $("ghCheckNote").textContent = "Checking GitHub access…";
+    try {
+      const q = "agent/github/check" + (repo ? "?repo=" + encodeURIComponent(repo) + (branch ? "&branch=" + encodeURIComponent(branch) : "") : "");
+      const r = await send(q, "GET"), p = r.repo || {}, bits = ["Token: " + (r.login || "valid")];
+      if (p.canonical) bits.push("repo: " + p.canonical + (repo && p.canonical.toLowerCase() !== repo.toLowerCase() ? " (canonical name)" : ""));
+      if (p.can_push != null) bits.push(p.can_push ? "Contents write: yes" : "Contents write: NO");
+      if (p.branch) bits.push("branch " + p.branch.name + (p.branch.error ? ": " + p.branch.error : p.branch.protected ? " is protected" : " is not protected"));
+      $("ghCheckNote").textContent = bits.join(" · ");
+    } catch (e) { $("ghCheckNote").textContent = e.message; }
+  };
 
   // models
+  let MODELS = [], CAPS = {};
+  const capLabels = (c) => (c || []).map(x => `<span class="cap ${esc(x)}">${esc((CAPS[x] || x).replace(/_/g, " "))}</span>`).join("");
+  function renderModels(m, imageStatus) {
+    MODELS = m.models || []; CAPS = m.capabilities || {};
+    const q = ($("modelFilter").value || "").toLowerCase();
+    const rows = MODELS.filter(x => !q || (x.target + " " + (x.labels || []).join(" ")).toLowerCase().includes(q));
+    $("modelCards").innerHTML = rows.map(x => `<div class="modelcard" data-target="${esc(x.target)}"><b>${esc(x.target)}</b><div class="note">${esc(x.provider_display || x.provider)} · ${x.ctx ? "ctx " + Number(x.ctx).toLocaleString() : "ctx ?"} · ${x.in == null ? "price unknown" : "$" + (+x.in).toFixed(4) + " in / $" + (+x.out).toFixed(4) + " out per M"}${x.image_price != null ? " · $" + (+x.image_price).toFixed(4) + "/image" : ""}</div><div class="caps">${capLabels(x.capabilities)}</div><div class="row"><button class="ghost" data-act="test">Test</button><button class="ghost" data-act="route">Use</button>${x.usable ? "" : '<span class="note" style="margin:0">not usable now</span>'}</div></div>`).join("") || '<div class="note">No models discovered yet. Save a provider key and press “Models” next to it.</div>';
+    $("modelCards").querySelectorAll("[data-target]").forEach(card => {
+      const target = card.dataset.target;
+      card.querySelector('[data-act="test"]').onclick = async () => { $("modelsNote").textContent = "Testing " + target + "…"; try { const r = await send("llm/test", "POST", { target }); $("modelsNote").textContent = r.ok ? "OK: " + (r.answer || "answered") : "Failed: " + (r.detail || ""); } catch (e) { $("modelsNote").textContent = e.message; } };
+      card.querySelector('[data-act="route"]').onclick = () => {
+        const x = MODELS.find(m => m.target === target) || {};
+        const role = x.image_generation ? "vellur-image" : x.vision ? "vellur-chat" : "vellur-coder";
+        const box = document.querySelector(`[data-route="${role}"]`); if (!box) return;
+        const lines = box.value.split("\n").map(v => v.trim()).filter(Boolean);
+        if (!lines.includes(target)) lines.push(target);
+        box.value = lines.join("\n"); box.scrollIntoView({ block: "center", behavior: "smooth" });
+        $("routesNote").textContent = "Added to " + role + " — press Save routing.";
+      };
+    });
+    const img = (imageStatus || {});
+    $("imageSetup").hidden = !!img.available;
+    if (!img.available) { $("imageSetup").textContent = "Image generation is not configured. Add an image-output model (Image generation badge), set the vellur-image route above and save its provider key. Until then Chat and Agent explain that images are unavailable instead of pretending to create one."; }
+    $("imageStatus").innerHTML = img.available ? `<span class="good">Ready:</span> ${esc(img.target)} · ${img.price_per_image == null ? "price unknown (set one below)" : "$" + (+img.price_per_image).toFixed(4) + " per image"}${img.free ? " · free plan" : ""}` : '<span class="badc">Not available:</span> no image-output model is configured.';
+  }
   const pnote = (text, kind) => { const m = $("provMsg"); m.textContent = text || ""; m.className = "msg" + (text ? " show " + (kind || "bad") : ""); };
   function renderLLM(l) {
     $("routes").innerHTML = Object.entries(l.roles).map(([r, label]) => `<label>${esc(r)} — ${esc(label)}</label><textarea data-route="${r}" rows="2" placeholder="one target per line, e.g. openrouter:deepseek/deepseek-v4.1-flash">${esc((l.routes[r] || []).join("\n"))}</textarea>`).join("");
     $("effective").innerHTML = Object.entries(l.effective).map(([r, rows]) => "<b>" + esc(r) + "</b>: " + rows.map(x => `<span class="${x.usable ? "good" : "badc"}">${esc(x.target)}${x.usable ? (x.price ? " ($" + x.price[0] + " / $" + x.price[1] + " per M)" : "") : " — " + esc(x.why)}</span>`).join(" → ")).join("<br>");
     $("prices").value = Object.entries(l.prices).map(([t, p]) => t + "  " + p[0] + "  " + p[1]).join("\n");
-    $("provs").innerHTML = l.providers.map(p => `<tr data-prov="${esc(p.name)}"><td><b>${esc(p.display)}</b><div class="note" style="margin:2px 0 0;max-width:260px">${esc(p.note || (p.custom ? "custom provider" : ""))}</div></td>
+    $("provs").innerHTML = l.providers.map(p => `<tr data-prov="${esc(p.name)}"><td><b>${esc(p.display)}</b><div class="note" style="margin:2px 0 0;max-width:260px">${esc(p.note || (p.custom ? "custom provider" : ""))}</div><div class="caps">${capLabels(p.capabilities)}${p.vision_models ? `<span class="cap vision">${p.vision_models} vision</span>` : ""}${p.image_models ? `<span class="cap image_generation">${p.image_models} image</span>` : ""}</div></td>
       <td><select data-f="plan"><option value="per_token">per token</option><option value="free">free tier</option><option value="subscription">subscription</option></select></td>
       <td><input data-f="monthly_usd" type="number" step="1" min="0" style="width:80px" value="${p.monthly_usd}"></td>
       <td><input data-f="api_key" type="password" autocomplete="off" placeholder="${p.key_set ? "saved " + esc(p.key_hint) : "not set"}" style="min-width:150px"></td>
       <td><input data-f="base_url" value="${esc(p.base_url)}" style="min-width:230px"></td>
-      <td style="white-space:nowrap"><button class="ghost" data-a="save">Save</button> <button class="ghost" data-a="models" ${p.key_set ? "" : "disabled"}>Models${p.catalog_models ? " (" + p.catalog_models + ")" : ""}</button> <button class="ghost" data-a="reset">${p.custom ? "Remove" : "Reset"}</button></td></tr>`).join("");
+      <td style="white-space:nowrap"><button class="ghost" data-a="save">Save</button> <button class="ghost" data-a="models" ${p.key_set ? "" : "disabled"}>Models${p.catalog_models ? " (" + p.catalog_models + ")" : ""}</button> <button class="ghost" data-a="test" ${p.key_set ? "" : "disabled"}>Test</button> <button class="ghost" data-a="reset">${p.custom ? "Remove" : "Reset"}</button></td></tr>`).join("");
     l.providers.forEach(p => { const row = document.querySelector(`tr[data-prov="${p.name}"]`); row.querySelector('[data-f="plan"]').value = p.plan; });
     document.querySelectorAll("#provs button").forEach(b => b.onclick = () => provAction(b.closest("tr"), b.dataset.a));
   }
-  async function loadLLM() { renderLLM(await send("llm", "GET")); }
+  async function loadLLM() {
+    const [l, m, img] = await Promise.all([send("llm", "GET"), send("llm/models", "GET"), send("images/status", "GET")]);
+    renderLLM(l); renderModels(m, img);
+    $("imageMaxUsd").value = l.images.max_usd; $("agentImageMaxUsd").value = l.images.agent_max_usd;
+    $("imageConfirmPaid").checked = !!l.images.confirm_paid; $("agentImageGeneration").checked = !!l.images.agent;
+    $("imagePrices").value = Object.entries(l.image_prices || {}).map(([t, p]) => t + "  " + p).join("\n");
+  }
   async function provAction(row, action) {
     const name = row.dataset.prov; pnote("");
     try {
@@ -1234,6 +1336,11 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         const key = row.querySelector('[data-f="api_key"]').value.trim(); if (key) ch.api_key = key;
         renderLLM(await send("llm/providers/" + name, "PUT", ch)); pnote("Saved " + name + ".", "info");
       } else if (action === "reset") { if (!confirm("Remove the saved key and settings of " + name + "?")) return; renderLLM(await send("llm/providers/" + name, "DELETE"));
+      } else if (action === "test") {
+        const first = MODELS.find(x => x.provider === name);
+        if (!first) { pnote("Load the model list first.", "bad"); return; }
+        pnote("Testing " + first.target + "…", "info"); const r = await send("llm/test", "POST", { target: first.target });
+        pnote(r.ok ? "Connection OK: " + (r.answer || "answered") : "Test failed: " + (r.detail || r.error || ""), r.ok ? "info" : "bad");
       } else if (action === "models") {
         pnote("Loading the model list of " + name + "…", "info"); const r = await send("llm/providers/" + name + "/catalog", "POST", {});
         $("catalogBox").style.display = ""; $("catalogBox").textContent = r.models.map(m => name + ":" + m.id + (m.in != null ? "   $" + (+m.in.toFixed(4)) + " in / $" + (+m.out.toFixed(4)) + " out per M" : "") + (m.ctx ? "   ctx " + m.ctx : "")).join("\n") || "(empty list)";
@@ -1246,6 +1353,13 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     try { renderLLM(await send("llm/routes", "PUT", routes)); $("routesNote").textContent = "saved"; } catch (e) { $("routesNote").textContent = e.message; } };
   $("pricesSave").onclick = async () => { const prices = {}; try { $("prices").value.split("\n").map(x => x.trim()).filter(Boolean).forEach(l => { const p = l.split(/\s+/); if (p.length !== 3) throw new Error("each line: provider:model input output"); prices[p[0]] = [Number(p[1]), Number(p[2])]; });
       await send("settings", "PUT", { prices }); await loadLLM(); $("routesNote").textContent = "prices saved"; } catch (e) { $("routesNote").textContent = e.message; } };
+  $("imageSettingsSave").onclick = async () => { try {
+      const image_prices = {}; $("imagePrices").value.split("\n").map(x => x.trim()).filter(Boolean).forEach(l => { const p = l.split(/\s+/); if (p.length !== 2) throw new Error("each line: provider:model price"); image_prices[p[0]] = Number(p[1]); });
+      await send("settings", "PUT", { image_prices, image_max_usd: Number($("imageMaxUsd").value), agent_image_max_usd: Number($("agentImageMaxUsd").value), image_confirm_paid: $("imageConfirmPaid").checked, agent_image_generation: $("agentImageGeneration").checked });
+      await loadLLM(); $("imageNote").textContent = "saved";
+    } catch (e) { $("imageNote").textContent = e.message; } };
+  $("modelFilter").oninput = () => renderModels({ models: MODELS, capabilities: CAPS });
+  $("modelsRefresh").onclick = async () => { $("modelsNote").textContent = "Refreshing…"; try { for (const p of (await send("llm", "GET")).providers.filter(x => x.key_set)) { try { await send("llm/providers/" + p.name + "/catalog", "POST", {}); } catch (e) {} } await loadLLM(); $("modelsNote").textContent = "Updated"; } catch (e) { $("modelsNote").textContent = e.message; } };
 
   // costs
   async function loadCosts() {
