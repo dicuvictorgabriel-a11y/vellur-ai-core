@@ -662,6 +662,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       ev.target.disabled = true; ev.target.textContent = "Publishing…";
       try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; alert(e.message); } });
     if (CUR.pr_url) { const l = document.createElement("a"); l.href = CUR.pr_url; l.target = "_blank"; l.rel = "noopener"; l.className = "chip"; l.style.cssText = "display:inline-flex;align-items:center;text-decoration:none"; l.textContent = "Open pull request ↗"; a.appendChild(l); }
+    if (CUR.can_message && el.querySelector(".acts") && (CUR.report || {}).provider_credit) {     // switch model and retry in the same session
+      ["vellur-coder", "vellur-chat", "vellur-max"].filter(r => r !== CUR.model).forEach(r => add("Continue with " + r, "chip", () => {
+        $("tModel").value = r; $("agIn").value = "Continue the task from the beginning."; agSend(); }));
+    }
     if (CUR.can_message) {
       const sug = CUR.outcome === "needs_attention" ? "Fix the failing checks." : ["incomplete", "unverified", "partial"].includes(CUR.outcome) ? "Continue the task." : "";
       if (sug) add(sug, "chip", () => { $("agIn").value = sug; agSend(); });

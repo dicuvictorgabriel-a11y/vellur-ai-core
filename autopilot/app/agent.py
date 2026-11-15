@@ -545,8 +545,9 @@ class AgentManager:
         tests = list(last_test.values())
         tests_failed = [c for c in tests if c["status"] == "error" or (c["exit"] not in (None, 0))]
         errors = [e["data"].get("message", "") for e in run_evs if e["kind"] == "error"]
-        if error:
-            errors.append(error)
+        if error and not (errors and error.startswith("the agent process exited")):
+            errors.append(error)          # the generic exit-code line adds nothing when the real error is known
+        credit = next((x for x in errors if "provider_credit" in x or "no credit left" in x), "")
         shots = [e["data"]["name"] for e in evs if e["kind"] == "shot"]
         tokens_out = sum(int((s.get("tokens") or {}).get("output") or 0) for s in steps)
         tokens_in = sum(int((s.get("tokens") or {}).get("input") or 0) for s in steps)
@@ -554,8 +555,13 @@ class AgentManager:
             outcome, why = "stopped", f"Stopped by the safety limit: {error}."
         elif final == "cancelled":
             outcome, why = "cancelled", "You stopped this run."
+        elif credit:
+            outcome, why = "blocked", ("The model provider has no credit left for this model, so the agent could not work"
+                                       + (" (nothing was changed)." if not files else ".") +
+                                       " Choose another model below and reply “continue”, add credit at the provider, "
+                                       "or add a backup model to this route in Models.")
         elif final == "failed":
-            outcome, why = "failed", "The agent process failed: " + (errors[-1] if errors else "unknown error") + "."
+            outcome, why = "failed", "The agent process failed: " + (errors[0] if errors else "unknown error")
         elif stop_reason == "length":
             outcome, why = "incomplete", ("The model's reply was cut off at its output limit, so the agent stopped in the "
                                           "middle of the work. Send a follow-up such as “continue” to resume.")
@@ -576,7 +582,7 @@ class AgentManager:
         return {"run": run, "requested": requests[-1] if requests else "", "final_text": final_text.strip()[:20000],
                 "claim": claim, "sections": sections(final_text), "outcome": outcome, "why": why,
                 "process": final, "stop_reason": stop_reason, "files": files, "commands": commands[-60:], "tests": tests[-30:],
-                "shots": shots, "errors": errors[-10:], "cost_run_usd": round(run_cost, 4),
+                "shots": shots, "errors": errors[-10:], "provider_credit": bool(credit), "cost_run_usd": round(run_cost, 4),
                 "cost_total_usd": round(self.router.tag_cost(f"task:{tid}"), 4), "tokens": {"input": tokens_in, "output": tokens_out},
                 "tool_calls": sum(1 for e in run_evs if e["kind"] == "tool")}
 

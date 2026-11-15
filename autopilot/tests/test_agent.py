@@ -308,3 +308,25 @@ async def test_screenshots_stream_and_diagnostics(agents):
               "VALUES(0,'x','r','t','deepseek','v4',1,16384,0.01,'provider',?)", (f"task:{tid}",))
     dg = (await admin.get(f"/autopilot/api/agent/tasks/{tid}", headers=ADMIN)).json()["diagnostics"]
     assert dg["requests"] == 1 and dg["last_reply_tokens"] == 16384 == dg["output_limit_tokens"]
+
+
+async def test_no_provider_credit_is_explained_and_another_model_can_continue(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    runner.runs = [[oc("error", message="VELLUR AI (provider_credit): openrouter:anthropic/x: no credit left at the provider")],
+                   GOOD_RUN]
+    tid = (await mgr.create("Build the scene", "vellur-max"))["id"]
+    await wait_final(mgr, tid)
+    await asyncio.sleep(0.05)
+    t = mgr.task(tid)
+    assert t["outcome"] == "blocked" and t["report"]["provider_credit"] is True and "no credit" in t["report"]["why"]
+    assert not any("exited with code" in e for e in t["report"]["errors"])
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/messages", headers=WRITE,
+                         json={"text": "Continue the task from the beginning.", "model": "vellur-coder"})
+    assert r.status_code == 200
+    await wait_final(mgr, tid)
+    for _ in range(100):
+        if mgr.task(tid)["outcome"]:
+            break
+        await asyncio.sleep(0.01)
+    assert mgr.task(tid)["model"] == "vellur-coder" and runner.messages[0]["model"] == "vellur-coder"
+    assert mgr.task(tid)["outcome"] == "completed"

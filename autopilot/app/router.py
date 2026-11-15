@@ -415,7 +415,7 @@ class Router:
             code = "auth" if r.status_code in (401, 403) else "provider_credit" if r.status_code == 402 else "provider"
             hint = {401: "API key rejected", 403: "API key rejected", 402: "no credit left at the provider",
                     404: "model not found at the provider", 429: "rate limited"}.get(r.status_code, f"HTTP {r.status_code}")
-            raise _Skip(code, f"{hint}: {text[:160]}")
+            raise _Skip(code, f"{hint}: {text[:300]}")
         sse = "text/event-stream" in r.headers.get("content-type", "")
         sniff = _Sniffer(sse)
         status = r.status_code
