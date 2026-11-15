@@ -28,7 +28,7 @@
     return result.length >= 3 ? result : points;
   }
   function trace(data, width, height, threshold, tolerance) {
-    if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width * height > 262144 || data.length !== width * height * 4) throw new Error('Dimensiune imagine invalidă.');
+    if (!Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width * height > 262144 || data.length !== width * height * 4) throw new Error('Invalid image size.');
     const mask = new Uint8Array(width * height);
     for (let i = 0; i < mask.length; i++) {
       const p = i * 4, alpha = data[p + 3] / 255;
@@ -48,7 +48,7 @@
       if (!isOn(x, y + 1)) add(x + 1, y + 1, x, y + 1);
       if (!isOn(x - 1, y)) add(x, y + 1, x, y);
     }
-    if (edges.length > 80000) throw new Error('Imagine prea complexă. Folosește o imagine mai simplă.');
+    if (edges.length > 80000) throw new Error('The image is too complex. Use a simpler image.');
     const contours = [];
     for (const first of edges) {
       if (first.used) continue;
@@ -71,8 +71,8 @@
         if (simple.length >= 3) contours.push(simple);
       }
     }
-    if (!contours.length) throw new Error('Nu am găsit un contur. Ajustează pragul sau alege o imagine cu contrast.');
-    if (contours.reduce((n, c) => n + c.length, 0) > 3000) throw new Error('Prea multe puncte. Mărește simplificarea sau folosește o imagine mai simplă.');
+    if (!contours.length) throw new Error('No outline found. Adjust the threshold or choose an image with more contrast.');
+    if (contours.reduce((n, c) => n + c.length, 0) > 3000) throw new Error('Too many points. Increase simplification or use a simpler image.');
     return contours;
   }
   function num(n) { return String(Math.round(n * 1000) / 1000); }
