@@ -49,6 +49,23 @@ def _prices(v) -> dict:
     return out
 
 
+def _image_prices(v) -> dict:
+    if not isinstance(v, dict) or len(v) > 200:
+        raise SettingsError("image prices must be an object")
+    out = {}
+    for t, price in v.items():
+        if not TARGET_RE.match(str(t)):
+            raise SettingsError(f"invalid image price target {t!r}")
+        try:
+            usd = float(price)
+        except (TypeError, ValueError):
+            raise SettingsError(f"invalid image price for {t!r}")
+        if not 0 <= usd <= 100:
+            raise SettingsError(f"image price out of range for {t!r}")
+        out[str(t)] = usd
+    return out
+
+
 def _fixed_costs(v) -> list:
     if not isinstance(v, list) or len(v) > 20:
         raise SettingsError("fixed costs must be a list (max 20)")
@@ -65,7 +82,7 @@ def _fixed_costs(v) -> list:
     return out
 
 
-STRUCTURED = {"routes": _routes, "prices": _prices, "fixed_costs": _fixed_costs}
+STRUCTURED = {"routes": _routes, "prices": _prices, "image_prices": _image_prices, "fixed_costs": _fixed_costs}
 
 
 class Settings:
@@ -116,7 +133,8 @@ class Settings:
             "vast_min_reliability": (0.5, 1.0), "vast_disk_gb": (30, 500),
             "attachment_max_mb": (1, 100), "attachment_max_count": (1, 20),
             "attachment_max_total_mb": (1, 500), "attachment_max_text_chars": (1000, 500000),
-            "attachment_vision_max_mb": (0, 50),
+            "attachment_vision_max_mb": (0, 50), "image_max_usd": (0, 100),
+            "agent_image_max_usd": (0, 100),
         }
         for k, (lo, hi) in rules.items():
             if k in clean and not (lo <= clean[k] <= hi):

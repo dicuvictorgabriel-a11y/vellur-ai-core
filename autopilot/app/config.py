@@ -74,9 +74,16 @@ DEFAULT_SETTINGS: dict = {
     "vast_disk_gb": 60,
     "max_session_usd": 5.0,          # a GPU session is released when its estimated cost reaches this
     # Model routing: public model name → ordered targets ("provider:model-id" or "gpu"). First usable target wins.
-    "routes": {"vellur-coder": [], "vellur-chat": [], "vellur-max": []},
+    "routes": {"vellur-coder": [], "vellur-chat": [], "vellur-max": [], "vellur-image": []},
     # Manual prices, USD per million tokens: {"provider:model-id": [input, output]} (catalog prices are used otherwise)
     "prices": {},
+    # Manual image prices, USD per generated image (catalog prices are used otherwise).
+    "image_prices": {},
+    "image_max_usd": 1.0,            # hard per-request estimate limit for image generation
+    "image_confirm_paid": True,      # ask the owner before every paid image generation
+    "agent_image_generation": True,  # expose the vellur-image tool to coding agents when a provider is configured
+    "agent_image_max_usd": 0.50,     # per image requested by an agent
+
     # Shown in the cost report. in_budget=False: visible, but not counted against the monthly budget.
     "fixed_costs": [{"name": "VPS ro-prod-01", "usd": 0.0, "in_budget": False},
                     {"name": "HyperAI Pro (already purchased)", "usd": 4.99, "in_budget": False}],
@@ -99,6 +106,7 @@ ROLES: dict = {
     "vellur-coder": "Coding (default for agents and OpenCode)",
     "vellur-chat": "General chat (economical)",
     "vellur-max": "Hard problems (strongest model you connected)",
+    "vellur-image": "Image generation (requires an image-output model)",
 }
 
 # Model profiles. The served name is always "vellur-coder" so LiteLLM and clients never change.

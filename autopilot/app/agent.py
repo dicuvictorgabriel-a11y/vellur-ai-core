@@ -54,6 +54,9 @@ How to work:
 - Do not take screenshots or inspect images automatically. If the owner explicitly requests screenshots or visual
   inspection, use `vellur-screenshot <url-or-html-file> <name> [desktop|mobile]` when available. Report an unavailable
   optional screenshot capability separately from a failed test. Never describe screenshots you did not take.
+- If the task needs a real image (illustration, icon, texture, hero image), use `vellur-image "<prompt>" [--size 1024x1024]`
+  when available. It saves the generated file under generated-images/ and also shows it to the owner in this task. Do not
+  claim an image exists unless the command succeeded; if image generation is unavailable, say so and use a placeholder.
 - The owner watches a LIVE PREVIEW of the project next to this conversation. A static site (an index.html in the
   project root or in dist/, build/, public/) is shown automatically. If the project needs a server, create
   `.vellur/preview.json` like {"command": "npm run dev -- --port $PORT --host 127.0.0.1", "dir": "."}; the command must
@@ -156,21 +159,21 @@ def pr_body(t: dict, rep: dict) -> str:
 
 
 class AgentError(Exception):
-    def __init__(self, code: str, message: str, status: int = 400):
+    def __init__(self, code: str, message: str, status: int = 400, data: Optional[dict] = None):
         super().__init__(message)
-        self.code, self.message, self.status = code, message, status
+        self.code, self.message, self.status, self.data = code, message, status, data or {}
 
 
 class GitHub:
     """The few GitHub REST calls needed. Endpoints: repos, tarball, git refs/blobs/trees/commits, pulls."""
 
-    def __init__(self, token: str, transport: Optional[httpx.AsyncBaseTransport] = None):
+    def __init__(self, token: str, transport: Optional[httpx.AsyncBaseTransport] = None, timeout: float = 60):
         headers = {"Accept": "application/vnd.github+json", "X-GitHub-Api-Version": "2022-11-28",
                    "User-Agent": "vellur-ai-core"}
         if token:
             headers["Authorization"] = f"Bearer {token}"
         self.c = httpx.AsyncClient(base_url="https://api.github.com", headers=headers, transport=transport,
-                                   timeout=60, follow_redirects=True)
+                                   timeout=timeout, follow_redirects=True)
 
     async def _req(self, method: str, path: str, ok=(200, 201), **kw) -> httpx.Response:
         try:
@@ -179,11 +182,77 @@ class GitHub:
             raise AgentError("github", f"GitHub unreachable ({e.__class__.__name__})", 502)
         if r.status_code in ok:
             return r
-        if r.status_code in (401, 403):
-            raise AgentError("github_auth", "GitHub refused the token (missing, expired or without access to this repository)")
+        try:
+            payload = r.json()
+        except ValueError:
+            payload = {}
+        github_message = str((payload or {}).get("message") or "").strip()[:300]
+        details = {"status": r.status_code}
+        if github_message:
+            details["github_message"] = github_message
+        accepted = (r.headers.get("x-accepted-github-permissions") or "").strip()
+        if accepted:
+            details["accepted_permissions"] = accepted[:200]
+        request_id = (r.headers.get("x-github-request-id") or "").strip()
+        if request_id:
+            details["request_id"] = request_id[:100]
+        remaining = (r.headers.get("x-ratelimit-remaining") or "").strip()
+        reset = (r.headers.get("x-ratelimit-reset") or "").strip()
+        if remaining:
+            details["rate_limit_remaining"] = remaining[:20]
+        if reset:
+            details["rate_limit_reset"] = reset[:20]
+        if r.status_code == 401:
+            raise AgentError("github_auth", "GitHub rejected the token (401: missing, expired or revoked). "
+                                            "Save a new token in Agent → GitHub connection.", 502, details)
+        if r.status_code == 403:
+            low = github_message.lower()
+            if remaining == "0" or "rate limit" in low:
+                when = f" Retry after the reset time ({reset})." if reset else " Retry later."
+                raise AgentError("github_rate_limited", f"GitHub rate limit reached (403).{when}", 502, details)
+            if "protected branch" in low or "branch protection" in low:
+                raise AgentError("github_protected", "GitHub authenticated the token, but branch protection blocked "
+                                                     f"this update (403): {github_message or 'protected branch'}. "
+                                                     "Use “Pull request instead” or ask a repository admin.", 502, details)
+            needed = f" GitHub says it needs: {accepted}." if accepted else ""
+            raise AgentError("github_forbidden", "GitHub authenticated the token but denied this action (403): "
+                                                 f"{github_message or 'permission denied'}.{needed} Check Contents: "
+                                                 "Read and write, repository access and organization SSO; if this is "
+                                                 "main, branch protection may block direct pushes. Use “Pull request "
+                                                 "instead”.", 502, details)
         if r.status_code == 404:
-            raise AgentError("github_not_found", "repository or branch not found (or the token has no access to it)")
-        raise AgentError("github", f"GitHub answered HTTP {r.status_code}: {r.text[:200]}", 502)
+            raise AgentError("github_not_found", "repository or branch not found (or the token has no access to it). "
+                                                 f"GitHub said: {github_message or 'Not Found'}", 502, details)
+        if r.status_code == 422:
+            raise AgentError("github_rejected", "GitHub rejected the update (422): "
+                                                 f"{github_message or r.text[:200]}. Reconcile the branch and retry.",
+                             502, details)
+        if r.status_code == 429:
+            raise AgentError("github_rate_limited", "GitHub rate limit reached (429). Retry later.", 502, details)
+        raise AgentError("github", f"GitHub answered HTTP {r.status_code}: {github_message or r.text[:200]}", 502,
+                         details)
+
+    async def identity(self) -> dict:
+        j = (await self._req("GET", "/user")).json()
+        return {"login": str(j.get("login") or ""), "id": j.get("id")}
+
+    async def repo_access(self, repo: str, branch: str = "") -> dict:
+        """Read-only facts about the token's access to one repository (never returns the token)."""
+        j = (await self._req("GET", f"/repos/{repo}")).json()
+        perms = j.get("permissions") if isinstance(j.get("permissions"), dict) else {}
+        full = str(j.get("full_name") or repo)
+        out = {"requested": repo, "canonical": full, "default_branch": j.get("default_branch") or "main",
+               "private": bool(j.get("private")), "can_pull": bool(perms.get("pull")),
+               "can_push": bool(perms.get("push")), "can_admin": bool(perms.get("admin")),
+               "permissions": sorted(k for k, v in perms.items() if v)}
+        if branch:
+            try:
+                b = (await self._req("GET", f"/repos/{repo}/branches/{quote(branch, safe='')}")).json()
+                out["branch"] = {"name": b.get("name") or branch, "protected": bool(b.get("protected")),
+                                 "sha": ((b.get("commit") or {}).get("sha") or "")[:40]}
+            except AgentError as e:
+                out["branch"] = {"name": branch, "protected": None, "sha": "", "error": e.message}
+        return out
 
     async def repos(self) -> list:
         """Repositories the token can see, most recently pushed first (at most 300)."""
@@ -258,6 +327,21 @@ class GitHub:
         try:
             await self._req("PATCH", f"/repos/{repo}/git/refs/heads/{base}", json={"sha": commit, "force": False})
         except AgentError as e:
+            if e.code in ("github_forbidden", "github_protected"):
+                try:
+                    access = await self.repo_access(repo, base)
+                except AgentError:
+                    access = None
+                if access:
+                    e.data["access"] = access
+                    if access.get("can_push") is False:
+                        e.code = "github_forbidden"
+                        e.message = (f"GitHub authenticated the token, but it has no write access to {repo} "
+                                     "(Contents: Read and write is missing). Grant it, or ask a repository admin.")
+                    elif (access.get("branch") or {}).get("protected"):
+                        e.code = "github_protected"
+                        e.message = (f"GitHub authenticated the token, but “{base}” is protected and this token cannot "
+                                     "update it directly. Use “Pull request instead” or ask a repository admin.")
             if e.code == "github" and (e.message.startswith("GitHub unreachable") or e.message.startswith("GitHub answered HTTP 5")):
                 raise AgentError("publication_unknown", "GitHub update result is unknown; reconcile before publishing again", 502)
             raise
@@ -268,7 +352,7 @@ class GitHub:
         try:
             r = await self._req("POST", f"/repos/{repo}/pulls", json=payload)
         except AgentError as e:
-            if "422" not in e.message:
+            if e.code != "github_rejected":
                 raise
             payload["draft"] = False     # draft PRs are not available on every plan
             r = await self._req("POST", f"/repos/{repo}/pulls", json=payload)
@@ -325,6 +409,38 @@ class AgentManager:
             await gh.c.aclose()
         names = [default] + sorted(n for n in names if n != default)
         return {"default": default, "branches": names}
+
+    async def github_status(self) -> dict:
+        """Real token check for the dashboard. Presence alone must never say “connected”."""
+        if not self.github_token():
+            return {"ok": False, "checked": False, "message": "no GitHub token saved"}
+        gh = GitHub(self.github_token(), self.github_transport, timeout=10)
+        try:
+            ident = await gh.identity()
+            return {"ok": True, "checked": True, "login": ident["login"]}
+        except AgentError as e:
+            return {"ok": False, "checked": True, "code": e.code, "message": e.message, "details": e.data}
+        finally:
+            await gh.c.aclose()
+
+    async def github_check(self, repo: str = "", branch: str = "") -> dict:
+        """Safe diagnostic: validate the token and, optionally, its access to one repository/branch."""
+        repo, branch = (repo or "").strip(), (branch or "").strip()
+        if repo and not REPO_RE.match(repo):
+            raise AgentError("invalid", "repository must look like owner/name")
+        if branch and not BRANCH_RE.match(branch):
+            raise AgentError("invalid", "invalid branch name")
+        if not self.github_token():
+            raise AgentError("github_auth", "save a GitHub token first (Agent → GitHub connection)")
+        gh = GitHub(self.github_token(), self.github_transport, timeout=15)
+        try:
+            ident = await gh.identity()
+            out = {"ok": True, "login": ident["login"], "repo": None}
+            if repo:
+                out["repo"] = await gh.repo_access(repo, branch)
+            return out
+        finally:
+            await gh.c.aclose()
 
     def task(self, tid: int) -> Optional[dict]:
         t = self.db.one("SELECT * FROM tasks WHERE id=?", (tid,))
@@ -511,7 +627,7 @@ class AgentManager:
                         await gh.c.aclose()
                     self._set(tid, base=base, base_sha=sha)
                 images = bool(self.db.one("SELECT 1 FROM attachments WHERE task_id=? AND kind='image'", (tid,)))
-                vision = bool(visual_inspection or (images and st.get("agent_vision")))
+                vision = bool(visual_inspection or (images and (st.get("agent_vision") or self.router.can_vision(t["model"]))))
                 manifest = self._attachment_manifest(tid, vision)
                 await self._runner("POST", "/tasks", json={"id": tid, "prompt": self._first_prompt(prompt, t["repo"]) + manifest + (VISUAL_PROMPT if visual_inspection else ""),
                                                            "model": t["model"], "proxy_url": self.env.agent_proxy_url,
@@ -524,7 +640,7 @@ class AgentManager:
                 await self._runner("POST", f"/tasks/{tid}/start")
             else:
                 images = bool(self.db.one("SELECT 1 FROM attachments WHERE task_id=? AND kind='image'", (tid,)))
-                vision = bool(visual_inspection or (images and st.get("agent_vision")))
+                vision = bool(visual_inspection or (images and (st.get("agent_vision") or self.router.can_vision(self.task(tid)["model"]))))
                 manifest = await self._deliver_attachments(tid, vision)
                 await self._runner("POST", f"/tasks/{tid}/message", json={
                     "prompt": prompt + FOLLOWUP_SUFFIX + manifest + (VISUAL_PROMPT if visual_inspection else ""),

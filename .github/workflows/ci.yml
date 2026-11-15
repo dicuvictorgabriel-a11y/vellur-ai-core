@@ -25,4 +25,4 @@ jobs:
       - name: Shell and runner syntax
         run: |
           bash -n install.sh bin/vac bin/vac-autoupdate dev/preview.sh dev/test.sh dev/env.sh
-          python -m py_compile agent/runner.py agent/vellur-screenshot dev/preview_server.py
+          python -m py_compile agent/runner.py agent/vellur-screenshot agent/vellur-image dev/preview_server.py

@@ -21,6 +21,7 @@ import httpx
 from .budget import month_key
 from .config import ROLES
 from .lifecycle import ControlError, Controller
+from .model_intel import infer_capabilities, labels, summary
 
 # Base URLs of OpenAI-compatible APIs. Each can be overridden in the dashboard; "custom" providers can be added.
 CATALOG: dict = {
@@ -135,6 +136,7 @@ class Router:
                 "plan": cfg.get("plan", "per_token"), "monthly_usd": float(cfg.get("monthly_usd") or 0),
                 "enabled": bool(cfg.get("enabled", True)), "note": base.get("note", ""),
                 "reports_cost": bool(base.get("reports_cost")),
+                "image_api": cfg.get("image_api", base.get("image_api", "auto")),
             }
         return out
 
@@ -147,8 +149,13 @@ class Router:
         for p in self.providers().values():
             k = keys.get(p["name"], "")
             cat = self.db.kv_get(f"llm_catalog_{p['name']}") or {}
+            meta = self._catalog_meta(p["name"])
+            caps = {c for m in meta.values() for c in (m.get("capabilities") or [])}
             out.append({**p, "key_set": bool(k), "key_hint": ("…" + k[-4:]) if len(k) >= 12 else "",
-                        "catalog_models": len(cat.get("models") or []), "catalog_ts": cat.get("ts")})
+                        "catalog_models": len(cat.get("models") or []), "catalog_ts": cat.get("ts"),
+                        "capabilities": sorted(caps), "capability_labels": labels(sorted(caps)),
+                        "vision_models": sum(1 for m in meta.values() if "vision" in (m.get("capabilities") or [])),
+                        "image_models": sum(1 for m in meta.values() if "image_generation" in (m.get("capabilities") or []))})
         return out
 
     def update_provider(self, name: str, ch: dict) -> None:
@@ -178,6 +185,10 @@ class Router:
             cfg["enabled"] = bool(ch["enabled"])
         if "display" in ch:
             cfg["display"] = str(ch["display"])[:40]
+        if "image_api" in ch:
+            if ch["image_api"] not in ("auto", "chat", "images"):
+                raise RouterError("invalid", "image API must be auto, chat or images")
+            cfg["image_api"] = ch["image_api"]
         stored[name] = cfg
         self.db.kv_set("llm_providers", stored)
         if "api_key" in ch:
@@ -202,8 +213,11 @@ class Router:
         self.db.kv_set("llm_keys", keys)
         self.db.event("info", "llm", f"model provider {name} removed/reset")
 
+    def _catalog_meta(self, name: str) -> dict:
+        return (self.db.kv_get(f"llm_catalog_meta_{name}") or {}).get("models") or {}
+
     async def catalog(self, name: str) -> list:
-        """Fetch the provider's model list (free call). OpenRouter-style pricing is kept when present."""
+        """Fetch the provider's model list (free call). Prices and capabilities are kept when present."""
         p = self.providers().get(name)
         if not p or not p["base_url"]:
             raise RouterError("config", "unknown provider")
@@ -221,36 +235,102 @@ class Router:
             rows = data.get("data") if isinstance(data, dict) else data
         except ValueError:
             raise RouterError("provider", "the model list is not JSON", 502)
-        models = []
+        models, meta = [], {}
         for m in (rows or [])[:3000]:
             if not isinstance(m, dict) or not m.get("id"):
                 continue
-            pin = pout = None
+            mid = str(m["id"])[:200]
+            pin = pout = pimage = None
             pr = m.get("pricing")
             if isinstance(pr, dict):
                 try:
                     pin, pout = float(pr.get("prompt")) * 1e6, float(pr.get("completion")) * 1e6
                 except (TypeError, ValueError):
                     pin = pout = None
-            models.append({"id": str(m["id"])[:200], "in": pin, "out": pout,
+                try:
+                    if pr.get("image") not in (None, ""):
+                        pimage = float(pr["image"])
+                except (TypeError, ValueError):
+                    pimage = None
+            caps = infer_capabilities(mid, m, name)
+            models.append({"id": mid, "in": pin, "out": pout,
                            "ctx": m.get("context_length") or m.get("context_window")})
+            meta[mid] = {"capabilities": caps, "labels": labels(caps), "image_price": pimage,
+                         "input": pin, "output": pout,
+                         "context": m.get("context_length") or m.get("context_window")}
         self.db.kv_set(f"llm_catalog_{name}", {"ts": time.time(), "models": models})
+        self.db.kv_set(f"llm_catalog_meta_{name}", {"ts": time.time(), "models": meta})
         return models
 
     # ── targets ─────────────────────────────────────────────────────────────────────────────────
-    def chain(self, role: str) -> list:
+    def chain(self, role: str, capability: Optional[str] = None) -> list:
         routes = self.settings.get()["routes"]
-        return list(routes.get(role) or routes.get("vellur-coder") or ["gpu"])
+        targets = list(routes.get(role) or ([] if role == "vellur-image" else routes.get("vellur-coder")) or ["gpu"])
+        if capability:
+            targets = [t for t in targets if capability in self.capabilities(t)]
+        return targets
 
     def info(self, target: str) -> Optional[dict]:
         if target == "gpu":
-            return {"kind": "gpu", "provider": "gpu", "model": "vellur-coder", "free": False}
+            return {"kind": "gpu", "provider": "gpu", "model": "vellur-coder", "free": False,
+                    "capabilities": ["chat", "coding", "reasoning", "text_input", "text_output", "tool_call"]}
         name, _, model = target.partition(":")
         p = self.providers().get(name)
         if not p:
             return None
         free = p["plan"] in ("free", "subscription") or (name == "openrouter" and model.endswith(":free"))
         return {"kind": "api", "provider": name, "model": model, "free": free, "cfg": p}
+
+    def capabilities(self, target: str) -> list[str]:
+        info = self.info(target)
+        if info is None:
+            return []
+        if info["kind"] == "gpu":
+            return list(info["capabilities"])
+        meta = self._catalog_meta(info["provider"]).get(info["model"]) or {}
+        caps = meta.get("capabilities")
+        if caps:
+            return list(caps)
+        # No catalog metadata: stay conservative. A known code model still gets "coding", but never vision/image.
+        return infer_capabilities(info["model"], {}, info["provider"])
+
+    def supports(self, target: str, capability: str) -> bool:
+        return capability in self.capabilities(target)
+
+    def can_vision(self, role: str) -> bool:
+        return any(self.supports(t, "vision") for t in self.chain(role))
+
+    def can_generate_images(self, role: str = "vellur-image") -> bool:
+        return any(self.supports(t, "image_generation") for t in self.chain(role))
+
+    def models(self) -> list:
+        rows = []
+        for name, p in self.providers().items():
+            cat = self.db.kv_get(f"llm_catalog_{name}") or {}
+            meta = self._catalog_meta(name)
+            for m in cat.get("models") or []:
+                target = f"{name}:{m['id']}"
+                caps = self.capabilities(target)
+                image = "image_generation" in caps
+                rows.append({"target": target, "provider": name, "provider_display": p["display"],
+                             "model": m["id"], "id": m["id"], "in": m.get("in"), "out": m.get("out"),
+                             "ctx": m.get("ctx"), "image_price": self.image_price(target),
+                             "capabilities": caps, "labels": labels(caps),
+                             "vision": "vision" in caps, "image_generation": image,
+                             "tool_call": "tool_call" in caps, "coding": "coding" in caps,
+                             "free": p["plan"] in ("free", "subscription") or (name == "openrouter" and m["id"].endswith(":free")),
+                             "usable": self.usable(target, fallback=False,
+                                                   capability="image_generation" if image else None)[0]})
+        gpu = self.info("gpu")
+        rows.append({"target": "gpu", "provider": "gpu", "provider_display": "GPU Autopilot", "model": "vellur-coder",
+                     "id": "vellur-coder", "in": None, "out": None, "ctx": None, "image_price": None,
+                     "capabilities": gpu["capabilities"], "labels": labels(gpu["capabilities"]),
+                     "vision": False, "image_generation": False, "tool_call": True, "coding": True,
+                     "free": False, "usable": self.usable("gpu", fallback=False)[0]})
+        return rows
+
+    def capability_summary(self) -> dict:
+        return summary(self.models())
 
     def price(self, target: str) -> Optional[tuple]:
         manual = self.settings.get()["prices"].get(target)
@@ -262,11 +342,23 @@ class Router:
                 return float(m["in"]), float(m["out"])
         return None
 
-    def usable(self, target: str, fallback: bool) -> tuple:
+    def image_price(self, target: str) -> Optional[float]:
+        manual = self.settings.get().get("image_prices", {}).get(target)
+        if manual is not None:
+            return float(manual)
+        name, _, model = target.partition(":")
+        meta = self._catalog_meta(name).get(model) or {}
+        value = meta.get("image_price")
+        return float(value) if isinstance(value, (int, float)) else None
+
+    def usable(self, target: str, fallback: bool, capability: Optional[str] = None) -> tuple:
         st = self.settings.get()
         info = self.info(target)
         if info is None:
             return False, "config", "unknown model provider"
+        if capability and not self.supports(target, capability):
+            label = capability.replace("_", " ")
+            return False, "capability", f"this model does not declare {label} support"
         if info["kind"] == "gpu":
             if fallback and not st["paid_fallback"] and self.ctrl.phase() not in ("ready", "processing", "idle"):
                 return False, "policy", "paid fallback is off (no GPU is running)"
@@ -282,7 +374,10 @@ class Router:
             return True, "", ""
         if self.ctrl.budget.status(st, None, self.ctrl.clock())["exhausted"]:
             return False, "budget", "monthly budget is used up; paid model APIs are blocked"
-        if self.price(target) is None and not cfg["reports_cost"]:
+        if capability == "image_generation":
+            if self.image_price(target) is None and not cfg["reports_cost"]:
+                return False, "config", "no image price known: set one (Models → Image prices) so costs can be tracked"
+        elif self.price(target) is None and not cfg["reports_cost"]:
             return False, "config", "no price known for this model: set one (Models → Prices) so costs can be tracked"
         if fallback and not st["paid_fallback"]:
             return False, "policy", "paid fallback is off"
@@ -317,29 +412,42 @@ class Router:
             return 0.0, "unknown"
         if isinstance(usage.get("cost"), (int, float)):
             return float(usage["cost"]), "provider"
+        if int(usage.get("images") or 0) and self.image_price(target) is not None:
+            return int(usage["images"]) * float(self.image_price(target)), "estimate"
         pr = self.price(target)
         if pr:
             return (int(usage.get("prompt_tokens") or 0) * pr[0] + int(usage.get("completion_tokens") or 0) * pr[1]) / 1e6, "estimate"
         return 0.0, "unpriced"
 
     def record(self, role: str, target: str, info: dict, ok: bool, status: int, usage: Optional[dict],
-               t0: float, tag: str, error: str = "") -> None:
-        cost, source = self.cost(target, info, usage) if ok else (0.0, "")
-        u = usage or {}
+               t0: float, tag: str, error: str = "", images: int = 0) -> None:
+        u = dict(usage or {})
+        if images and not u.get("images"):
+            u["images"] = images
+        cost, source = self.cost(target, info, u) if ok else (0.0, "")
         cached = ((u.get("prompt_tokens_details") or {}).get("cached_tokens") or 0) if isinstance(u.get("prompt_tokens_details"), dict) else 0
         now = self.ctrl.clock()
         self.db.x("INSERT INTO usage(ts,month,role,target,provider,model,ok,status,in_tokens,out_tokens,cached_tokens,"
-                  "cost_usd,cost_source,latency_ms,tag,error) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                  "cost_usd,cost_source,latency_ms,tag,error,images) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
                   (now, month_key(now), role, target, info["provider"], info["model"], 1 if ok else 0, status,
                    int(u.get("prompt_tokens") or 0), int(u.get("completion_tokens") or 0), int(cached), cost, source,
-                   int((time.monotonic() - t0) * 1000), tag, error[:300]))
+                   int((time.monotonic() - t0) * 1000), tag, error[:300], int(u.get("images") or 0)))
 
     def tag_cost(self, tag: str) -> float:
         r = self.db.one("SELECT SUM(cost_usd) AS c FROM usage WHERE tag=?", (tag,))
         return float((r or {}).get("c") or 0)
 
     # ── dispatch ────────────────────────────────────────────────────────────────────────────────
-    async def handle(self, method: str, path: str, query: str, headers: dict, body: bytes, tag: str = "") -> RouterResponse:
+    @staticmethod
+    def _has_image(payload: dict) -> bool:
+        for m in payload.get("messages") or []:
+            content = m.get("content") if isinstance(m, dict) else None
+            if isinstance(content, list) and any(isinstance(p, dict) and p.get("type") == "image_url" for p in content):
+                return True
+        return False
+
+    async def handle(self, method: str, path: str, query: str, headers: dict, body: bytes, tag: str = "",
+                     capability: Optional[str] = None) -> RouterResponse:
         path = path.strip("/")
         if method == "GET":
             if path == "models":
@@ -355,9 +463,14 @@ class Router:
         role = payload.get("model") or "vellur-coder"
         if role not in ROLES:
             return error_response("model_not_found", f"unknown model {role!r}; available: {', '.join(ROLES)}", 404)
+        if capability is None:
+            if role == "vellur-image" or (set(payload.get("modalities") or []) & {"image", "image_url"}):
+                capability = "image_generation"
+            elif self._has_image(payload):
+                capability = "vision"
         errors = []
-        for i, target in enumerate(self.chain(role)):
-            ok, code, why = self.usable(target, fallback=i > 0)
+        for i, target in enumerate(self.chain(role, capability=capability)):
+            ok, code, why = self.usable(target, fallback=i > 0, capability=capability)
             if not ok:
                 errors.append((target, code, why))
                 continue
