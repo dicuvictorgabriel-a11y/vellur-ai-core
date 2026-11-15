@@ -124,7 +124,7 @@ class Router:
 
     # ── providers ───────────────────────────────────────────────────────────────────────────────
     def providers(self) -> dict:
-        stored = self.db.kv_get("llm_providers", {}) or {}
+        stored = self.db.kv_get_shared("llm_providers", {}) or {}
         out = {}
         for name in list(CATALOG) + [n for n in stored if n not in CATALOG]:
             base = CATALOG.get(name, {})
@@ -141,7 +141,7 @@ class Router:
         return out
 
     def key(self, name: str) -> str:
-        return (self.db.kv_get("llm_keys", {}) or {}).get(name, "")
+        return (self.db.kv_get_shared("llm_keys", {}) or {}).get(name, "")
 
     def providers_public(self) -> list:
         keys = self.db.kv_get("llm_keys", {}) or {}
@@ -214,7 +214,7 @@ class Router:
         self.db.event("info", "llm", f"model provider {name} removed/reset")
 
     def _catalog_meta(self, name: str) -> dict:
-        return (self.db.kv_get(f"llm_catalog_meta_{name}") or {}).get("models") or {}
+        return (self.db.kv_get_shared(f"llm_catalog_meta_{name}") or {}).get("models") or {}
 
     async def catalog(self, name: str) -> list:
         """Fetch the provider's model list (free call). Prices and capabilities are kept when present."""
@@ -308,7 +308,7 @@ class Router:
         if budget_exhausted is None:      # once for the whole list, not once per model (hundreds of catalog entries)
             budget_exhausted = self.budget_exhausted()
         for name, p in self.providers().items():
-            cat = self.db.kv_get(f"llm_catalog_{name}") or {}
+            cat = self.db.kv_get_shared(f"llm_catalog_{name}") or {}
             meta = self._catalog_meta(name)
             for m in cat.get("models") or []:
                 target = f"{name}:{m['id']}"
@@ -339,7 +339,7 @@ class Router:
         if manual:
             return float(manual[0]), float(manual[1])
         name, _, model = target.partition(":")
-        for m in (self.db.kv_get(f"llm_catalog_{name}") or {}).get("models") or []:
+        for m in (self.db.kv_get_shared(f"llm_catalog_{name}") or {}).get("models") or []:
             if m["id"] == model and m.get("in") is not None:
                 return float(m["in"]), float(m["out"])
         return None

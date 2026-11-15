@@ -90,6 +90,7 @@ class DB:
     def __init__(self, path: str):
         os.makedirs(os.path.dirname(path) or ".", exist_ok=True)
         self._lock = threading.Lock()
+        self._ro: dict = {}      # kv_get_shared: parsed values, dropped when the key is written
         self._c = sqlite3.connect(path, check_same_thread=False, isolation_level=None)
         self._c.row_factory = sqlite3.Row
         self._c.execute("PRAGMA journal_mode=WAL")
@@ -118,9 +119,24 @@ class DB:
         r = self.one("SELECT value FROM kv WHERE key=?", (key,))
         return json.loads(r["value"]) if r else default
 
+    def kv_get_shared(self, key: str, default: Any = None) -> Any:
+        """Like kv_get, but parsed once and shared until the key is written again. For hot read paths with large
+        values (model catalogs: hundreds of entries read for every model in a list). The result is shared:
+        callers must NOT modify it."""
+        with self._lock:
+            hit = self._ro.get(key)
+            if hit is None:
+                r = self._c.execute("SELECT value FROM kv WHERE key=?", (key,)).fetchone()
+                hit = (json.loads(r["value"]),) if r else (None,)
+                self._ro[key] = hit
+        return default if hit[0] is None else hit[0]
+
     def kv_set(self, key: str, value: Any) -> None:
-        self.x("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
-               (key, json.dumps(value)))
+        with self._lock:
+            self._ro.pop(key, None)
+            self._c.execute("INSERT INTO kv(key,value) VALUES(?,?) ON CONFLICT(key) DO UPDATE SET value=excluded.value",
+                            (key, json.dumps(value)))
+            self._ro.pop(key, None)
 
     def settings_get(self) -> dict:
         return {r["key"]: json.loads(r["value"]) for r in self.all("SELECT key, value FROM settings")}

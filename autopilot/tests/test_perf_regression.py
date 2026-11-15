@@ -122,3 +122,52 @@ async def test_healthz_answers_while_model_lists_are_computed(rig):
     assert worst < 1.0, f"/healthz took {worst:.2f}s while model lists were computed"
     results = await asyncio.gather(*heavy)
     assert all(r.status_code == 200 for r in results)
+
+
+def provider_catalog(n):
+    return {"data": [{"id": f"vendor{i % 40}/model-{i}" + (":free" if i % 7 == 0 else ""), "context_length": 128000,
+                      "pricing": {"prompt": "0.000001", "completion": "0.000002", "image": "0.001" if i % 9 == 0 else "0"},
+                      "architecture": {"input_modalities": ["text", "image"] if i % 3 == 0 else ["text"],
+                                       "output_modalities": ["text", "image"] if i % 9 == 0 else ["text"]},
+                      "supported_parameters": ["tools"] if i % 2 else [], "description": "x" * 400} for i in range(n)]}
+
+
+async def test_refresh_then_model_list_with_large_real_world_catalogs(rig):
+    """Second freeze (15.11.2026): after "Refresh list" stored real catalogs, every catalog model decoded the whole
+    stored catalog several times (thousands of JSON decodes per request): seconds per request, minutes on the VPS."""
+    ctrl = rig()
+    router = Router(ctrl, transport=httpx.MockTransport(lambda r: httpx.Response(200, json=provider_catalog(700))))
+    ctrl.db.kv_set("llm_keys", {"openrouter": "sk-or-" + "x" * 40, "deepseek": "sk-" + "y" * 30})
+    c = httpx.AsyncClient(transport=httpx.ASGITransport(app=build_admin(ctrl, router=router)), base_url="https://ai.example")
+    write = {**ADMIN, "X-Vellur-Request": "1", "Origin": "https://ai.example"}
+    for name in ("openrouter", "deepseek"):
+        assert (await c.post(f"/autopilot/api/llm/providers/{name}/catalog", headers=write, json={})).status_code == 200
+    decodes = {"n": 0}
+    import json as _json
+    real_loads = _json.loads
+
+    def counting_loads(s, *a, **k):
+        if isinstance(s, (str, bytes)) and len(s) > 20000:      # a stored catalog, not small settings values
+            decodes["n"] += 1
+        return real_loads(s, *a, **k)
+    _json.loads = counting_loads
+    try:
+        t = time.perf_counter()
+        r1, r2 = await asyncio.gather(c.get("/autopilot/api/llm", headers=ADMIN), c.get("/autopilot/api/llm/models", headers=ADMIN))
+        elapsed = time.perf_counter() - t
+    finally:
+        _json.loads = real_loads
+    assert r1.status_code == r2.status_code == 200 and len(r2.json()["models"]) == 1401
+    assert elapsed < 1.5, f"model list with 1400 catalog models took {elapsed:.2f}s"
+    assert decodes["n"] <= 8, f"{decodes['n']} catalog decodes for one page load"
+
+
+async def test_shared_kv_reads_see_every_write(rig):
+    ctrl = rig()
+    ctrl.db.kv_set("llm_catalog_openrouter", {"models": [{"id": "a"}]})
+    assert ctrl.db.kv_get_shared("llm_catalog_openrouter")["models"][0]["id"] == "a"
+    ctrl.db.kv_set("llm_catalog_openrouter", {"models": [{"id": "b"}]})
+    assert ctrl.db.kv_get_shared("llm_catalog_openrouter")["models"][0]["id"] == "b"
+    assert ctrl.db.kv_get_shared("missing", {"x": 1}) == {"x": 1}
+    ctrl.db.kv_set("missing", {"y": 2})
+    assert ctrl.db.kv_get_shared("missing", {}) == {"y": 2}
