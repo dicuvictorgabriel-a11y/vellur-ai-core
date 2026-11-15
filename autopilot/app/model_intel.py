@@ -34,6 +34,9 @@ _CODE_RE = re.compile(r"(?:^|[/_.-])(?:coder|code|codestral|devstral|deepseek[-_
                       r"starcoder|codegemma|codex)(?:$|[/_.-])", re.I)
 _EMBED_RE = re.compile(r"(?:^|[/_.-])embed(?:ding)?(?:$|[/_.-])", re.I)
 _VISION_RE = re.compile(r"(?:^|[/_.-])(?:vl|vision|llava|pixtral|molmo|internvl)(?:$|[/_.-])", re.I)
+_IMAGE_RE = re.compile(r"(?:^|[/_.-])(?:seedream|dall[-_.]?e|stable[-_.]?(?:diffusion|image)|sdxl"
+                       r"|flux|imagen|kandinsky|ideogram|recraft)"
+                       r"(?:$|[/_.-])", re.I)
 
 
 def _list(value) -> list[str]:
@@ -88,6 +91,8 @@ def infer_capabilities(model_id: str, raw: dict | None = None, provider: str = "
         caps.discard("chat")
     if _VISION_RE.search(model):
         caps.add("vision")
+    if _IMAGE_RE.search(model):
+        caps.add("image_generation")
     if "chat" in caps or ("text_input" in caps and "text_output" in caps and "embedding" not in caps):
         caps.add("chat")
     return sorted(caps, key=lambda c: _ORDER.get(c, 999))

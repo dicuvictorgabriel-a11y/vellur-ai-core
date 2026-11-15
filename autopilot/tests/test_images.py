@@ -7,6 +7,7 @@ import pytest
 from app.agent import AgentManager
 from app.api import build_admin
 from app.images import wants_image
+from app.model_intel import infer_capabilities
 from app.router import Router
 
 ADMIN = {"X-Vellur-Admin": "s" * 32}
@@ -193,3 +194,42 @@ async def test_agent_image_endpoint_requires_the_runner_secret_and_a_real_task(i
     assert ctrl.db.one("SELECT task_id FROM generated_images WHERE id=?", (iid,))["task_id"] == tid
     r = await client.get(f"/autopilot/api/agent/images/{iid}/content", headers={"X-Runner-Secret": "r" * 32})
     assert r.status_code == 200 and r.content == PNG
+
+
+def test_image_models_detected_by_name_without_catalog_metadata():
+    image_models = [
+        "bytedance-seed/seedream-5-0-flash",
+        "seedream-5-0",
+        "dall-e-3",
+        "dalle-3",
+        "stable-diffusion-3.5-large",
+        "stable-image-ultra",
+        "sdxl-1.0",
+        "flux-schnell",
+        "flux-dev",
+        "flux-pro",
+        "flux-1.1-pro",
+        "flux",
+        "imagen-3",
+        "kandinsky-3",
+        "ideogram-3.0",
+        "recraft-v3",
+    ]
+    for model in image_models:
+        caps = infer_capabilities(model, {}, "openrouter")
+        assert "image_generation" in caps, f"{model} should have image_generation, got {caps}"
+
+
+def test_text_models_not_detected_as_image_without_catalog_metadata():
+    text_models = [
+        "deepseek/deepseek-v4.1-flash",
+        "gpt-4o",
+        "claude-3-opus",
+        "llama-3-70b",
+        "qwen3.8-27b",
+        "codestral-22b",
+        "mixtral-8x7b",
+    ]
+    for model in text_models:
+        caps = infer_capabilities(model, {}, "openrouter")
+        assert "image_generation" not in caps, f"{model} should NOT have image_generation, got {caps}"
