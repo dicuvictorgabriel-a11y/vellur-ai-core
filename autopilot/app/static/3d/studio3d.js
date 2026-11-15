@@ -6,6 +6,11 @@ import { STLLoader } from './vendor/addons/loaders/STLLoader.js';
 import { RoomEnvironment } from './vendor/addons/environments/RoomEnvironment.js';
 
 const $ = (id) => document.getElementById(id);
+const appearance = () => (document.cookie.match(/(?:^|; )vellur_theme=(dark|light)/) || [])[1] || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
+function syncAppearance() { document.documentElement.dataset.theme = appearance(); }
+syncAppearance();
+addEventListener('focus', syncAppearance);
+matchMedia('(prefers-color-scheme: light)').addEventListener('change', syncAppearance);
 const params = new URLSearchParams(location.search);
 const taskId = (params.get('task') || '').trim();
 const isEmbed = params.get('embed') === '1';
