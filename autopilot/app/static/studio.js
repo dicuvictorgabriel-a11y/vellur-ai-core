@@ -3,7 +3,7 @@
   const $ = id => document.getElementById(id), G = window.PrecisionGeometry;
   const canvas = $('canvas'), reference = $('reference'), shape = $('shape'), handles = $('handles');
   const buffer = document.createElement('canvas'), ctx = buffer.getContext('2d', { willReadFrequently: true });
-  let project = null, source = '', undoStack = [], redoStack = [], view = null, drag = null, sel = null, dirty = false, docName = 'Document nou';
+  let project = null, source = '', undoStack = [], redoStack = [], view = null, drag = null, sel = null, dirty = false, docName = 'Untitled';
   const copy = x => JSON.parse(JSON.stringify(x));
   const message = text => { $('message').textContent = text; };
   const points = () => project ? project.contours.reduce((n, c) => n + c.length, 0) : 0;
@@ -15,8 +15,8 @@
     redoStack = []; syncHistory(); setDirty(true);
   }
   function syncHistory() { $('undo').disabled = !undoStack.length; $('redo').disabled = !redoStack.length; }
-  function undo() { if (!undoStack.length) return; redoStack.push(copy(project)); project = undoStack.pop(); sel = null; syncHistory(); setDirty(true); render(); message('Modificarea a fost anulată.'); }
-  function redo() { if (!redoStack.length) return; undoStack.push(copy(project)); project = redoStack.pop(); sel = null; syncHistory(); setDirty(true); render(); message('Modificarea a fost refăcută.'); }
+  function undo() { if (!undoStack.length) return; redoStack.push(copy(project)); project = undoStack.pop(); sel = null; syncHistory(); setDirty(true); render(); message('Change undone.'); }
+  function redo() { if (!redoStack.length) return; undoStack.push(copy(project)); project = redoStack.pop(); sel = null; syncHistory(); setDirty(true); render(); message('Change redone.'); }
   // ── view ────────────────────────────────────────────────────────────────────────────────────────
   function fit() {
     if (!project) return;
@@ -57,7 +57,7 @@
     $('smooth').value = project.smoothness; $('thickness').value = project.thickness;
     $('smoothValue').textContent = Number(project.smoothness).toFixed(2);
     $('thicknessValue').textContent = `${project.thickness} px`;
-    $('stats').textContent = `${project.contours.length} contururi · ${points()} puncte · ${project.width}×${project.height} px`;
+    $('stats').textContent = `${project.contours.length} outlines · ${points()} points · ${project.width}×${project.height} px`;
     inspector();
   }
   function inspector() {
@@ -66,7 +66,7 @@
     if (!p) return;
     if (document.activeElement !== $('px')) $('px').value = Math.round(p.x * 100) / 100;
     if (document.activeElement !== $('py')) $('py').value = Math.round(p.y * 100) / 100;
-    $('selInfo').textContent = `Conturul ${sel.ci + 1} · punctul ${sel.pi + 1} din ${project.contours[sel.ci].length}`;
+    $('selInfo').textContent = `Outline ${sel.ci + 1} · point ${sel.pi + 1} of ${project.contours[sel.ci].length}`;
   }
   function select(ci, pi) { sel = ci == null ? null : { ci, pi }; render(); }
   function setPoint(x, y) {
@@ -81,19 +81,19 @@
   }
   function deleteSelected() {
     if (!sel) return; snapshot();
-    G.deletePoint(project.contours, sel.ci, sel.pi); sel = null; render(); message('Punctul a fost șters.');
+    G.deletePoint(project.contours, sel.ci, sel.pi); sel = null; render(); message('Point deleted.');
   }
   $('deletePoint').onclick = deleteSelected;
   // ── loading images and projects ─────────────────────────────────────────────────────────────────
   function retrace() {
     try {
-      if (!buffer.width) { message('Importă mai întâi o imagine.'); return; }
+      if (!buffer.width) { message('Import an image first.'); return; }
       const pixels = ctx.getImageData(0, 0, buffer.width, buffer.height);
       const contours = G.trace(pixels.data, buffer.width, buffer.height, Number($('threshold').value), Number($('tolerance').value));
       snapshot();
       project = { width: buffer.width, height: buffer.height, contours, smoothness: project?.smoothness ?? .55, thickness: project?.thickness ?? 0 };
       sel = null; if (!view) fit();
-      render(); message(`${contours.length} contururi · ${points()} puncte. Estimare din pixeli.`);
+      render(); message(`${contours.length} outlines · ${points()} points, estimated from pixels.`);
     } catch (error) { message(error.message); }
   }
   function drawSource(img) { buffer.width = img.width; buffer.height = img.height; ctx.drawImage(img, 0, 0); }
@@ -110,17 +110,17 @@
     } catch (error) { message(error.message); return; }
     drawSource(candidate); source = candidate.toDataURL('image/png'); undoStack = []; redoStack = []; syncHistory(); sel = null;
     project = { width: buffer.width, height: buffer.height, contours, smoothness: .55, thickness: 0 };
-    docName = name || 'Document nou'; $('docName').textContent = docName; setDirty(!!name);
-    fit(); render(); message(`${contours.length} contururi · ${points()} puncte. Estimare din pixeli.`);
+    docName = name || 'Untitled'; $('docName').textContent = docName; setDirty(!!name);
+    fit(); render(); message(`${contours.length} outlines · ${points()} points, estimated from pixels.`);
   }
   function load(url, name) {
     const img = new Image();
     img.onload = () => useImage(img, url, name);
-    img.onerror = () => message('Imaginea nu a putut fi citită.');
+    img.onerror = () => message('The image could not be read.');
     img.src = url;
   }
   function demo() {
-    if (dirty && !confirm('Înlocuiești documentul curent? Modificările nesalvate se pierd.')) return;
+    if (dirty && !confirm('Replace the current document? Unsaved changes will be lost.')) return;
     const c = document.createElement('canvas'); c.width = 480; c.height = 320;
     const x = c.getContext('2d'); x.fillStyle = '#fff'; x.fillRect(0, 0, 480, 320);
     x.fillStyle = '#15191e'; x.beginPath(); x.moveTo(64, 234); x.bezierCurveTo(95, 50, 215, 32, 240, 133); x.bezierCurveTo(272, 43, 393, 59, 416, 234); x.bezierCurveTo(372, 197, 324, 181, 240, 252); x.bezierCurveTo(155, 181, 105, 197, 64, 234); x.closePath(); x.fill();
@@ -130,9 +130,9 @@
   $('image').addEventListener('change', e => {
     const file = e.target.files[0]; e.target.value = '';
     if (!file) return;
-    if (!['image/png', 'image/jpeg'].includes(file.type) || file.size > 10 * 1024 * 1024) { message('Alege un PNG sau JPEG de cel mult 10 MB.'); return; }
-    if (dirty && !confirm('Înlocuiești documentul curent? Modificările nesalvate se pierd.')) return;
-    const reader = new FileReader(); reader.onload = () => load(reader.result, file.name.replace(/\.[^.]+$/, '')); reader.onerror = () => message('Fișierul nu a putut fi citit.'); reader.readAsDataURL(file);
+    if (!['image/png', 'image/jpeg'].includes(file.type) || file.size > 10 * 1024 * 1024) { message('Choose a PNG or JPEG of at most 10 MB.'); return; }
+    if (dirty && !confirm('Replace the current document? Unsaved changes will be lost.')) return;
+    const reader = new FileReader(); reader.onload = () => load(reader.result, file.name.replace(/\.[^.]+$/, '')); reader.onerror = () => message('The file could not be read.'); reader.readAsDataURL(file);
   });
   function download(blob, name) {
     const url = URL.createObjectURL(blob), a = document.createElement('a');
@@ -140,16 +140,16 @@
   }
   const fileBase = () => (docName || 'vellur-precision').replace(/[^\w.-]+/g, '-').slice(0, 60) || 'vellur-precision';
   function save() {
-    if (!project) { message('Nu există nimic de salvat.'); return; }
+    if (!project) { message('There is nothing to save yet.'); return; }
     download(new Blob([G.serialize(project, source)], { type: 'application/json' }), fileBase() + '.vellur.json');
-    setDirty(false); message('Proiect salvat pe dispozitivul tău. Îl poți redeschide cu „Deschide”.');
+    setDirty(false); message('Project saved on your device. Reopen it with Open.');
   }
   $('save').onclick = save;
-  $('open').onclick = () => { if (dirty && !confirm('Deschizi alt proiect? Modificările nesalvate se pierd.')) return; $('openFile').click(); };
+  $('open').onclick = () => { if (dirty && !confirm('Open another project? Unsaved changes will be lost.')) return; $('openFile').click(); };
   $('openFile').addEventListener('change', e => {
     const file = e.target.files[0]; e.target.value = '';
     if (!file) return;
-    if (file.size > 20 * 1024 * 1024) { message('Fișierul este prea mare (maximum 20 MB).'); return; }
+    if (file.size > 20 * 1024 * 1024) { message('The file is too large (20 MB at most).'); return; }
     const reader = new FileReader();
     reader.onload = () => {
       try {
@@ -158,15 +158,15 @@
         buffer.width = 0;
         if (source) { const img = new Image(); img.onload = () => drawSource(img); img.src = source; }
         docName = file.name.replace(/(\.vellur)?\.json$/i, ''); $('docName').textContent = docName; setDirty(false);
-        fit(); render(); message(`Proiect deschis: ${project.contours.length} contururi · ${points()} puncte.`);
+        fit(); render(); message(`Project opened: ${project.contours.length} outlines · ${points()} points.`);
       } catch (err) { message(err.message); }
     };
-    reader.onerror = () => message('Fișierul nu a putut fi citit.');
+    reader.onerror = () => message('The file could not be read.');
     reader.readAsText(file);
   });
   $('export').onclick = () => {
-    if (!project) { message('Importă mai întâi o imagine.'); return; }
-    download(new Blob([G.svg(project)], { type: 'image/svg+xml' }), fileBase() + '.svg'); message('SVG descărcat.');
+    if (!project) { message('Import an image first.'); return; }
+    download(new Blob([G.svg(project)], { type: 'image/svg+xml' }), fileBase() + '.svg'); message('SVG downloaded.');
   };
   $('demo').onclick = demo; $('retrace').onclick = retrace;
   $('threshold').oninput = () => { $('thresholdValue').textContent = $('threshold').value; };
@@ -206,7 +206,7 @@
     if (!project || e.target.dataset.point !== undefined) return;
     snapshot();
     const at = G.insertPoint(project.contours, position(e));
-    if (at) { sel = { ci: at.contour, pi: at.point }; render(); message('Punct nou adăugat pe contur.'); }
+    if (at) { sel = { ci: at.contour, pi: at.point }; render(); message('New point added to the outline.'); }
   });
   $('zoomIn').onclick = () => zoomAt(.8); $('zoomOut').onclick = () => zoomAt(1.25); $('resetZoom').onclick = () => { fit(); render(); };
   canvas.addEventListener('wheel', e => { e.preventDefault(); const p = position(e); zoomAt(e.deltaY < 0 ? .9 : 1.1, p.x, p.y); }, { passive: false });

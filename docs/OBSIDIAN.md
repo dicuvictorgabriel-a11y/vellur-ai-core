@@ -52,6 +52,6 @@ The UI now explains it and always asks before such a request; the provider-repor
    live request/response path. Needs the owner's OpenRouter key on the server; not run from here.
 2. Agent: per-task cost in the header comes from live usage, the report from a snapshot; they agree on the server
    but the preview's seeded demo shows different numbers. Session continuity and outcomes were not changed.
-4. Interface language is mixed (dashboard English, Precision Studio Romanian).
+4. (done) The interface is English everywhere; a test keeps it that way.
 5. 3D Studio editing (transform, materials, export) is not implemented; it is a viewer plus agent hand-off.
 6. Cancelling an image only stops waiting; the provider may still finish and charge (the result is then saved).

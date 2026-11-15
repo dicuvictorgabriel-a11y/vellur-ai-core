@@ -212,3 +212,15 @@ def test_routing_editor_image_format_and_daily_costs_are_wired():
         assert f'value="{size}"' in html
     # daily spend chart with a table view for screen readers
     assert 'id="dayChart"' in html and 'id="dayTable"' in html and "renderDays(c)" in html
+
+
+def test_interface_is_english_only():
+    """Owner decision (2026-11-15): one interface language, English. Romanian letters mean an untranslated string."""
+    import glob
+    import re
+    static = os.path.dirname(PAGE)
+    files = [f for f in glob.glob(os.path.join(static, "**", "*.*"), recursive=True)
+             if f.endswith((".html", ".js", ".css")) and "vendor" not in f]
+    for f in files:
+        for n, line in enumerate(open(f, encoding="utf-8"), 1):
+            assert not re.search(r"[ăâîșțşţĂÂÎȘȚŞŢ]", line), f"{os.path.relpath(f, static)}:{n} is not English: {line.strip()[:80]}"

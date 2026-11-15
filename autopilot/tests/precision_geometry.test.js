@@ -42,8 +42,8 @@ test('editing points and smoothness changes exported curves and thickness change
 
 test('transparent image is background and blank images fail safely', () => {
   const pixels = new Uint8ClampedArray(10 * 10 * 4);
-  assert.throws(() => G.trace(pixels, 10, 10, 128, 1), /contur/);
-  assert.throws(() => G.trace(pixels, 10000, 10000, 128, 1), /Dimensiune/);
+  assert.throws(() => G.trace(pixels, 10, 10, 128, 1), /outline/);
+  assert.throws(() => G.trace(pixels, 10000, 10000, 128, 1), /Invalid image size/);
 });
 
 test('diagonally touching shapes remain separate', () => {

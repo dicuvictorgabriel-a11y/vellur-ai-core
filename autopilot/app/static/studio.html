@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="ro">
+<html lang="en">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -10,59 +10,59 @@
 </head>
 <body>
   <header>
-    <a href="/autopilot/" class="back" aria-label="Înapoi la AI Core">←</a>
+    <a href="/autopilot/" class="back" aria-label="Back to AI Core">←</a>
     <strong><i></i>Precision Studio</strong>
-    <span class="doc" id="docName">Document nou</span><span class="dirty" id="dirty" hidden>nesalvat</span>
+    <span class="doc" id="docName">Untitled</span><span class="dirty" id="dirty" hidden>unsaved</span>
     <span class="badge">2D · VECTOR</span>
     <div class="file">
-      <button id="open" title="Deschide un proiect (.json)">Deschide</button><input id="openFile" type="file" accept=".json,application/json" hidden>
-      <button id="save" title="Salvează proiectul (Ctrl+S)">Salvează</button>
-      <button id="export" class="primary" title="Descarcă un SVG">Export SVG</button>
+      <button id="open" title="Open a project (.json)">Open</button><input id="openFile" type="file" accept=".json,application/json" hidden>
+      <button id="save" title="Save the project (Ctrl+S)">Save</button>
+      <button id="export" class="primary" title="Download an SVG">Export SVG</button>
     </div>
   </header>
   <main>
     <section class="work">
-      <div class="toolbar" role="toolbar" aria-label="Unelte">
-        <label class="button" for="image">Importă imagine</label><input id="image" type="file" accept="image/png,image/jpeg" hidden>
-        <button id="demo">Exemplu</button>
+      <div class="toolbar" role="toolbar" aria-label="Tools">
+        <label class="button" for="image">Import image</label><input id="image" type="file" accept="image/png,image/jpeg" hidden>
+        <button id="demo">Example</button>
         <span class="sep"></span>
-        <button id="undo" disabled title="Anulează (Ctrl+Z)" aria-label="Anulează">↶</button>
-        <button id="redo" disabled title="Refă (Ctrl+Shift+Z)" aria-label="Refă">↷</button>
+        <button id="undo" disabled title="Undo (Ctrl+Z)" aria-label="Undo">↶</button>
+        <button id="redo" disabled title="Redo (Ctrl+Shift+Z)" aria-label="Redo">↷</button>
         <span class="sep"></span>
-        <button id="zoomOut" aria-label="Micșorează">−</button><span id="zoomValue" class="zoom">100%</span><button id="zoomIn" aria-label="Mărește">+</button><button id="resetZoom">Încadrare</button>
+        <button id="zoomOut" aria-label="Zoom out">−</button><span id="zoomValue" class="zoom">100%</span><button id="zoomIn" aria-label="Zoom in">+</button><button id="resetZoom">Fit</button>
         <span class="sep"></span>
-        <label class="check"><input id="overlay" type="checkbox" checked> Referință</label>
-        <label class="check"><input id="nodes" type="checkbox" checked> Puncte</label>
+        <label class="check"><input id="overlay" type="checkbox" checked> Reference</label>
+        <label class="check"><input id="nodes" type="checkbox" checked> Points</label>
         <button id="inspectorToggle" class="mobile-only" aria-expanded="false">Inspector</button>
       </div>
-      <div class="viewport" id="viewport"><svg id="canvas" viewBox="0 0 480 320" role="img" aria-label="Zona de editare a conturului"><image id="reference"/><path id="shape"/><g id="handles"></g></svg></div>
-      <div class="status"><span id="message" role="status">Exemplu sintetic: mută punctele sau importă o imagine.</span><span class="keys">Clic: selectează · dublu clic pe contur: punct nou · Del: șterge · săgeți: mută · rotița: zoom · trage fundalul: deplasare</span></div>
+      <div class="viewport" id="viewport"><svg id="canvas" viewBox="0 0 480 320" role="img" aria-label="Outline editing area"><image id="reference"/><path id="shape"/><g id="handles"></g></svg></div>
+      <div class="status"><span id="message" role="status">Example shape: drag the points or import an image.</span><span class="keys">Click: select · double-click the outline: new point · Del: delete · arrows: nudge · wheel: zoom · drag the background: pan</span></div>
     </section>
     <aside id="inspector">
       <p class="eyebrow">INSPECTOR</p>
       <div class="block" id="selBlock">
-        <h2>Punct selectat</h2>
-        <p class="hint" id="selNone">Niciun punct selectat. Fă clic pe un punct de pe contur.</p>
+        <h2>Selected point</h2>
+        <p class="hint" id="selNone">No point selected. Click a point on the outline.</p>
         <div id="selFields" hidden>
           <div class="pair"><label>X <input id="px" type="number" step="0.5"></label><label>Y <input id="py" type="number" step="0.5"></label></div>
           <p class="hint" id="selInfo"></p>
-          <button id="deletePoint" class="wide danger">Șterge punctul</button>
+          <button id="deletePoint" class="wide danger">Delete point</button>
         </div>
       </div>
       <div class="block">
-        <h2>Formă</h2>
-        <label>Netezire <output id="smoothValue">0.55</output><input id="smooth" type="range" min="0" max="1" step="0.05" value="0.55"></label>
-        <label>Extindere contur <output id="thicknessValue">0 px</output><input id="thickness" type="range" min="0" max="20" step="0.5" value="0"></label>
+        <h2>Shape</h2>
+        <label>Smoothing <output id="smoothValue">0.55</output><input id="smooth" type="range" min="0" max="1" step="0.05" value="0.55"></label>
+        <label>Outline offset <output id="thicknessValue">0 px</output><input id="thickness" type="range" min="0" max="20" step="0.5" value="0"></label>
         <p class="hint" id="stats"></p>
       </div>
       <div class="block">
-        <h2>Reconstrucție din imagine</h2>
-        <label>Prag contur <output id="thresholdValue">150</output><input id="threshold" type="range" min="1" max="254" value="150"></label>
-        <label>Simplificare <output id="toleranceValue">1.5 px</output><input id="tolerance" type="range" min="0.5" max="5" step="0.5" value="1.5"></label>
-        <button id="retrace" class="wide">Reconstruiește conturul</button>
-        <p class="hint">Reconstrucția înlocuiește punctele editate (poți anula). Culorile închise devin forme.</p>
+        <h2>Trace from image</h2>
+        <label>Threshold <output id="thresholdValue">150</output><input id="threshold" type="range" min="1" max="254" value="150"></label>
+        <label>Simplification <output id="toleranceValue">1.5 px</output><input id="tolerance" type="range" min="0.5" max="5" step="0.5" value="1.5"></label>
+        <button id="retrace" class="wide">Trace outline again</button>
+        <p class="hint">Tracing replaces the edited points (you can undo). Dark colours become shapes.</p>
       </div>
-      <div class="notice"><strong>Ce măsurăm?</strong><p>Conturul este estimat din pixeli, nu este geometria originală. Imaginea rămâne în browser; proiectul se salvează doar când apeși Salvează (fișier .json pe dispozitivul tău).</p></div>
+      <div class="notice"><strong>What is measured?</strong><p>The outline is estimated from pixels; it is not the original geometry. The image stays in your browser; the project is saved only when you press Save (a .json file on your device).</p></div>
     </aside>
   </main>
 </body>
