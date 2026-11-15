@@ -69,6 +69,16 @@ class FakeRunner:
             return httpx.Response(200, json={"files": [
                 {"path": "app.py", "mode": "100644", "content_b64": base64.b64encode(b"print('x')\n").decode()},
                 {"path": "old.txt", "deleted": True}]})
+        elif p.endswith("/preview-info"):
+            return httpx.Response(200, json={"mode": "static", "root": "dist", "why": "", "running": False})
+        elif "/preview/" in p:
+            self.preview_calls = getattr(self, "preview_calls", []) + [(req.method, p, req.url.query.decode())]
+            if p.endswith("/app.css"):
+                return httpx.Response(200, content=b"body{}", headers={"content-type": "text/css"})
+            return httpx.Response(200, content=b'<html><link href="/app.css"><script src="/assets/a.js"></script><a href="//cdn.x/y">x</a></html>',
+                                  headers={"content-type": "text/html; charset=utf-8"})
+        elif p.endswith("/rebaseline"):
+            self.rebaselined = True
         elif p.endswith("/summary"):
             return httpx.Response(200, json={"files": [{"path": "app.py", "status": "M", "added": 2, "removed": 1},
                                                        {"path": "old.txt", "status": "D", "added": 0, "removed": 3}]})
@@ -93,7 +103,7 @@ class FakeRunner:
 
 class FakeGitHub:
     def __init__(self):
-        self.calls, self.auth = [], set()
+        self.calls, self.auth, self.head = [], set(), "base1"
 
     def handler(self, req: httpx.Request):
         self.auth.add(req.headers.get("authorization"))
@@ -106,11 +116,11 @@ class FakeGitHub:
             return httpx.Response(200, json=[{"name": "feature"}, {"name": "main"}])
         if p == "/repos/o/r":
             return httpx.Response(200, json={"default_branch": "main"})
-        if p == "/repos/o/r/tarball/main":
+        if p in ("/repos/o/r/tarball/main", "/repos/o/r/tarball/" + self.head):
             return httpx.Response(200, content=b"TARBALL")
         if p == "/repos/o/r/git/ref/heads/main":
-            return httpx.Response(200, json={"object": {"sha": "base1"}})
-        if p == "/repos/o/r/git/commits/base1":
+            return httpx.Response(200, json={"object": {"sha": self.head}})
+        if p == "/repos/o/r/git/commits/" + self.head:
             return httpx.Response(200, json={"tree": {"sha": "tree0"}})
         if p.endswith("/git/blobs"):
             return httpx.Response(201, json={"sha": "blob1"})
@@ -337,3 +347,42 @@ async def test_no_provider_credit_is_explained_and_another_model_can_continue(ag
         await asyncio.sleep(0.01)
     assert mgr.task(tid)["model"] == "vellur-coder" and runner.messages[0]["model"] == "vellur-coder"
     assert mgr.task(tid)["outcome"] == "completed"
+
+
+async def test_live_preview_is_sandboxed_and_needs_a_link_from_a_logged_in_owner(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    tid = (await mgr.create("Build the landing page", "vellur-coder"))["id"]
+    await wait_final(mgr, tid)
+    assert (await admin.post(f"/autopilot/api/agent/tasks/{tid}/preview")).status_code in (401, 403)      # login required
+    info = (await admin.post(f"/autopilot/api/agent/tasks/{tid}/preview", headers=WRITE)).json()
+    assert info["mode"] == "static" and info["url"].startswith("/autopilot/preview/") and len(info["url"]) > 45
+    r = await admin.get(info["url"])                                   # the sandboxed frame sends no cookie: the link is the key
+    assert r.status_code == 200 and "sandbox" in r.headers["content-security-policy"]
+    assert "allow-same-origin" not in r.headers["content-security-policy"]
+    assert f'href="{info["url"]}app.css"'.encode() in r.content and f'src="{info["url"]}assets/a.js"'.encode() in r.content
+    assert b'href="//cdn.x/y"' in r.content                             # absolute URLs are left alone
+    css = await admin.get(info["url"] + "app.css?v=2")
+    assert css.headers["content-type"].startswith("text/css") and css.headers["access-control-allow-origin"] == "*"
+    assert runner.preview_calls[-1] == ("GET", f"/tasks/{tid}/preview/app.css", "v=2")
+    assert (await admin.get("/autopilot/preview/" + "x" * 32 + "/")).status_code == 404
+    mgr.previews = {k: (v[0], 0) for k, v in mgr.previews.items()}     # links expire
+    assert (await admin.get(info["url"])).status_code == 404
+
+
+async def test_publish_directly_only_as_fast_forward(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    await admin.put("/autopilot/api/agent/github", headers=WRITE, json={"token": "github_pat_" + "a" * 30})
+    tid = (await admin.post("/autopilot/api/agent/tasks", headers=WRITE, json={"prompt": "Add a health endpoint", "repo": "o/r"})).json()["id"]
+    await wait_final(mgr, tid)
+    assert mgr.task(tid)["base_sha"] == "base1"
+    gh.head = "newer2"                                                 # somebody pushed to main meanwhile
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish-direct", headers=WRITE)
+    assert r.status_code == 409 and r.json()["error"] == "moved"
+    assert not any(m == "PATCH" for m, p, _ in gh.calls)
+    gh.head = "base1"
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish-direct", headers=WRITE)
+    assert r.status_code == 200 and r.json()["base_sha"] == "commit1" and r.json()["files_changed"] == 0
+    patch = [b for m, p, b in gh.calls if m == "PATCH" and p == "/repos/o/r/git/refs/heads/main"][0]
+    assert patch == {"sha": "commit1", "force": False} and runner.rebaselined is True
+    assert [e["kind"] for e in mgr.events(tid)][-1] == "published"
+    assert not any(p.endswith("/pulls") for _, p, _ in gh.calls)       # no pull request involved

@@ -1,0 +1,118 @@
+#!/usr/bin/env bash
+# vac-autoupdate — keep this server on the latest commit of the project's main branch, without anyone
+# running the installer by hand.   Used through:  sudo vac autoupdate on | off | status | run
+#
+#   on      install the latest version now, then check GitHub every 5 minutes (systemd timer)
+#   off     stop checking (nothing else changes)
+#   status  what is installed, what GitHub has, the last result
+#   run     one check now (what the timer calls)
+#
+# How an update is applied (the same installer a manual deploy runs, nothing new):
+#   1. read the newest commit id of the branch from GitHub (public read, no token);
+#   2. stop if it is already installed, if that exact commit failed before, or if an agent task is running
+#      (an update restarts the agent container and would interrupt the task);
+#   3. download that commit, run its install.sh, then `vac verify`;
+#   4. on failure: re-run the installer of the previous release (kept on disk) and remember the failed
+#      commit, so the same broken version is not retried every 5 minutes.
+# Only the configured repository and branch are ever installed. Everything is logged.
+set -uo pipefail
+
+DEST="${VAC_HOME:-/opt/vellur-ai-core}"
+ENVF="$DEST/.env"
+envval() { [ -f "$ENVF" ] && sed -n "s/^$1=//p" "$ENVF" | tail -1; }
+REPO="${AUTOUPDATE_REPO:-$(envval AUTOUPDATE_REPO)}"; REPO="${REPO:-dicuvictorgabriel-a11y/vellur-ai-core}"
+BRANCH="${AUTOUPDATE_BRANCH:-$(envval AUTOUPDATE_BRANCH)}"; BRANCH="${BRANCH:-main}"
+API="${AUTOUPDATE_API:-https://api.github.com}"
+CODELOAD="${AUTOUPDATE_CODELOAD:-https://codeload.github.com}"
+LOG="${AUTOUPDATE_LOG:-/var/log/vellur-autoupdate.log}"
+REL="$DEST/releases"
+UNIT=/etc/systemd/system/vellur-autoupdate
+VAC="${AUTOUPDATE_VAC:-/usr/local/bin/vac}"
+
+say()  { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG" >&2; }
+note() { printf '%s\n' "$*" > "$DEST/.autoupdate-last"; }
+[[ $REPO =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$ && $BRANCH =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "invalid AUTOUPDATE_REPO / AUTOUPDATE_BRANCH" >&2; exit 2; }
+
+remote_sha() {
+	local sha
+	sha=$(curl -fsS -m 30 -H 'Accept: application/vnd.github.sha' "$API/repos/$REPO/commits/$BRANCH" 2>/dev/null) || return 1
+	[[ $sha =~ ^[0-9a-f]{40}$ ]] || return 1
+	echo "$sha"
+}
+
+agent_busy() {   # 0 = a task is running right now
+	local port secret
+	port=$(envval AUTOPILOT_PORT); secret=$(envval AUTOPILOT_ADMIN_SECRET)
+	[ -n "$port" ] && [ -n "$secret" ] || return 1
+	curl -fsS -m 10 -H "X-Vellur-Admin: $secret" "http://127.0.0.1:$port/autopilot/api/agent" 2>/dev/null |
+		python3 -c 'import json,sys
+final = {"done", "failed", "cancelled", "timeout", "over_budget"}
+sys.exit(0 if any(t.get("state") not in final for t in json.load(sys.stdin).get("tasks", [])) else 1)' 2>/dev/null
+}
+
+install_release() {   # install_release <dir>  → 0 when the installer and the checks pass
+	( cd "$1" && bash ./install.sh ) >> "$LOG" 2>&1 < /dev/null || return 1
+	"$VAC" verify >> "$LOG" 2>&1 < /dev/null
+}
+
+run() {
+	mkdir -p "$REL"
+	exec 9> "$DEST/.autoupdate.lock"
+	flock -n 9 || { echo "another update is in progress"; return 0; }
+	local sha cur failed tmp prev
+	sha=$(remote_sha) || { note "could not read $REPO@$BRANCH from GitHub (is the repository public?)"; say "cannot read the latest commit of $REPO@$BRANCH"; return 1; }
+	cur=$(cat "$DEST/.release-sha" 2>/dev/null || true); failed=$(cat "$DEST/.release-failed" 2>/dev/null || true)
+	if [ "$sha" = "$cur" ]; then note "up to date (${sha:0:7})"; return 0; fi
+	if [ "$sha" = "$failed" ]; then note "version ${sha:0:7} failed to install earlier; waiting for a newer commit (running: ${cur:0:7})"; return 0; fi
+	if [ "${1:-}" != --force ] && agent_busy; then note "update to ${sha:0:7} waits: an agent task is running"; say "update postponed: agent task running"; return 0; fi
+	say "updating ${cur:0:7} -> ${sha:0:7}"
+	tmp="$REL/$sha.tmp"; rm -rf -- "$tmp" "$REL/$sha"; mkdir -p "$tmp"
+	if ! curl -fsSL -m 300 "$CODELOAD/$REPO/tar.gz/$sha" | tar -xz -C "$tmp" --strip-components=1 || [ ! -f "$tmp/install.sh" ]; then
+		rm -rf -- "$tmp"; note "download of ${sha:0:7} failed"; say "download failed"; return 1
+	fi
+	mv "$tmp" "$REL/$sha"
+	if install_release "$REL/$sha"; then
+		echo "$sha" > "$DEST/.release-sha"; rm -f "$DEST/.release-failed"
+		note "installed ${sha:0:7} on $(date -u +'%F %H:%M UTC')"; say "installed ${sha:0:7}"
+		for prev in $(ls -1t "$REL" | grep -E '^[0-9a-f]{40}$' | tail -n +3); do rm -rf -- "${REL:?}/$prev"; done   # keep current + previous
+		return 0
+	fi
+	echo "$sha" > "$DEST/.release-failed"
+	say "install of ${sha:0:7} FAILED"
+	if [ -n "$cur" ] && [ -f "$REL/$cur/install.sh" ]; then
+		say "restoring ${cur:0:7}"
+		if install_release "$REL/$cur"; then note "version ${sha:0:7} failed its checks; restored ${cur:0:7}"; say "restored ${cur:0:7}"
+		else note "version ${sha:0:7} failed and restoring ${cur:0:7} also failed: run the installer by hand"; say "RESTORE FAILED"; fi
+	else
+		note "version ${sha:0:7} failed its checks (no earlier release on disk to restore); see $LOG"
+	fi
+	rm -rf -- "${REL:?}/$sha"
+	return 1
+}
+
+status() {
+	local cur
+	cur=$(cat "$DEST/.release-sha" 2>/dev/null || true)
+	echo "repository: $REPO ($BRANCH)"
+	echo "installed:  ${cur:-unknown (installed by hand)}"
+	echo "GitHub:     $(remote_sha || echo 'unreachable')"
+	echo "automatic:  $(systemctl is-active vellur-autoupdate.timer 2>/dev/null || echo off)"
+	echo "last:       $(cat "$DEST/.autoupdate-last" 2>/dev/null || echo never ran)"
+}
+
+case "${1:-status}" in
+	run) shift; run "$@" ;;
+	status) status ;;
+	on)
+		[ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 2; }
+		printf '[Unit]\nDescription=VELLUR AI Core automatic update\nAfter=network-online.target docker.service\n\n[Service]\nType=oneshot\nExecStart=%s run\nTimeoutStartSec=3600\n' "$DEST/bin/vac-autoupdate" > "$UNIT.service"
+		printf '[Unit]\nDescription=Check for a new VELLUR AI Core version\n\n[Timer]\nOnBootSec=3min\nOnUnitActiveSec=5min\nRandomizedDelaySec=30\n\n[Install]\nWantedBy=timers.target\n' > "$UNIT.timer"
+		systemctl daemon-reload && systemctl enable --now vellur-autoupdate.timer
+		echo "Automatic updates are ON: this server follows $REPO ($BRANCH), checked every 5 minutes."
+		echo "Installing the latest version now…"; run --force; status ;;
+	off)
+		[ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 2; }
+		systemctl disable --now vellur-autoupdate.timer 2>/dev/null; rm -f "$UNIT.service" "$UNIT.timer"; systemctl daemon-reload
+		echo "Automatic updates are OFF. Nothing else changed." ;;
+	*) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//' ;;
+esac

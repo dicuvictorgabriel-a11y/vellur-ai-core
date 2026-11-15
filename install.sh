@@ -95,6 +95,7 @@ install -m 644 "$SRC/compose.yaml" "$SRC/env.example" "$DEST/"
 install -m 644 "$SRC/litellm/config.yaml" "$SRC/litellm/models.gpu.yaml" "$SRC/litellm/models.example.yaml" "$DEST/litellm/"
 [ -f "$DEST/litellm/models.yaml" ] || install -m 644 "$SRC/litellm/models.yaml" "$DEST/litellm/"   # never overwrite your models
 install -m 755 "$SRC/bin/vac" "$DEST/bin/vac"
+install -m 755 "$SRC/bin/vac-autoupdate" "$DEST/bin/vac-autoupdate"
 install -m 644 "$SRC/tunnel/Dockerfile" "$SRC/tunnel/tunnel.sh" "$DEST/tunnel/"
 install -m 644 "$SRC/www/"* "$DEST/www/"
 install -m 755 "$SRC/gpu/"*.sh "$DEST/gpu/"

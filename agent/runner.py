@@ -10,6 +10,7 @@ The container holds no production secret, no GitHub token and no Docker socket: 
 short-lived inference token for the VELLUR model router. Standard library only.
 """
 import base64
+import contextlib
 import io
 import json
 import os
@@ -24,7 +25,7 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 WORK = os.environ.get("AGENT_WORK", "/work")
 SECRET = os.environ.get("AGENT_RUNNER_SECRET", "")
 OPENCODE = os.environ.get("OPENCODE_BIN", "opencode")
-KEEP_TASKS = 8
+KEEP_TASKS = 12
 MAX_EVENT = 6000          # characters kept per string field of an event (tool output, file contents)
 MAX_SHOT = 4 * 1024 * 1024
 MAX_SOURCE = 400 * 1024 * 1024
@@ -178,7 +179,8 @@ def run_task(tid):
         env.update(GIT_ID)
         env.update({"HOME": home, "XDG_CONFIG_HOME": os.path.join(home, ".config"),
                     "XDG_DATA_HOME": os.path.join(home, ".local/share"), "XDG_CACHE_HOME": os.path.join(home, ".cache"),
-                    "OPENCODE_CONFIG": cfg, "CI": "1", "TERM": "dumb", "NO_COLOR": "1", "VELLUR_SHOTS": shots})
+                    "OPENCODE_CONFIG": cfg, "CI": "1", "TERM": "dumb", "NO_COLOR": "1", "VELLUR_SHOTS": shots,
+                    "VELLUR_PREVIEW_URL": f"http://127.0.0.1:{os.environ.get('AGENT_PORT', '7070')}/tasks/{tid}/preview/"})
         cmd = [OPENCODE, "run", "--auto", "--format", "json", "-m", f"vellur/{t['meta']['model']}"]
         if t.get("session"):
             cmd += ["--session", t["session"]]
@@ -206,6 +208,9 @@ def run_task(tid):
         p.wait()
         reader.join(timeout=10)
         t["exit"] = p.returncode
+        if t["state"] == "running":
+            with contextlib.suppress(Exception):
+                auto_shots(tid, t)
         git(repo, "add", "-A", check=False)
         names = git(repo, "diff", "--cached", "--no-renames", "--name-status", "-z", "HEAD", check=False).decode(errors="replace")
         t["changed"] = len([x for x in names.split("\0") if x]) // 2
@@ -291,9 +296,178 @@ def changed_files(repo):
     return files
 
 
+# ── live preview: the owner looks at the project while the agent works ───────────────────────────
+# Static sites are served straight from the workspace; apps that need a server declare it in
+# `.vellur/preview.json` ({"command": "npm run dev -- --port $PORT --host 127.0.0.1", "dir": "."} or
+# {"static": "dist"}). One preview server runs at a time; it is reached only through the controller.
+STATIC_ROOTS = ("dist", "build", "out", "_site", "public", "site", "www", "docs", ".")
+PREVIEW_PORT = int(os.environ.get("AGENT_PREVIEW_PORT", "4173"))
+MAX_PREVIEW_BODY = 20 * 1024 * 1024
+preview = {"tid": None, "proc": None, "key": None, "started": 0.0}
+plock = threading.Lock()
+
+
+def preview_plan(t):
+    """How this task's project can be shown: {"mode": "static", "root"} | {"mode": "command", ...} | {"mode": "none", "why"}."""
+    repo = os.path.join(t["dir"], "repo")
+    cfg_path = os.path.join(repo, ".vellur", "preview.json")
+    if os.path.isfile(cfg_path):
+        try:
+            cfg = json.load(open(cfg_path))
+        except (OSError, ValueError) as e:
+            return {"mode": "none", "why": f".vellur/preview.json is not valid JSON ({e})"}
+        sub = os.path.normpath(str(cfg.get("dir") or cfg.get("static") or "."))
+        if sub.startswith("..") or os.path.isabs(sub):
+            return {"mode": "none", "why": ".vellur/preview.json points outside the project"}
+        if isinstance(cfg.get("command"), str) and cfg["command"].strip():
+            return {"mode": "command", "command": cfg["command"].strip()[:1000], "dir": sub, "key": f"{t['dir']}|{cfg['command']}|{sub}"}
+        if cfg.get("static"):
+            return {"mode": "static", "root": sub}
+    for sub in STATIC_ROOTS:
+        if os.path.isfile(os.path.join(repo, sub, "index.html")):
+            return {"mode": "static", "root": sub}
+    return {"mode": "none", "why": "no index.html was found and the project has no .vellur/preview.json yet"}
+
+
+def stop_preview():
+    p = preview["proc"]
+    if p and p.poll() is None:
+        try:
+            os.killpg(p.pid, signal.SIGTERM)
+            time.sleep(1)
+            os.killpg(p.pid, signal.SIGKILL)
+        except ProcessLookupError:
+            pass
+    preview.update(tid=None, proc=None, key=None)
+
+
+def port_open(port):
+    import socket
+    with socket.socket() as s:
+        s.settimeout(0.3)
+        return s.connect_ex(("127.0.0.1", port)) == 0
+
+
+def ensure_preview(tid, t, plan, wait=45):
+    """Start (or keep) the preview server of a command-mode project. Returns "" or the reason it is not running."""
+    with plock:
+        p = preview["proc"]
+        if not (preview["key"] == plan["key"] and p and p.poll() is None):
+            stop_preview()
+            repo, home = os.path.join(t["dir"], "repo"), os.path.join(t["dir"], "home")
+            env = {k: os.environ[k] for k in PASS_ENV if k in os.environ}
+            env.update({"HOME": home, "PORT": str(PREVIEW_PORT), "VELLUR_PREVIEW_PORT": str(PREVIEW_PORT), "HOST": "127.0.0.1",
+                        "CI": "1", "NO_COLOR": "1", "BROWSER": "none", "NODE_ENV": "development"})
+            log = open(os.path.join(t["dir"], "preview.log"), "ab", buffering=0)
+            log.write(f"\n[preview] starting: {plan['command']}\n".encode())
+            try:
+                proc = subprocess.Popen(["bash", "-lc", plan["command"]], cwd=os.path.join(repo, plan["dir"]), env=env,
+                                        stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
+            except OSError as e:
+                return f"the preview command could not start: {e}"
+            preview.update(tid=tid, proc=proc, key=plan["key"], started=time.time())
+    end = time.time() + wait
+    while time.time() < end:
+        if port_open(PREVIEW_PORT):
+            return ""
+        if preview["proc"] is None or preview["proc"].poll() is not None:
+            return "the preview command exited; see preview.log: " + preview_log(t)[-400:]
+        time.sleep(0.4)
+    return f"the preview server did not open port {PREVIEW_PORT} within {wait}s; the command must listen on $PORT"
+
+
+def preview_log(t):
+    try:
+        with open(os.path.join(t["dir"], "preview.log"), "rb") as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - 4000))
+            return f.read().decode(errors="replace")
+    except OSError:
+        return ""
+
+
+def serve_static(handler, t, plan, rel):
+    import mimetypes
+    root = os.path.realpath(os.path.join(t["dir"], "repo", plan["root"]))
+    rel = rel.split("?", 1)[0].split("#", 1)[0]
+    from urllib.parse import unquote
+    target = os.path.realpath(os.path.join(root, unquote(rel).lstrip("/")))
+    if not (target == root or target.startswith(root + os.sep)) or "/.git/" in target + "/":
+        return handler.send(404, {"error": "not found"})
+    if os.path.isdir(target):
+        target = os.path.join(target, "index.html")
+    if not os.path.isfile(target):
+        if "." in os.path.basename(rel):                       # a missing asset stays a 404
+            return handler.send(404, {"error": "not found"})
+        target = os.path.join(root, "index.html")             # single-page apps route in the browser
+        if not os.path.isfile(target):
+            return handler.send(404, {"error": "not found"})
+    if os.path.getsize(target) > MAX_PREVIEW_BODY:
+        return handler.send(413, {"error": "file too large for the preview"})
+    ctype = mimetypes.guess_type(target)[0] or "application/octet-stream"
+    if ctype.startswith("text/") or ctype in ("application/javascript", "application/json"):
+        ctype += "; charset=utf-8"
+    with open(target, "rb") as f:
+        return handler.send(200, raw=f.read(), ctype=ctype)
+
+
+def proxy_app(handler, method, rel, body):
+    import http.client
+    conn = http.client.HTTPConnection("127.0.0.1", PREVIEW_PORT, timeout=60)
+    try:
+        headers = {k: v for k, v in handler.headers.items()
+                   if k.lower() in ("accept", "content-type", "accept-language", "user-agent", "range")}
+        headers["Host"] = f"127.0.0.1:{PREVIEW_PORT}"
+        conn.request(method, "/" + rel.lstrip("/"), body=body or None, headers=headers)
+        r = conn.getresponse()
+        data = r.read(MAX_PREVIEW_BODY + 1)
+        if len(data) > MAX_PREVIEW_BODY:
+            return handler.send(413, {"error": "response too large for the preview"})
+        handler.send_response(r.status)
+        handler.send_header("content-type", r.getheader("content-type") or "application/octet-stream")
+        if r.getheader("location"):
+            handler.send_header("location", r.getheader("location"))
+        handler.send_header("content-length", str(len(data)))
+        handler.end_headers()
+        handler.wfile.write(data)
+    except OSError as e:
+        handler.send(502, {"error": f"the preview server did not answer ({e.__class__.__name__})"})
+    finally:
+        conn.close()
+
+
+def preview_info(tid, t):
+    plan = preview_plan(t)
+    info = {"mode": plan["mode"], "why": plan.get("why", ""), "root": plan.get("root", ""), "command": plan.get("command", ""),
+            "running": False, "log": ""}
+    if plan["mode"] == "command":
+        p = preview["proc"]
+        info["running"] = bool(preview["key"] == plan["key"] and p and p.poll() is None and port_open(PREVIEW_PORT))
+        info["log"] = preview_log(t)[-1500:]
+    return info
+
+
+def auto_shots(tid, t):
+    """After each run: real desktop + mobile pictures of the preview, so every report shows the current result."""
+    plan = preview_plan(t)
+    if plan["mode"] == "none":
+        return
+    if plan["mode"] == "command" and ensure_preview(tid, t, plan, wait=40):
+        return
+    shots = os.path.join(t["dir"], "shots")
+    os.makedirs(shots, exist_ok=True)
+    port = int(os.environ.get("AGENT_PORT", "7070"))
+    for size in ("desktop", "mobile"):
+        with contextlib.suppress(Exception):
+            subprocess.run(["vellur-screenshot", f"http://127.0.0.1:{port}/tasks/{tid}/preview/", f"auto-run{t['run']}-{size}", size],
+                           env=dict(os.environ, VELLUR_SHOTS=shots), capture_output=True, timeout=120)
+
+
 def cleanup():
     done = sorted((t["ended"] or 0, tid) for tid, t in tasks.items() if t["state"] not in ("created", "running"))
     for _, tid in done[:-KEEP_TASKS]:
+        if preview["tid"] == tid:
+            stop_preview()
         shutil.rmtree(tasks[tid]["dir"], ignore_errors=True)
         tasks.pop(tid, None)
 
@@ -316,9 +490,26 @@ class H(BaseHTTPRequestHandler):
         return self.rfile.read(n)
 
     def route(self, method):
-        if not SECRET or self.headers.get("x-runner-secret") != SECRET:
-            return self.send(401, {"error": "unauthorized"})
         parts = [p for p in self.path.split("?")[0].split("/") if p]
+        is_preview = len(parts) >= 3 and parts[0] == "tasks" and parts[2] == "preview"
+        # Inside the container (screenshots, the agent's own checks) the preview needs no secret; everything else does.
+        local_preview = is_preview and self.client_address[0] in ("127.0.0.1", "::1")
+        if not local_preview and (not SECRET or self.headers.get("x-runner-secret") != SECRET):
+            return self.send(401, {"error": "unauthorized"})
+        if is_preview:
+            t = tasks.get(int(parts[1])) if parts[1].isdigit() else None
+            if t is None:
+                return self.send(404, {"error": "unknown task"})
+            rel = self.path.split("/preview", 1)[1]
+            plan = preview_plan(t)
+            if plan["mode"] == "static":
+                return serve_static(self, t, plan, rel)
+            if plan["mode"] == "command":
+                why = ensure_preview(int(parts[1]), t, plan)
+                if why:
+                    return self.send(503, {"error": why})
+                return proxy_app(self, method, rel, self.body(MAX_PREVIEW_BODY) if method in ("POST", "PUT", "PATCH") else None)
+            return self.send(404, {"error": plan["why"]})
         if parts == ["healthz"]:
             return self.send(200, {"ok": True, "busy": any(t["state"] in ("created", "running") for t in tasks.values())})
         if not parts or parts[0] != "tasks":
@@ -385,12 +576,23 @@ class H(BaseHTTPRequestHandler):
             sd = os.path.join(t["dir"], "shots")
             names = sorted(n for n in (os.listdir(sd) if os.path.isdir(sd) else []) if n.endswith(".png"))
             if len(parts) == 3:
-                return self.send(200, {"shots": names[:40]})
+                return self.send(200, {"shots": names[:80]})
             name = parts[3]
             if name not in names or os.path.getsize(os.path.join(sd, name)) > MAX_SHOT:
                 return self.send(404, {"error": "no such screenshot"})
             with open(os.path.join(sd, name), "rb") as f:
                 return self.send(200, raw=f.read(), ctype="image/png")
+        if method == "GET" and action == "preview-info":
+            return self.send(200, preview_info(tid, t))
+        if method == "POST" and action == "rebaseline":
+            # the owner published the changes: they become the new baseline, so later reports show only new work
+            if t["state"] in ("created", "running"):
+                return self.send(409, {"error": "running"})
+            git(repo, "add", "-A", check=False)
+            git(repo, "commit", "-q", "--allow-empty", "-m", "published", check=False)
+            t["changed"] = 0
+            save_state(t)
+            return self.send(200, {"ok": True})
         if method == "GET" and action == "summary":
             return self.send(200, {"files": file_summary(repo)})
         if method == "POST" and action == "cancel":
@@ -447,6 +649,12 @@ class H(BaseHTTPRequestHandler):
 
     def do_DELETE(self):
         self.handle_one("DELETE")
+
+    def do_PATCH(self):
+        self.handle_one("PATCH")
+
+    def do_HEAD(self):
+        self.handle_one("GET")
 
     def log_message(self, *a):
         pass

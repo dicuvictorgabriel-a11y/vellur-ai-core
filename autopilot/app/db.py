@@ -66,6 +66,7 @@ MIGRATIONS = [
     ("tasks", "runs", "INTEGER DEFAULT 1"),        # 1 + number of follow-up messages
     ("tasks", "cursor", "INTEGER DEFAULT 0"),      # runner event lines already imported
     ("tasks", "report", "TEXT DEFAULT '{}'"),      # final report of the latest run (JSON)
+    ("tasks", "base_sha", "TEXT DEFAULT ''"),      # commit the workspace started from (or was last published as)
 ]
 
 

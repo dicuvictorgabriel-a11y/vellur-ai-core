@@ -67,3 +67,38 @@ reply is at the output limit (16 384 tokens), it was cut off. The raw log is und
 - Tested here end to end with real OpenCode 1.19.5, the real runner and controller and a scripted (non-model) server,
   including real screenshots, follow-ups, restart of the runner and page reloads. Not yet tested with a real model
   provider or on the VPS.
+
+## Live Studio Mode (15.11.2026)
+
+The Agent tab is now a studio: the conversation on the left, the **live preview** of the project on the right
+(on a phone: the Preview button switches between them).
+
+- **Persistent workspaces.** Each task keeps its workspace and OpenCode session on the server (the 12 most recent);
+  follow-ups, page reloads and restarts continue from the same files.
+- **Live preview.** A static site (`index.html` in the project root or in `dist/`, `build/`, `out/`, `public/`…) is
+  served straight from the workspace. A project that needs a server declares it in `.vellur/preview.json`
+  (`{"command": "npm run dev -- --port $PORT --host 127.0.0.1", "dir": "."}`); the runner starts it (one at a time)
+  and proxies it. The pane reloads whenever the agent edits a file or finishes a run. Desktop / Phone width switch.
+- **Safety of the preview.** Preview pages are code written by the agent, so they are served with
+  `Content-Security-Policy: sandbox` (no `allow-same-origin`) inside a sandboxed frame: they cannot read the
+  dashboard's cookies or call its API (verified in a browser: origin `null`, API call blocked). The address
+  contains a random token that only a logged-in owner can create and that expires after 12 hours. Nothing listens
+  publicly: the dev server is reachable only through the controller. Limits: WebSockets (hot reload) are not proxied,
+  responses are capped at 20 MB, and links that scripts build as root-absolute paths may not resolve.
+- **Visual verification.** After every run the runner takes real desktop and mobile screenshots of the preview
+  (`auto-run<N>-desktop/mobile`), shown in the report; the agent can take more with `vellur-screenshot`.
+- **Publishing without pull requests.** The report has **Publish to <branch>**: one confirmed click commits the
+  changes straight onto the branch the workspace started from. It is done only as a fast-forward: if the branch
+  changed on GitHub meanwhile, VELLUR refuses and offers a pull request instead. After publishing, the workspace
+  takes the published state as its new baseline. "Pull request instead" remains available. Nothing is ever
+  published without that click.
+- **Server updates without the terminal.** `sudo vac autoupdate on` (once) makes the server follow `main` of this
+  repository: every 5 minutes it checks GitHub, waits while an agent task runs, installs with the normal
+  `install.sh`, runs `vac verify`, and on failure re-installs the previous release and skips the broken commit.
+  `sudo vac autoupdate status | off`. Requires the repository to be public (it reads GitHub without a token).
+
+Tested here: real OpenCode + runner + controller with a scripted (non-model) server and a fake GitHub: preview
+appears while the agent works, refreshes after a follow-up, sandbox isolation, automatic screenshots, direct publish
+and its refusal when the branch moved, the updater's install / skip / restore logic with a fake installer. Not tested
+here: a real model, a preview that needs a dev server for a large app (memory limit of the agent container is 2 GB),
+the systemd timer on the VPS.

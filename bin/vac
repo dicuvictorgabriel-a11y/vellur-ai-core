@@ -692,6 +692,7 @@ case "${1:-help}" in
 	ui) shift; cmd_ui "$@" ;;
 	autopilot) shift; cmd_autopilot "$@" ;;
 	agent) shift; cmd_agent "$@" ;;
+	autoupdate) shift; exec "$(dirname "$(readlink -f "$0")")/vac-autoupdate" "$@" ;;   # on | off | status | run
 	backup) cmd_backup ;;
 	restore) shift; cmd_restore "$@" ;;
 	render-snippet) render_snippet ;;   # for tests / review

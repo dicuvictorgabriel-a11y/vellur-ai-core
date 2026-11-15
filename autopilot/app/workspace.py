@@ -7,9 +7,10 @@ import time
 from typing import Optional
 
 import asyncio
+import re
 
 from fastapi import Depends, FastAPI, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
 from pydantic import BaseModel
 
 from .agent import AgentError, AgentManager
@@ -51,6 +52,16 @@ class FollowBody(BaseModel):
 
 class TokenBody(BaseModel):
     token: str = ""
+
+
+# Preview pages are code written by the agent. They are served sandboxed (no access to the dashboard's origin,
+# cookies or API) under a short-lived link that only a logged-in owner can create.
+PREVIEW_HEADERS = {
+    "Content-Security-Policy": "sandbox allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock allow-downloads",
+    "Access-Control-Allow-Origin": "*", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer",
+    "X-Robots-Tag": "noindex, nofollow", "X-Content-Type-Options": "nosniff",
+}
+ROOT_ATTR = re.compile(rb"""(\s(?:src|href|action|poster|data-src)\s*=\s*["'])/(?!/)""", re.I)
 
 
 def _brief(t: dict) -> dict:
@@ -324,6 +335,48 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         if not p:
             return JSONResponse({"error": "not_found", "message": "no such screenshot"}, status_code=404)
         return FileResponse(p, media_type="image/png", headers={"Cache-Control": "private, max-age=86400"})
+
+    @app.post("/autopilot/api/agent/tasks/{tid}/preview", dependencies=[Depends(admin_write)])
+    async def task_preview(tid: int):
+        """What can be previewed for this task, plus a 12-hour sandboxed link for the Studio pane."""
+        try:
+            info = await agent.preview_info(tid)
+            tok = agent.preview_link(tid)
+        except AgentError as e:
+            return err(e)
+        return {**info, "url": f"/autopilot/preview/{tok}/"}
+
+    @app.api_route("/autopilot/preview/{token}/{path:path}", methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"])
+    async def preview(token: str, path: str, request: Request):
+        tid = agent.preview_task(token)
+        if not tid:
+            return JSONResponse({"error": "expired", "message": "This preview link has expired. Open the preview again from VELLUR."},
+                                status_code=404, headers=PREVIEW_HEADERS)
+        body = await request.body() if request.method in ("POST", "PUT", "PATCH") else b""
+        if len(body) > 20 * 1024 * 1024:
+            return JSONResponse({"error": "too_large"}, status_code=413, headers=PREVIEW_HEADERS)
+        fwd = {k: v for k, v in request.headers.items() if k.lower() in ("accept", "content-type", "accept-language", "range")}
+        try:
+            r = await agent.preview_fetch(tid, request.method, path, request.url.query, fwd, body)
+        except AgentError as e:
+            return JSONResponse({"error": e.code, "message": e.message}, status_code=e.status, headers=PREVIEW_HEADERS)
+        ctype = r.headers.get("content-type", "application/octet-stream")
+        content = r.content
+        prefix = f"/autopilot/preview/{token}/".encode()
+        if ctype.startswith("text/html"):          # root-absolute links ("/assets/app.js") must stay inside the preview
+            content = ROOT_ATTR.sub(lambda m: m.group(1) + prefix, content)
+        headers = dict(PREVIEW_HEADERS)
+        if r.headers.get("location"):
+            loc = r.headers["location"]
+            headers["Location"] = prefix.decode() + loc.lstrip("/") if loc.startswith("/") and not loc.startswith("//") else loc
+        return Response(content=content, status_code=r.status_code, media_type=ctype, headers=headers)
+
+    @app.post("/autopilot/api/agent/tasks/{tid}/publish-direct", dependencies=[Depends(admin_write)])
+    async def publish_direct(tid: int):
+        try:
+            return await agent.publish_direct(tid)
+        except AgentError as e:
+            return err(e)
 
     @app.post("/autopilot/api/agent/tasks/{tid}/cancel", dependencies=[Depends(admin_write)])
     async def cancel_task(tid: int):

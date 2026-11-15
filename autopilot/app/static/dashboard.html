@@ -115,7 +115,23 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 /* agent: a conversation with an AI developer */
 body.is-admin[data-view="agent"] main{padding:0;overflow:hidden;display:flex;flex-direction:column}
 body.is-admin[data-view="agent"] .wrap,body.is-admin[data-view="agent"] .grid{display:contents}
-#agentCard{display:flex;flex-direction:column;flex:1;min-height:0}
+#agentCard{display:flex;flex-direction:row;flex:1;min-height:0}
+#agMain{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0}
+#studio{display:none;flex-direction:column;width:46%;min-width:340px;max-width:900px;border-left:1px solid var(--line);background:#0a0a0c}
+body.studio-open #studio{display:flex}
+#pvBar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);min-height:56px}
+#pvInfo{flex:1;min-width:0;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+#pvBar .iconbtn{width:30px;height:30px;text-decoration:none}
+.seg{display:inline-flex;border:1px solid var(--line2);border-radius:99px;overflow:hidden;flex:none}
+.seg button{background:transparent;color:var(--muted);border:0;border-radius:0;padding:5px 11px;font-size:12px;font-weight:500;min-height:0}
+.seg button.on{background:var(--raise);color:var(--text)}
+#pvStage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;overflow:auto;padding:0}
+#pvFrame{border:0;background:#fff;width:100%;flex:1 1 auto;min-height:0;display:none}
+#studio.phone #pvStage{padding:16px;background:#060607}#studio.phone #pvFrame{width:390px;max-width:100%;flex:0 1 844px;border-radius:18px;border:1px solid var(--line2)}
+#pvEmpty{margin:auto;max-width:340px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6;padding:24px}
+#pvEmpty b{display:block;color:var(--text);font-size:15px;margin-bottom:6px}
+#pvToggle{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;font-size:12.5px;flex:none}
+body.studio-open #pvToggle{background:var(--raise)}
 #agHead{display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--line);min-height:56px}
 #agHead .t{flex:1;min-width:0}#agHead .t b{display:block;font-size:14.5px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #agHead .t small{display:block;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
@@ -184,6 +200,7 @@ body.is-admin[data-view="agent"] .wrap,body.is-admin[data-view="agent"] .grid{di
 body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList{display:flex}
 /* mobile */
 #scrim{display:none}
+@media(min-width:861px) and (max-width:1180px){#studio{width:50%;min-width:300px}#side{width:210px}}
 @media(max-width:860px){
   body{display:block}
   #topbar{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20;background:rgba(13,13,15,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top))}
@@ -196,7 +213,8 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   body.is-admin[data-view="chat"] main{flex:1;min-height:0}
   body.is-admin[data-view="agent"]{position:fixed;inset:0;display:flex;flex-direction:column}
   body.is-admin[data-view="agent"] main{flex:1;min-height:0}
-  #agHead{padding:8px 12px;min-height:0}#agHead .t b{font-size:14px}
+  #agHead{padding:8px 12px;min-height:0}#agHead .t b{font-size:14px}#pvToggle span{display:none}
+  body.studio-open #agMain{display:none}#studio{width:100%;max-width:none;min-width:0;border-left:0}#pvBar{min-height:0;padding:8px 10px}
   .report{padding:14px}.act summary{padding:9px 10px}
   #agFoot{width:calc(100% - 16px);margin-bottom:max(8px,env(safe-area-inset-bottom))}
   .chathead{display:none}.msgs{padding:16px 12px 8px}.m .txt{font-size:16px}
@@ -212,7 +230,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   <div class="logo"><i></i><div>AI Core<small>VELLUR</small></div></div>
   <nav id="tabs">
     <button data-view="chat"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>Agent</button>
-    <a class="navbtn" href="/autopilot/studio/">Precision Studio ↗</a>
+    <a class="navbtn" href="/autopilot/studio/" style="text-decoration:none"><svg class="ic" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>Precision Studio</a>
     <div class="sep"></div>
     <button data-view="models"><svg class="ic" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>Models</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>Costs</button><button data-view="gpu"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>GPU</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button>
   </nav>
@@ -360,9 +378,11 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     </section>
 
     <section class="admin-only" id="agentCard" data-tab="agent">
+     <div id="agMain">
       <div id="agHead">
         <div class="t"><b id="agTitle">New task</b><small id="agMeta">Describe what you want; the agent works in an isolated copy and shows you everything it does.</small></div>
         <span id="agPill"></span>
+        <button class="ghost" id="pvToggle" title="Show or hide the live preview"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg><span>Preview</span></button>
       </div>
       <div class="msgs" id="agMsgs"></div>
       <div class="composer" id="agComposer">
@@ -382,6 +402,17 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         <div class="row"><input id="ghToken" type="password" autocomplete="off" placeholder="GitHub fine-grained token (stored on the server, never shown again)" style="max-width:460px"><button class="ghost" id="ghSave">Save token</button></div>
         <p class="note">github.com → Settings → Developer settings → Fine-grained tokens. Repository access: the repositories you choose; permissions: Contents and Pull requests (read and write), Metadata (read). Limits per run: <span id="tLimits"></span></p>
       </details></div>
+     </div>
+     <aside id="studio">
+      <div id="pvBar">
+        <span id="pvInfo">Live preview</span>
+        <div class="seg"><button id="pvDesk" class="on" title="Desktop width">Desktop</button><button id="pvMob" title="Phone width">Phone</button></div>
+        <button class="iconbtn" id="pvReload" title="Reload"><svg class="ic" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
+        <a class="iconbtn" id="pvOpen" title="Open in a new tab" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></a>
+        <button class="iconbtn" id="pvClose" title="Close the preview"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
+      </div>
+      <div id="pvStage"><div id="pvEmpty"></div><iframe id="pvFrame" title="Live preview of the project" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock" referrerpolicy="no-referrer"></iframe></div>
+     </aside>
     </section>
 
     <section class="card c12 admin-only" data-tab="models">
@@ -618,6 +649,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     if (e.kind === "step" && d.reason === "length") return put(div("alert info", "The model's reply reached its output limit here."), end);
     if (e.kind === "shot") return put(div("shot", `<img src="${shotUrl(d.name)}" alt="Screenshot ${esc(d.name)}" loading="lazy"><figcaption>Screenshot taken by the agent: ${esc(d.name)}</figcaption>`), end);
     if (e.kind === "pr") return put(div("alert info", `Pull request ${d.updated ? "updated" : "opened"}: <a href="${esc(d.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(d.url)}</a>`), end);
+    if (e.kind === "published") return put(div("alert info", `Published ${d.files} file${d.files === 1 ? "" : "s"} to <b>${esc(d.branch)}</b>: <a href="${esc(d.url)}" target="_blank" rel="noopener" style="color:var(--accent)">view the commit ↗</a>`), end);
     if (e.kind === "report") return put(reportCard(d), end);
     if (e.kind !== "tool") return null;
     if (d.tool === "todowrite" && d.todos) {
@@ -657,9 +689,13 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     const add = (label, cls, fn) => { const b = document.createElement("button"); b.textContent = label; if (cls) b.className = cls; b.onclick = fn; a.appendChild(b); return b; };
     if (CUR.files_changed) add("Show code changes", "ghost", async () => { const pre = el.querySelector("pre.box"); if (pre.style.display === "") { pre.style.display = "none"; return; }
       const d = await send("agent/tasks/" + TASK + "/diff", "GET"); pre.innerHTML = (d.diff || "(no diff)").split("\n").map(l => `<span class="${l.startsWith("+") && !l.startsWith("+++") ? "dadd" : l.startsWith("-") && !l.startsWith("---") ? "ddel" : l.startsWith("@@") || l.startsWith("diff ") ? "dhdr" : ""}">${esc(l)}</span>`).join("\n"); pre.style.display = ""; });
-    if (CUR.can_publish) add(CUR.pr_url ? "Update pull request" : "Create draft pull request", "", async (ev) => {
+    if (CUR.can_publish) add("Publish to " + (CUR.base || "the main branch"), "", async (ev) => {
       const warn = CUR.outcome !== "completed" ? "\n\nNote: the agent did not confirm the task as complete." : "";
-      if (!confirm((CUR.pr_url ? "Push these changes to the existing pull request branch?" : "Create a branch and a draft pull request on GitHub with these changes?") + warn)) return;
+      if (!confirm("Publish these changes directly to “" + CUR.base + "” in " + CUR.repo + "?\n\nIf this project deploys from that branch, the changes go live." + warn)) return;
+      ev.target.disabled = true; ev.target.textContent = "Publishing…";
+      try { await send("agent/tasks/" + TASK + "/publish-direct", "POST", {}); await openTask(TASK); } catch (e) { ev.target.disabled = false; ev.target.textContent = "Publish to " + CUR.base; alert(e.message); } });
+    if (CUR.can_publish) add(CUR.pr_url ? "Update pull request" : "Pull request instead", "ghost", async (ev) => {
+      if (!confirm(CUR.pr_url ? "Push these changes to the existing pull request branch?" : "Create a branch and a draft pull request on GitHub with these changes?")) return;
       ev.target.disabled = true; ev.target.textContent = "Publishing…";
       try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; alert(e.message); } });
     if (CUR.pr_url) { const l = document.createElement("a"); l.href = CUR.pr_url; l.target = "_blank"; l.rel = "noopener"; l.className = "chip"; l.style.cssText = "display:inline-flex;align-items:center;text-decoration:none"; l.textContent = "Open pull request ↗"; a.appendChild(l); }
@@ -716,16 +752,16 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     const ex = ["Explain how this repository is organised and suggest 3 improvements (no changes).", "Find one real bug, fix it and add a test.", "Improve the mobile layout of the main page and show me before/after screenshots."];
     box().innerHTML = `<div class="agempty"><h3>What should we build?</h3><p>Pick a repository, describe the task in your own words and watch the agent work. Nothing reaches GitHub until you approve it.</p><div class="chips">${ex.map(x => `<button class="chip">${esc(x)}</button>`).join("")}</div>${AGENT.available === false ? `<div class="alert" style="margin-top:18px;text-align:left">${esc(AGENT.why || "The agent is not available.")}</div>` : ""}</div>`;
     box().querySelectorAll(".agempty .chip").forEach(c => c.onclick = () => { $("agIn").value = c.textContent; $("agIn").focus(); agGrow(); });
-    header(); composer(); renderTasks();
+    header(); composer(); renderTasks(); loadPreview();
   }
   async function openTask(id) {
     closeStream(); TASK = id; EXPLORE = null; LAST_EV = 0; RUN_T0 = 0; try { sessionStorage.setItem("vellurTask", String(id)); } catch (e) {}
     let t; try { t = await send("agent/tasks/" + id, "GET"); } catch (e) { newTask(); return; }
     CUR = t; header(); composer(); renderTasks(); box().innerHTML = "";
-    if (t.legacy) { renderLegacy(t); return; }
+    if (t.legacy) { renderLegacy(t); loadPreview(); return; }
     const r = await send("agent/tasks/" + id + "/events?after=0", "GET");
     r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; });
-    box().scrollTop = box().scrollHeight;
+    box().scrollTop = box().scrollHeight; loadPreview();
     if (!FINAL_STATES.includes(t.state)) live();
   }
   function renderLegacy(t) {
@@ -740,13 +776,36 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       <details class="adv"><summary>Raw agent log</summary><pre class="box">${esc(t.log || "(empty)")}</pre></details><div class="acts"></div><pre class="box" style="display:none"></pre>`);
     put(el, true); fillActs(el);
   }
+  // ── studio: live preview of the project next to the conversation ────────────────────────────
+  let PV = { url: "", mode: "", timer: null, task: null };
+  const studioOpen = () => document.body.classList.contains("studio-open");
+  function pvEmpty(title, text) { $("pvFrame").style.display = "none"; $("pvFrame").removeAttribute("src"); $("pvEmpty").style.display = "";
+    $("pvEmpty").innerHTML = "<b>" + esc(title) + "</b>" + esc(text); $("pvOpen").removeAttribute("href"); }
+  async function loadPreview(force) {
+    if (!studioOpen()) return;
+    if (!CUR) { PV.task = null; $("pvInfo").textContent = "Live preview"; return pvEmpty("Nothing to show yet", "The live preview of your project appears here as soon as the agent starts working."); }
+    let info; try { info = await send("agent/tasks/" + TASK + "/preview", "POST", {}); } catch (e) { $("pvInfo").textContent = "Preview unavailable"; return pvEmpty("Preview unavailable", e.message); }
+    PV.mode = info.mode; PV.task = TASK;
+    if (info.mode === "none") { PV.url = ""; $("pvInfo").textContent = "No preview yet"; return pvEmpty("No preview yet", "This project has no web page to show (" + (info.why || "nothing found") + "). Ask the agent to build one, or to add a preview command."); }
+    $("pvInfo").textContent = info.mode === "static" ? "Live preview · " + (info.root === "." ? "project folder" : info.root + "/") : "Live preview · " + info.command;
+    PV.url = info.url; $("pvOpen").href = info.url; $("pvEmpty").style.display = "none"; $("pvFrame").style.display = "block";
+    $("pvFrame").src = info.url + "?_=" + Date.now();
+  }
+  function pvRefreshSoon() { if (!studioOpen()) return; clearTimeout(PV.timer); PV.timer = setTimeout(() => {
+      if (PV.url && PV.task === TASK && PV.mode !== "none") $("pvFrame").src = PV.url + "?_=" + Date.now(); else loadPreview(); }, 1200); }
+  function setStudio(on) { document.body.classList.toggle("studio-open", on); try { sessionStorage.setItem("vellurStudio", on ? "1" : "0"); } catch (e) {} if (on) loadPreview(); }
+  $("pvToggle").onclick = () => setStudio(!studioOpen()); $("pvClose").onclick = () => setStudio(false); $("pvReload").onclick = () => loadPreview();
+  $("pvDesk").onclick = () => { $("studio").classList.remove("phone"); $("pvDesk").classList.add("on"); $("pvMob").classList.remove("on"); };
+  $("pvMob").onclick = () => { $("studio").classList.add("phone"); $("pvMob").classList.add("on"); $("pvDesk").classList.remove("on"); };
+  (() => { let v = null; try { v = sessionStorage.getItem("vellurStudio"); } catch (e) {} if (v === "1" || (v === null && innerWidth >= 1100)) document.body.classList.add("studio-open"); })();
   function closeStream() { if (ES) { ES.close(); ES = null; } working(false); }
   function live() {
     closeStream(); if (!RUN_T0) RUN_T0 = Date.now() / 1000;
     working(true, "Agent is working");
     ES = new EventSource("/autopilot/api/agent/tasks/" + TASK + "/stream?after=" + LAST_EV);
     ES.addEventListener("ev", (m) => { const e = JSON.parse(m.data); if (e.id <= LAST_EV) return; LAST_EV = e.id;
-      renderEvent(e); if (e.kind === "tool") working(true, toolView(e.data).verb + " " + toolView(e.data).obj); if (e.kind === "report") working(false); });
+      renderEvent(e); if ((e.kind === "tool" && ["edit", "write", "multiedit", "patch", "apply_patch", "bash"].includes(e.data.tool)) || e.kind === "report") pvRefreshSoon();
+      if (e.kind === "tool") working(true, toolView(e.data).verb + " " + toolView(e.data).obj); if (e.kind === "report") working(false); });
     ES.addEventListener("task", async (m) => { const b = JSON.parse(m.data); Object.assign(CUR, b); header(); composer();
       const a = (b.activity || [])[0];   // the command running right now (OpenCode shows a command only when it ends)
       if (a && !FINAL_STATES.includes(b.state)) working(true, "Running now: " + a.cmd.slice(0, 80) + " · for " + fmtDur(a.elapsed_s) + ", CPU " + fmtDur(a.cpu_s));

@@ -12,6 +12,7 @@ import contextlib
 import json
 import os
 import re
+import secrets
 import time
 from typing import Optional
 
@@ -27,6 +28,7 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 FINAL = ("done", "failed", "cancelled", "timeout", "over_budget")
 MAX_TARBALL = 400 * 1024 * 1024
 OUTPUT_LIMIT = 16384          # max tokens per model reply, set in the runner's OpenCode config
+PREVIEW_TTL = 12 * 3600       # lifetime of a preview link token
 AUTO_CONTINUE = 2             # automatic "continue" runs when a reply was cut off at OUTPUT_LIMIT
 STATUS_RE = re.compile(r"STATUS:\s*\**\s*(COMPLETE|PARTIAL|BLOCKED)\b", re.I)
 TEST_RE = re.compile(r"\b(pytest|unittest|jest|vitest|mocha|playwright|cypress|tsc|eslint|ruff|mypy|flake8|go test|cargo test|"
@@ -48,7 +50,12 @@ How to work:
 - For visible (frontend) changes, build or start the app locally in the background and take REAL screenshots with
   `vellur-screenshot <url-or-html-file> <name> [desktop|mobile]` (see `vellur-screenshot --help`), desktop and mobile.
   Never describe screenshots you did not take. If a screenshot is impossible, say why in the report.
-- Do not commit, push or deploy. The owner reviews your changes and opens the pull request from VELLUR.
+- The owner watches a LIVE PREVIEW of the project next to this conversation. A static site (an index.html in the
+  project root or in dist/, build/, public/) is shown automatically. If the project needs a server, create
+  `.vellur/preview.json` like {"command": "npm run dev -- --port $PORT --host 127.0.0.1", "dir": "."}; the command must
+  listen on $PORT and VELLUR starts it for you. You can open the same preview at $VELLUR_PREVIEW_URL (curl or
+  vellur-screenshot). Desktop and mobile pictures of it are taken automatically after every run.
+- Do not commit, push or deploy. The owner reviews your changes and publishes them from VELLUR.
 
 Always finish with this report (in the owner's language when their notes ask for one):
 ## Summary
@@ -195,8 +202,10 @@ class GitHub:
             raise AgentError("too_large", "repository snapshot is larger than 400 MB")
         return r.content
 
-    async def publish(self, repo: str, base: str, branch: str, files: list, message: str, update: bool = False) -> str:
-        base_sha = (await self._req("GET", f"/repos/{repo}/git/ref/heads/{base}")).json()["object"]["sha"]
+    async def head_sha(self, repo: str, branch: str) -> str:
+        return (await self._req("GET", f"/repos/{repo}/git/ref/heads/{branch}")).json()["object"]["sha"]
+
+    async def _commit(self, repo: str, base_sha: str, files: list, message: str) -> str:
         base_tree = (await self._req("GET", f"/repos/{repo}/git/commits/{base_sha}")).json()["tree"]["sha"]
         entries = []
         for f in files:
@@ -207,12 +216,25 @@ class GitHub:
                                     json={"content": f["content_b64"], "encoding": "base64"})).json()["sha"]
             entries.append({"path": f["path"], "mode": f.get("mode", "100644"), "type": "blob", "sha": blob})
         tree = (await self._req("POST", f"/repos/{repo}/git/trees", json={"base_tree": base_tree, "tree": entries})).json()["sha"]
-        commit = (await self._req("POST", f"/repos/{repo}/git/commits",
-                                  json={"message": message, "tree": tree, "parents": [base_sha]})).json()["sha"]
+        return (await self._req("POST", f"/repos/{repo}/git/commits",
+                                json={"message": message, "tree": tree, "parents": [base_sha]})).json()["sha"]
+
+    async def publish(self, repo: str, base: str, branch: str, files: list, message: str, update: bool = False) -> str:
+        commit = await self._commit(repo, await self.head_sha(repo, base), files, message)
         if update:   # our own task branch, already open as a pull request: move it to the new commit
             await self._req("PATCH", f"/repos/{repo}/git/refs/heads/{branch}", json={"sha": commit, "force": True})
         else:
             await self._req("POST", f"/repos/{repo}/git/refs", json={"ref": f"refs/heads/{branch}", "sha": commit})
+        return commit
+
+    async def publish_direct(self, repo: str, base: str, expected_sha: str, files: list, message: str) -> str:
+        """Commit straight onto the base branch — only as a fast-forward from the commit the workspace started from."""
+        head = await self.head_sha(repo, base)
+        if expected_sha and head != expected_sha:
+            raise AgentError("moved", f"{base} changed on GitHub since this workspace started, so publishing directly could "
+                                      "overwrite newer work. Create a pull request instead.", 409)
+        commit = await self._commit(repo, head, files, message)
+        await self._req("PATCH", f"/repos/{repo}/git/refs/heads/{base}", json={"sha": commit, "force": False})
         return commit
 
     async def open_pr(self, repo: str, head: str, base: str, title: str, body: str) -> str:
@@ -237,6 +259,7 @@ class AgentManager:
                                         transport=runner_transport, timeout=httpx.Timeout(30, read=300, write=300))
         self._jobs: dict[int, asyncio.Task] = {}
         self.activity: dict[int, list] = {}      # processes running right now in each task (from the runner)
+        self.previews: dict[str, tuple] = {}     # preview link token -> (task id, expiry); minted only for a logged-in owner
 
     # ── helpers ─────────────────────────────────────────────────────────────────────────────────
     def available(self) -> tuple:
@@ -419,10 +442,13 @@ class AgentManager:
                     gh = GitHub(self.github_token(), self.github_transport)
                     try:
                         base = base or await gh.default_branch(t["repo"])
-                        source = await gh.tarball(t["repo"], base)
+                        sha = ""
+                        with contextlib.suppress(AgentError, KeyError):
+                            sha = await gh.head_sha(t["repo"], base)
+                        source = await gh.tarball(t["repo"], sha or base)
                     finally:
                         await gh.c.aclose()
-                    self._set(tid, base=base)
+                    self._set(tid, base=base, base_sha=sha)
                 await self._runner("POST", "/tasks", json={"id": tid, "prompt": self._first_prompt(prompt),
                                                            "model": t["model"], "proxy_url": self.env.agent_proxy_url,
                                                            "proxy_token": token, "max_minutes": st["agent_max_minutes"]})
@@ -649,6 +675,62 @@ class AgentManager:
         self._set(tid, branch=branch, pr_url=url)
         self._ev(tid, int(t["runs"] or 1), "pr", url=url, updated=bool(t["pr_url"]))
         self.db.event("info", "agent", f"task {tid} published", url=url)
+        return self.task(tid)
+
+    # ── live preview ────────────────────────────────────────────────────────────────────────────
+    def preview_link(self, tid: int) -> str:
+        """A 12-hour link token for this task's preview. Only a logged-in owner can mint one (admin endpoint)."""
+        if not self.task(tid):
+            raise AgentError("not_found", "unknown task", 404)
+        now = time.time()
+        self.previews = {k: v for k, v in self.previews.items() if v[1] > now}
+        tok = secrets.token_urlsafe(24)
+        self.previews[tok] = (tid, now + PREVIEW_TTL)
+        return tok
+
+    def preview_task(self, token: str) -> Optional[int]:
+        tid, exp = self.previews.get(token or "", (None, 0))
+        return tid if tid and exp > time.time() else None
+
+    async def preview_info(self, tid: int) -> dict:
+        if not self.task(tid):
+            raise AgentError("not_found", "unknown task", 404)
+        try:
+            return (await self._runner("GET", f"/tasks/{tid}/preview-info")).json()
+        except AgentError as e:
+            return {"mode": "none", "why": e.message, "running": False}
+
+    async def preview_fetch(self, tid: int, method: str, path: str, query: str, headers: dict, body: bytes) -> httpx.Response:
+        url = f"/tasks/{tid}/preview/{path}" + (f"?{query}" if query else "")
+        try:
+            return await self.runner.request(method, url, content=body or None, headers=headers)
+        except httpx.HTTPError as e:
+            raise AgentError("runner", f"agent workspace unreachable ({e.__class__.__name__})", 502)
+
+    async def publish_direct(self, tid: int) -> dict:
+        """Owner-initiated: commit the result straight onto the branch the workspace started from (no pull request)."""
+        t = self.task(tid)
+        if not t:
+            raise AgentError("not_found", "unknown task", 404)
+        if t["state"] not in FINAL or not t["repo"] or not t["files_changed"]:
+            raise AgentError("invalid", "only a finished task with changes in a GitHub repository can be published")
+        if not self.github_token():
+            raise AgentError("github_auth", "save a GitHub token first (Agent → GitHub connection)")
+        files = (await self._runner("GET", f"/tasks/{tid}/files")).json()["files"]
+        title = "VELLUR agent: " + " ".join(t["prompt"].split())[:70]
+        gh = GitHub(self.github_token(), self.github_transport)
+        try:
+            commit = await gh.publish_direct(t["repo"], t["base"], t.get("base_sha") or "", files,
+                                             title + f"\n\nTask {tid}, model {t['model']}. Published from VELLUR Studio.")
+        finally:
+            await gh.c.aclose()
+        with contextlib.suppress(AgentError):
+            await self._runner("POST", f"/tasks/{tid}/rebaseline")
+        self.db.kv_set(f"task_diff_{tid}", {"stat": "", "diff": ""})
+        self._set(tid, base_sha=commit, files_changed=0)
+        url = f"https://github.com/{t['repo']}/commit/{commit}"
+        self._ev(tid, int(t["runs"] or 1), "published", url=url, branch=t["base"], files=len(files))
+        self.db.event("info", "agent", f"task {tid} published to {t['base']}", url=url)
         return self.task(tid)
 
     async def recover(self) -> None:

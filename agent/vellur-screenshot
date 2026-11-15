@@ -47,8 +47,8 @@ def main(argv):
     if not shots or not os.path.isdir(shots):
         print("error: screenshots are not available in this workspace (VELLUR_SHOTS not set)", file=sys.stderr)
         return 1
-    if len([n for n in os.listdir(shots) if n.endswith(".png")]) >= 40:
-        print("error: screenshot limit (40) reached for this task", file=sys.stderr)
+    if len([n for n in os.listdir(shots) if n.endswith(".png")]) >= 80:
+        print("error: screenshot limit (80) reached for this task", file=sys.stderr)
         return 1
     shells = sorted(glob.glob(os.path.join(os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "/opt/pw-browsers"),
                                            "chromium_headless_shell-*", "chrome-*", "chrome-headless-shell")))
