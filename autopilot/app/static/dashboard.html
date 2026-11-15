@@ -202,7 +202,7 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .suggest .modelcard{display:flex;flex-direction:column;gap:6px}.suggest .modelcard .row{margin-top:auto}
 .modelcard.cur{border-color:var(--accent-line)}
 .rtop{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;flex-wrap:wrap;margin-bottom:6px}.rtop .row{flex:none}
-.rrow{display:grid;grid-template-columns:200px minmax(0,1fr);gap:16px;padding:16px 0;border-top:1px solid var(--line)}
+.rrow{display:grid;grid-template-columns:200px minmax(0,1fr);min-width:0;gap:16px;padding:16px 0;border-top:1px solid var(--line)}
 .rrow:first-child{margin-top:12px}
 .rhead b{display:block;font-size:14px}.rhead span{display:block;color:var(--muted);font-size:12.5px;margin-top:2px}.rhead .label{display:inline-block;margin-top:8px}
 .rchain{list-style:none;margin:0;padding:0;display:flex;flex-direction:column;gap:6px}
@@ -229,7 +229,7 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 section:has(> .daychart){position:relative}
 .rempty{color:var(--muted);font-size:13px;padding:8px 0}
 .radd{margin-top:8px}.radd select{width:auto;max-width:100%;font-size:12.5px;padding:6px 10px;border-radius:8px}
-@media(max-width:700px){.rrow{grid-template-columns:1fr;gap:10px}.rchain .n{width:auto}}
+@media(max-width:700px){.daytot{text-align:left}.rrow{grid-template-columns:minmax(0,1fr);gap:10px}.rchain .n{width:auto}}
 .modelgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:8px;margin-top:10px;max-height:460px;overflow:auto}
 .modelcard{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:10px 11px;min-width:0}
 .modelcard b{display:block;font-size:12.5px;font-weight:600;overflow-wrap:anywhere}.modelcard .note{margin:3px 0 0;font-size:11px}
