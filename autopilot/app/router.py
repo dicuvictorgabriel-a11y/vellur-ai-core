@@ -21,7 +21,7 @@ import httpx
 from .budget import month_key
 from .config import ROLES
 from .lifecycle import ControlError, Controller
-from .model_intel import infer_capabilities, labels, summary
+from .model_intel import image_prices_from_catalog, infer_capabilities, labels, summary
 
 # Base URLs of OpenAI-compatible APIs. Each can be overridden in the dashboard; "custom" providers can be added.
 CATALOG: dict = {
@@ -240,22 +240,22 @@ class Router:
             if not isinstance(m, dict) or not m.get("id"):
                 continue
             mid = str(m["id"])[:200]
-            pin = pout = pimage = None
+            pin = pout = None
             pr = m.get("pricing")
             if isinstance(pr, dict):
                 try:
                     pin, pout = float(pr.get("prompt")) * 1e6, float(pr.get("completion")) * 1e6
                 except (TypeError, ValueError):
                     pin = pout = None
-                try:
-                    if pr.get("image") not in (None, ""):
-                        pimage = float(pr["image"])
-                except (TypeError, ValueError):
-                    pimage = None
+            pimage, pimage_in = image_prices_from_catalog(pr)
             caps = infer_capabilities(mid, m, name)
+            arch = m.get("architecture") if isinstance(m.get("architecture"), dict) else {}
+            outputs = [str(x).lower() for x in (arch.get("output_modalities") or m.get("output_modalities") or [])
+                       if isinstance(x, str)][:8]
             models.append({"id": mid, "in": pin, "out": pout,
                            "ctx": m.get("context_length") or m.get("context_window")})
             meta[mid] = {"capabilities": caps, "labels": labels(caps), "image_price": pimage,
+                         "image_input_price": pimage_in, "outputs": outputs,
                          "input": pin, "output": pout,
                          "context": m.get("context_length") or m.get("context_window")}
         self.db.kv_set(f"llm_catalog_{name}", {"ts": time.time(), "models": models})
@@ -352,6 +352,11 @@ class Router:
         meta = self._catalog_meta(name).get(model) or {}
         value = meta.get("image_price")
         return float(value) if isinstance(value, (int, float)) else None
+
+    def image_outputs(self, target: str) -> list[str]:
+        """Output modalities the provider's catalog declares for this model ([] when unknown)."""
+        name, _, model = target.partition(":")
+        return list((self._catalog_meta(name).get(model) or {}).get("outputs") or [])
 
     def budget_exhausted(self) -> bool:
         return bool(self.ctrl.budget.status(self.settings.get(), None, self.ctrl.clock())["exhausted"])

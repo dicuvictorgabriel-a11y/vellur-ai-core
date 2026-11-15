@@ -152,3 +152,16 @@ async def test_3d_studio_requires_login_and_serves_only_local_files(rig):
         assert page.headers["cache-control"] == "no-store"
         assert (await client.get("/autopilot/3d/%2e%2e/dashboard.html", headers=ADMIN)).status_code == 404
         assert (await client.get("/autopilot/3d/does-not-exist.js", headers=ADMIN)).status_code == 404
+
+
+def test_3d_studio_opens_local_models_without_uploading():
+    import os
+    from app.api import STUDIO3D_HEADERS
+    root = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "app", "static", "3d")
+    js = open(os.path.join(root, "studio3d.js")).read()
+    html = open(os.path.join(root, "studio3d.html")).read()
+    assert 'id="localFile"' in html and 'accept=".glb,.gltf,.obj,.stl"' in html and 'id="emptyOpen"' in html
+    assert "URL.createObjectURL(file)" in js and "entry.local ? entry.url" in js
+    # loaders fetch the object URL: connect-src must allow blob:, and nothing else was widened
+    csp = STUDIO3D_HEADERS["Content-Security-Policy"]
+    assert "connect-src 'self' blob:;" in csp and "script-src 'self';" in csp and "default-src 'self';" in csp

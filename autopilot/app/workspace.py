@@ -40,6 +40,7 @@ class MsgBody(BaseModel):
     attachments: list[str] = Field(default_factory=list)
     confirm_image: bool = False
     image_size: str = "1024x1024"
+    request_id: Optional[str] = None
 
 
 class TargetBody(BaseModel):
@@ -202,12 +203,16 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
                 try:
                     result = await images.generate(content, "vellur-image", body.image_size, 1, body.confirm_image,
                                                    f"image:chat:{cid}", conv_id=cid,
-                                                   max_usd=ctrl.settings.get().get("image_max_usd"))
+                                                   max_usd=ctrl.settings.get().get("image_max_usd"),
+                                                   request_id=body.request_id)
                 except ImageError as e:
                     if e.code == "image_confirmation":
                         yield f"data: {json.dumps({'vellur_image_confirm': e.data, 'prompt': content})}\n\n".encode()
                     else:
                         yield f"data: {json.dumps({'vellur_error': e.message, 'code': e.code})}\n\n".encode()
+                    return
+                if result.get("duplicate"):
+                    yield f"data: {json.dumps({'vellur_image': result, 'title': title})}\n\n".encode()
                     return
                 text = "Generated image"
                 db.x("INSERT INTO messages(conv_id,role,content,created,meta) VALUES(?,?,?,?,?)",
@@ -231,6 +236,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         history.reverse()
         memory = ctrl.settings.get()["memory"].strip()
         messages = ([{"role": "system", "content": "Notes from the owner (always apply):\n" + memory}] if memory else []) + history
+        started = ctrl.clock()
         resp = await router.handle("POST", "chat/completions", "", {},
                                    json.dumps({"model": model, "messages": messages, "stream": True}).encode(), f"chat:{cid}",
                                    capability=route_cap)
@@ -260,11 +266,16 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
                     yield chunk
             finally:
                 text = "".join(parts)
+                spent = db.one("SELECT cost_usd,cost_source,in_tokens,out_tokens FROM usage WHERE tag=? AND ts>=? "
+                               "ORDER BY id DESC LIMIT 1", (f"chat:{cid}", started)) or {}
+                usage_meta = {"cost_usd": float(spent.get("cost_usd") or 0), "cost_source": spent.get("cost_source") or "",
+                              "in_tokens": int(spent.get("in_tokens") or 0), "out_tokens": int(spent.get("out_tokens") or 0)}
                 if text:
                     db.x("INSERT INTO messages(conv_id,role,content,created,meta) VALUES(?,?,?,?,?)",
-                         (cid, "assistant", text, time.time(), json.dumps({"target": resp.headers.get("X-Vellur-Target", ""), "model": model})))
+                         (cid, "assistant", text, time.time(), json.dumps({"target": resp.headers.get("X-Vellur-Target", ""),
+                                                                           "model": model, **usage_meta})))
                     db.x("UPDATE conversations SET updated=? WHERE id=?", (time.time(), cid))
-            yield f"data: {json.dumps({'vellur_done': True, 'target': resp.headers.get('X-Vellur-Target', ''), 'title': title})}\n\n".encode()
+            yield f"data: {json.dumps({'vellur_done': True, 'target': resp.headers.get('X-Vellur-Target', ''), 'title': title, **usage_meta})}\n\n".encode()
 
         return StreamingResponse(gen(), media_type="text/event-stream", headers={"Cache-Control": "no-store"})
 
@@ -332,6 +343,14 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         if not db.one("SELECT id FROM tasks WHERE id=?", (body.task_id,)):
             return JSONResponse(status_code=404, content={"error": "not_found", "message": "unknown task"})
         try:
+            # Nobody is there to confirm an agent's image: a paid model whose price is unknown cannot be checked against
+            # the per-image limit before it is called, so the agent may only use it once a manual price is set.
+            est = images.estimate(body.prompt, "vellur-image", body.size, body.n, st.get("agent_image_max_usd"))
+            if not est["cost_known"]:
+                return JSONResponse(status_code=402, content={
+                    "error": "image_price_unknown",
+                    "message": "The image model has no known price per image, so the agent cannot check it against its "
+                               "limit. Set a manual image price in Models to let agent tasks use it."})
             return await images.generate(body.prompt, "vellur-image", body.size, body.n, True,
                                          f"task:{body.task_id}", task_id=body.task_id,
                                          max_usd=st.get("agent_image_max_usd"))
@@ -388,6 +407,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         by_day = db.all("SELECT date(ts,'unixepoch') AS day, COUNT(*) AS requests, SUM(cost_usd) AS cost_usd, "
                         "SUM(in_tokens+out_tokens) AS tokens FROM usage WHERE month=? GROUP BY day ORDER BY day", (m,))
         by_use = db.all("SELECT CASE WHEN tag LIKE 'task:%' THEN 'agent tasks' WHEN tag LIKE 'chat:%' THEN 'workspace chat' "
+                        "WHEN tag='image' OR tag LIKE 'image:%' THEN 'image generation' "
                         "WHEN tag='probe' THEN 'tests' ELSE 'API clients (OpenCode, apps)' END AS use, COUNT(*) AS requests, "
                         "SUM(cost_usd) AS cost_usd FROM usage WHERE month=? GROUP BY use ORDER BY cost_usd DESC", (m,))
         subs = [{"name": p["display"], "usd": p["monthly_usd"]} for p in router.providers().values()

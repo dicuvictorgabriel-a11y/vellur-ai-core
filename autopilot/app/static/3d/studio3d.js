@@ -306,9 +306,9 @@ function install(loaded, entry) {
   $('error').hidden = true;
   $('updatePill').hidden = true;
   state.updateEntry = null;
-  setUrlModel(entry.path);
+  if (!entry.local) setUrlModel(entry.path);
   renderList();
-  if (window.parent !== window) {
+  if (window.parent !== window && !entry.local) {
     window.parent.postMessage({ type: 'vellur-3d-ready', taskId, model: entry.path }, location.origin);
   }
 }
@@ -360,7 +360,7 @@ async function loadModel(entry) {
   const token = ++state.loadToken;
   state.pendingEntry = entry;
   setLoading(`Loading ${entry.name || baseName(entry.path)}…`);
-  const url = assetUrl(entry.path) + '?v=' + encodeURIComponent(entry.mtime || Date.now());
+  const url = entry.local ? entry.url : assetUrl(entry.path) + '?v=' + encodeURIComponent(entry.mtime || Date.now());
   try {
     let loaded;
     if (entry.format === 'glb' || entry.format === 'gltf') loaded = await loadGLTF(url, token);
@@ -429,7 +429,7 @@ function selectMesh(mesh) {
   clearSelection(true);
   $('selNote').textContent = '';
   state.selected = mesh;
-  state.helper = new THREE.Box3Helper(new THREE.Box3().setFromObject(mesh), 0x5eead4);
+  state.helper = new THREE.Box3Helper(new THREE.Box3().setFromObject(mesh), 0xc8ff3d);
   state.helper.material.transparent = true;
   state.helper.material.opacity = 0.9;
   state.helper.material.depthTest = false;
@@ -529,6 +529,7 @@ function applyModels(data) {
     }
   }
 
+  if (!state.root) setSub(`Task ${taskId} · ` + (models.length ? models.length + ' model file' + (models.length === 1 ? '' : 's') : 'no models yet'));
   if (!state.root && !state.pendingEntry) {
     const wanted = params.get('model');
     const first = (wanted && models.find((m) => m.path === wanted && m.previewable)) || models.find((m) => m.previewable);
@@ -699,15 +700,47 @@ function wirePointer() {
   canvas.addEventListener('pointercancel', () => { down = null; });
 }
 
+// ── models from this device: viewed locally, never uploaded ───────────────────────────────────────
+const LOCAL_FORMATS = { glb: 'glb', gltf: 'gltf', obj: 'obj', stl: 'stl' };
+let localUrl = '';
+function openLocal(file) {
+  if (!file) return;
+  const ext = String(file.name.split('.').pop() || '').toLowerCase();
+  if (!LOCAL_FORMATS[ext]) { showError('Choose a GLB, glTF, OBJ or STL file.', null); return; }
+  if (file.size > 200 * 1024 * 1024) { showError('This file is larger than 200 MB.', null); return; }
+  if (localUrl) URL.revokeObjectURL(localUrl);
+  localUrl = URL.createObjectURL(file);
+  const entry = { path: file.name, name: file.name, format: LOCAL_FORMATS[ext], size: file.size, previewable: true, local: true, url: localUrl };
+  if (!state.models.some((m) => m.local && m.name === file.name)) state.models = [entry, ...state.models.filter((m) => !m.local)];
+  else state.models = state.models.map((m) => (m.local && m.name === file.name ? entry : m));
+  if (ext === 'gltf') $('loadHint').textContent = 'A .gltf file that references separate .bin or texture files cannot load them from here; use a single .glb.';
+  loadModel(entry);
+}
+function wireLocal() {
+  const input = $('localFile');
+  $('btnOpen').onclick = () => input.click();
+  $('emptyOpen').onclick = () => input.click();
+  input.onchange = () => { openLocal(input.files[0]); input.value = ''; };
+  const stage = $('stage');
+  stage.addEventListener('dragover', (e) => { if ([...(e.dataTransfer || {}).types || []].includes('Files')) { e.preventDefault(); stage.classList.add('drop'); } });
+  stage.addEventListener('dragleave', (e) => { if (!stage.contains(e.relatedTarget)) stage.classList.remove('drop'); });
+  stage.addEventListener('drop', (e) => { e.preventDefault(); stage.classList.remove('drop'); openLocal(e.dataTransfer && e.dataTransfer.files[0]); });
+}
+
 async function init() {
   if (!/^\d+$/.test(taskId)) {
-    setEmpty('Open 3D Studio from a task', '3D Studio shows the models in one Agent task workspace. Open an Agent task, then choose 3D preview.');
-    setSub('No task selected');
-    $('blenderState').textContent = '';
+    if (!initScene()) return;
+    wireToolbar(); wireLocal();
+    // Without a task there is no workspace to rescan and no agent conversation to add a selection to.
+    for (const id of ['btnRefresh', 'emptyRefresh', 'selInsert']) $(id).hidden = true;
+    setEmpty('Open a 3D model', 'Open a GLB, glTF, OBJ or STL file from this device (it stays in your browser), or open 3D Studio from an Agent task to see the models the agent creates.');
+    setSub('Local files · nothing is uploaded');
+    $('blenderState').textContent = 'Files you open here are viewed in the browser only.';
+    $('count').textContent = '';
     return;
   }
   if (!initScene()) return;
-  wireToolbar();
+  wireToolbar(); wireLocal();
   if (isEmbed) {
     document.body.classList.add('embed');
     $('home').title = 'Close preview';

@@ -15,6 +15,7 @@
     </a>
     <div id="title"><b id="modelName">3D Studio</b><small id="sub">Loading workspace…</small></div>
     <div id="tools">
+      <button class="tool" id="btnOpen" title="Open a model from this device" aria-label="Open a model from this device"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V7Z"/></svg></button><input type="file" id="localFile" accept=".glb,.gltf,.obj,.stl" hidden>
       <button class="tool" id="btnPanel" title="Models" aria-label="Show models"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button>
       <button class="tool" id="btnFit" title="Frame the model" aria-label="Frame the model"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       <button class="tool" id="btnGrid" title="Toggle grid" aria-label="Toggle grid" aria-pressed="true"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 3h18v18H3zM3 9h18M3 15h18M9 3v18M15 3v18"/></svg></button>
@@ -35,7 +36,7 @@
   <main id="stage">
     <canvas id="canvas" aria-label="3D model viewport"></canvas>
     <div id="empty" class="overlay">
-      <div class="card"><b>No 3D model yet</b><p>Ask the agent to create or edit a GLB, glTF, OBJ or STL file in this task. The result appears here automatically.</p><button class="ghost" id="emptyRefresh">Rescan</button></div>
+      <div class="card"><b>No 3D model yet</b><p>Ask the agent to create or edit a GLB, glTF, OBJ or STL file in this task. The result appears here automatically.</p><div class="row"><button class="primary" id="emptyOpen">Open a file</button><button class="ghost" id="emptyRefresh">Rescan</button></div></div>
     </div>
     <div id="loading" class="overlay" hidden><div class="ring"></div><b id="loadText">Loading model…</b><div id="progress"><i></i></div><small id="loadHint"></small></div>
     <div id="error" class="overlay" hidden><div class="card"><b>Could not show this model</b><p id="errorText"></p><div class="row"><button class="ghost" id="errorRetry">Try again</button><button class="ghost" id="errorClose">Dismiss</button></div></div></div>

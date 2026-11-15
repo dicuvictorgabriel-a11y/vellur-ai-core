@@ -28,7 +28,7 @@ STUDIO3D = os.path.join(STATIC, "3d")
 # session. It loads only local files, and model data is never executed as code.
 STUDIO3D_HEADERS = {
     "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
-                               "img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; "
+                               "img-src 'self' data: blob:; connect-src 'self' blob:; worker-src 'self' blob:; "
                                "font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'",
     "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff", "X-Robots-Tag": "noindex, nofollow",
     "Cache-Control": "no-store",
