@@ -33,7 +33,7 @@ AUTO_CONTINUE = 2             # automatic "continue" runs when a reply was cut o
 STATUS_RE = re.compile(r"STATUS:\s*\**\s*(COMPLETE|PARTIAL|BLOCKED)\b", re.I)
 TEST_RE = re.compile(r"\b(pytest|unittest|jest|vitest|mocha|playwright|cypress|tsc|eslint|ruff|mypy|flake8|go test|cargo test|"
                      r"npm (run )?(test|check|lint|build|typecheck)|pnpm (run )?(test|check|lint|build)|yarn (test|check|lint|build)|"
-                     r"make (test|check)|node --check|python3? -m (pytest|unittest|py_compile))\b")
+                     r"make (test|check)|(ba)?sh \S*tests?\.sh|\S*run[_-]?tests?\S*|node --check|python3? -m (pytest|unittest|py_compile))\b")
 SHOT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}\.png$")
 
 AGENT_GUIDE = """You are an autonomous AI developer working for the owner of this repository through VELLUR AI Core.

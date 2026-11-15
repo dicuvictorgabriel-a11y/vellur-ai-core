@@ -78,16 +78,6 @@ PREVIEW_HEADERS = {
     "Access-Control-Allow-Origin": "*", "Cache-Control": "no-store", "Referrer-Policy": "no-referrer",
     "X-Robots-Tag": "noindex, nofollow", "X-Content-Type-Options": "nosniff",
 }
-ROOT_ATTR = re.compile(rb"""(\s(?:src|href|action|poster|data-src)\s*=\s*["'])/(?!/)""", re.I)
-
-
-# Scripts in a previewed page often call root-absolute URLs ("/api/items"). This shim keeps those calls inside the
-# preview instead of hitting the real site. It is added to previewed HTML only.
-PREVIEW_SHIM = (b"<script>(()=>{const B=%s;const f=u=>typeof u==='string'&&u[0]==='/'&&u[1]!=='/'&&!u.startsWith(B)?B+u.slice(1):u;"
-                b"const F=window.fetch;window.fetch=(u,o)=>F(u instanceof Request?u:f(u),o);"
-                b"const X=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u,...r){return X.call(this,m,f(u),...r)};"
-                b"const E=window.EventSource;if(E){window.EventSource=function(u,c){return new E(f(u),c)};window.EventSource.prototype=E.prototype}"
-                b"})()</script>")
 
 
 def _brief(t: dict) -> dict:
@@ -373,8 +363,12 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
             return err(e)
         return {**info, "url": f"/autopilot/preview/{tok}/"}
 
-    @app.api_route("/autopilot/preview/{token}/{path:path}", methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE"])
+    @app.api_route("/autopilot/preview/{token}/{path:path}", methods=["GET", "HEAD", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"])
     async def preview(token: str, path: str, request: Request):
+        if request.method == "OPTIONS":            # the sandboxed page has no origin, so browsers pre-check its requests
+            return Response(status_code=204, headers={**PREVIEW_HEADERS, "Access-Control-Allow-Methods": "GET, HEAD, POST, PUT, PATCH, DELETE",
+                                                      "Access-Control-Allow-Headers": request.headers.get("access-control-request-headers", "*"),
+                                                      "Access-Control-Max-Age": "600"})
         tid = agent.preview_task(token)
         if not tid:
             return JSONResponse({"error": "expired", "message": "This preview link has expired. Open the preview again from VELLUR."},
@@ -382,23 +376,20 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         body = await request.body() if request.method in ("POST", "PUT", "PATCH") else b""
         if len(body) > 20 * 1024 * 1024:
             return JSONResponse({"error": "too_large"}, status_code=413, headers=PREVIEW_HEADERS)
-        fwd = {k: v for k, v in request.headers.items() if k.lower() in ("accept", "content-type", "accept-language", "range")}
+        fwd = {k: v for k, v in request.headers.items() if k.lower() in ("accept", "content-type", "accept-language", "range", "x-vellur-request")}
         try:
             r = await agent.preview_fetch(tid, request.method, path, request.url.query, fwd, body)
         except AgentError as e:
             return JSONResponse({"error": e.code, "message": e.message}, status_code=e.status, headers=PREVIEW_HEADERS)
         ctype = r.headers.get("content-type", "application/octet-stream")
         content = r.content
-        prefix = f"/autopilot/preview/{token}/".encode()
-        if ctype.startswith("text/html"):          # root-absolute links ("/assets/app.js") must stay inside the preview
-            content = ROOT_ATTR.sub(lambda m: m.group(1) + prefix, content)
-            shim = PREVIEW_SHIM % json.dumps(prefix.decode()).encode()
-            head = re.search(rb"<head[^>]*>", content, re.I)
-            content = content[:head.end()] + shim + content[head.end():] if head else shim + content
+        inner, prefix = f"/tasks/{tid}/preview/", f"/autopilot/preview/{token}/"
+        if ctype.startswith("text/html"):          # the runner keeps links inside its own preview path; map it to this link
+            content = content.replace(inner.encode(), prefix.encode())
         headers = dict(PREVIEW_HEADERS)
         if r.headers.get("location"):
             loc = r.headers["location"]
-            headers["Location"] = prefix.decode() + loc.lstrip("/") if loc.startswith("/") and not loc.startswith("//") else loc
+            headers["Location"] = prefix + loc[len(inner):] if loc.startswith(inner) else loc
         return Response(content=content, status_code=r.status_code, media_type=ctype, headers=headers)
 
     @app.get("/autopilot/api/agent/tasks/{tid}/checkpoints", dependencies=[Depends(admin)])

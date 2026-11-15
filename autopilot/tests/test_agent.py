@@ -83,7 +83,10 @@ class FakeRunner:
             self.preview_calls = getattr(self, "preview_calls", []) + [(req.method, p, req.url.query.decode())]
             if p.endswith("/app.css"):
                 return httpx.Response(200, content=b"body{}", headers={"content-type": "text/css"})
-            return httpx.Response(200, content=b'<html><link href="/app.css"><script src="/assets/a.js"></script><a href="//cdn.x/y">x</a></html>',
+            tid = p.split("/")[2]      # the real runner already keeps links inside /tasks/<id>/preview/
+            if p.endswith("/go"):
+                return httpx.Response(302, headers={"location": f"/tasks/{tid}/preview/autopilot/"})
+            return httpx.Response(200, content=f'<html><link href="/tasks/{tid}/preview/app.css"><script src="/tasks/{tid}/preview/assets/a.js"></script><a href="//cdn.x/y">x</a></html>'.encode(),
                                   headers={"content-type": "text/html; charset=utf-8"})
         elif p.endswith("/rebaseline"):
             self.rebaselined = True
@@ -369,6 +372,11 @@ async def test_live_preview_is_sandboxed_and_needs_a_link_from_a_logged_in_owner
     assert "allow-same-origin" not in r.headers["content-security-policy"]
     assert f'href="{info["url"]}app.css"'.encode() in r.content and f'src="{info["url"]}assets/a.js"'.encode() in r.content
     assert b'href="//cdn.x/y"' in r.content                             # absolute URLs are left alone
+    assert b"/tasks/" not in r.content
+    go = await admin.get(info["url"] + "go")
+    assert go.status_code == 302 and go.headers["location"] == info["url"] + "autopilot/"
+    pre = await admin.options(info["url"] + "autopilot/api/x", headers={"Access-Control-Request-Headers": "content-type,x-vellur-request"})
+    assert pre.status_code == 204 and pre.headers["access-control-allow-headers"] == "content-type,x-vellur-request"
     css = await admin.get(info["url"] + "app.css?v=2")
     assert css.headers["content-type"].startswith("text/css") and css.headers["access-control-allow-origin"] == "*"
     assert runner.preview_calls[-1] == ("GET", f"/tasks/{tid}/preview/app.css", "v=2")

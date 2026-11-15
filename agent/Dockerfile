@@ -18,7 +18,7 @@ RUN if [ "$AGENT_BROWSER" = "1" ]; then \
       rm -rf /var/lib/apt/lists/* /root/.npm; fi \
  && ( apt-get update && apt-get install -y --no-install-recommends python3-venv python3-pip \
       || echo "WARNING: python venv tools not installed" ) && rm -rf /var/lib/apt/lists/* \
- && npm install -g --no-audit --no-fund opencode-ai@${OPENCODE_VERSION} \
+ && npm install -g --no-audit --no-fund opencode-ai@${OPENCODE_VERSION} playwright-core@${PLAYWRIGHT_VERSION} \
  && useradd -m -u 10002 -s /bin/bash agent \
  && mkdir -p /work && chown agent:agent /work
 COPY runner.py /usr/local/bin/vellur-runner.py

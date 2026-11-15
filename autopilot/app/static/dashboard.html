@@ -764,11 +764,13 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     $("agVision").checked = !!AGENT.vision;
     $("tLimits").textContent = AGENT.max_minutes + " min, $" + AGENT.max_usd + " (GPU tab → settings).";
     if (!REPOS_LOADED) loadRepos();
-    let want = TASK; if (want == null) { try { want = Number(sessionStorage.getItem("vellurTask")) || null; } catch (e) {} }
+    let want = TASK, fresh = false; if (want == null) { try { fresh = sessionStorage.getItem("vellurTask") === null; want = Number(sessionStorage.getItem("vellurTask")) || null; } catch (e) {} }
+    // a new tab or device: reopen the project you were working on (active in the last 12 hours)
+    if (!want && fresh && TASKS[0] && Date.now() / 1000 - (TASKS[0].updated || 0) < 12 * 3600) want = TASKS[0].id;
     if (want && TASKS.some(t => t.id === want)) await openTask(want); else newTask();
   }
   function newTask() {
-    closeStream(); TASK = null; CUR = null; EXPLORE = null; try { sessionStorage.removeItem("vellurTask"); } catch (e) {}
+    closeStream(); TASK = null; CUR = null; EXPLORE = null; try { sessionStorage.setItem("vellurTask", ""); } catch (e) {}
     const ex = ["Explain how this repository is organised and suggest 3 improvements (no changes).", "Find one real bug, fix it and add a test.", "Improve the mobile layout of the main page and show me before/after screenshots."];
     box().innerHTML = `<div class="agempty"><h3>What should we build?</h3><p>Pick a repository, describe the task in your own words and watch the agent work. Nothing reaches GitHub until you approve it.</p><div class="chips">${ex.map(x => `<button class="chip">${esc(x)}</button>`).join("")}</div>${AGENT.available === false ? `<div class="alert" style="margin-top:18px;text-align:left">${esc(AGENT.why || "The agent is not available.")}</div>` : ""}</div>`;
     box().querySelectorAll(".agempty .chip").forEach(c => c.onclick = () => { $("agIn").value = c.textContent; $("agIn").focus(); agGrow(); });
@@ -905,7 +907,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       + '<option value="">Empty workspace (no repository)</option><option value="__other">Other (type owner/name)…</option>';
     const last = (TASKS.find(t => t.repo) || {}).repo || "";
     if (last && [...sel.options].some(o => o.value === last)) sel.value = last; else if (!list.length) sel.value = "";
-    await repoChanged(); if (!CUR && VIEW === "agent") newTask();
+    await repoChanged(); if (!CUR && TASK == null && VIEW === "agent") newTask();
   }
   const repoValue = () => $("tRepoSel").value === "__other" ? $("agOther").value.trim() : $("tRepoSel").value;
   async function repoChanged() {

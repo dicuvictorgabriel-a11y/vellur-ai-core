@@ -14,6 +14,7 @@ import contextlib
 import io
 import json
 import os
+import re
 import shutil
 import signal
 import subprocess
@@ -110,12 +111,13 @@ def base(repo):
     return BASE
 
 
-def checkpoint(repo, label):
-    """Save the current files as a recoverable checkpoint (a commit inside the workspace). Returns its id."""
+def checkpoint(repo, label, named=False):
+    """Save the current files as a recoverable checkpoint (a commit inside the workspace). Returns its id.
+    Automatic checkpoints are skipped when nothing changed; a checkpoint the owner names is always recorded."""
     base(repo)
     git(repo, "add", "-A", check=False)
-    if git(repo, "status", "--porcelain", check=False).strip():
-        git(repo, "commit", "-q", "-m", (label or "Checkpoint")[:120].replace("\n", " "))
+    if named or git(repo, "status", "--porcelain", check=False).strip():
+        git(repo, "commit", "-q", "--allow-empty", "-m", (label or "Checkpoint")[:120].replace("\n", " "))
     return git(repo, "rev-parse", "HEAD").decode().strip()
 
 
@@ -375,15 +377,30 @@ def preview_plan(t):
     return {"mode": "none", "why": "no index.html was found and the project has no .vellur/preview.json yet"}
 
 
+PREVIEW_PID = os.path.join(WORK, ".preview.pid")
+
+
+def kill_group(pid):
+    for sig in (signal.SIGTERM, signal.SIGKILL):
+        try:
+            os.killpg(pid, sig)
+        except (ProcessLookupError, PermissionError):
+            return
+        time.sleep(1)
+
+
 def stop_preview():
+    """Stop the preview server, including one left behind by an earlier runner process (its id is kept on disk)."""
     p = preview["proc"]
     if p and p.poll() is None:
-        try:
-            os.killpg(p.pid, signal.SIGTERM)
-            time.sleep(1)
-            os.killpg(p.pid, signal.SIGKILL)
-        except ProcessLookupError:
-            pass
+        kill_group(p.pid)
+    try:
+        old = int(open(PREVIEW_PID).read().strip())
+        if not p or old != p.pid:
+            kill_group(old)
+        os.remove(PREVIEW_PID)
+    except (OSError, ValueError):
+        pass
     preview.update(tid=None, proc=None, key=None)
 
 
@@ -406,15 +423,20 @@ def ensure_preview(tid, t, plan, wait=45):
                         "CI": "1", "NO_COLOR": "1", "BROWSER": "none", "NODE_ENV": "development"})
             log = open(os.path.join(t["dir"], "preview.log"), "ab", buffering=0)
             log.write(f"\n[preview] starting: {plan['command']}\n".encode())
+            if port_open(PREVIEW_PORT):
+                return f"port {PREVIEW_PORT} is already used by another process in the agent container"
             try:
                 proc = subprocess.Popen(["bash", "-lc", plan["command"]], cwd=os.path.join(repo, plan["dir"]), env=env,
                                         stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)
             except OSError as e:
                 return f"the preview command could not start: {e}"
             preview.update(tid=tid, proc=proc, key=plan["key"], started=time.time())
+            with contextlib.suppress(OSError):
+                with open(PREVIEW_PID, "w") as f:
+                    f.write(str(proc.pid))
     end = time.time() + wait
     while time.time() < end:
-        if port_open(PREVIEW_PORT):
+        if preview["proc"] is not None and preview["proc"].poll() is None and port_open(PREVIEW_PORT):
             return ""
         if preview["proc"] is None or preview["proc"].poll() is not None:
             return "the preview command exited; see preview.log: " + preview_log(t)[-400:]
@@ -432,7 +454,26 @@ def preview_log(t):
         return ""
 
 
-def serve_static(handler, t, plan, rel):
+ROOT_ATTR = re.compile(rb"""(\s(?:src|href|action|poster|data-src)\s*=\s*["'])/(?!/)""", re.I)
+# Scripts in a previewed page often call root-absolute URLs ("/api/items"). This shim keeps them inside the preview.
+PREVIEW_SHIM = (b"<script>(()=>{const B=%s;const f=u=>typeof u==='string'&&u[0]==='/'&&u[1]!=='/'&&!u.startsWith(B)?B+u.slice(1):u;"
+                b"const F=window.fetch;window.fetch=(u,o)=>F(u instanceof Request?u:f(u),o);"
+                b"const X=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u,...r){return X.call(this,m,f(u),...r)};"
+                b"const E=window.EventSource;if(E){window.EventSource=function(u,c){return new E(f(u),c)};window.EventSource.prototype=E.prototype}"
+                b"})()</script>")
+
+
+def in_preview(html, tid):
+    """Keep a previewed page inside its preview: root-absolute links and script requests get the preview prefix.
+    (The controller swaps this prefix for the owner's link.)"""
+    prefix = f"/tasks/{tid}/preview/".encode()
+    html = ROOT_ATTR.sub(lambda m: m.group(1) + prefix, html)
+    shim = PREVIEW_SHIM % json.dumps(prefix.decode()).encode()
+    head = re.search(rb"<head[^>]*>", html, re.I)
+    return html[:head.end()] + shim + html[head.end():] if head else shim + html
+
+
+def serve_static(handler, tid, t, plan, rel):
     import mimetypes
     root = os.path.realpath(os.path.join(t["dir"], "repo", plan["root"]))
     rel = rel.split("?", 1)[0].split("#", 1)[0]
@@ -454,25 +495,30 @@ def serve_static(handler, t, plan, rel):
     if ctype.startswith("text/") or ctype in ("application/javascript", "application/json"):
         ctype += "; charset=utf-8"
     with open(target, "rb") as f:
-        return handler.send(200, raw=f.read(), ctype=ctype)
+        data = f.read()
+    return handler.send(200, raw=in_preview(data, tid) if ctype.startswith("text/html") else data, ctype=ctype)
 
 
-def proxy_app(handler, method, rel, body):
+def proxy_app(handler, tid, method, rel, body):
     import http.client
     conn = http.client.HTTPConnection("127.0.0.1", PREVIEW_PORT, timeout=60)
     try:
         headers = {k: v for k, v in handler.headers.items()
-                   if k.lower() in ("accept", "content-type", "accept-language", "user-agent", "range")}
+                   if k.lower() in ("accept", "content-type", "accept-language", "user-agent", "range", "x-vellur-request")}
         headers["Host"] = f"127.0.0.1:{PREVIEW_PORT}"
         conn.request(method, "/" + rel.lstrip("/"), body=body or None, headers=headers)
         r = conn.getresponse()
         data = r.read(MAX_PREVIEW_BODY + 1)
         if len(data) > MAX_PREVIEW_BODY:
             return handler.send(413, {"error": "response too large for the preview"})
+        ctype = r.getheader("content-type") or "application/octet-stream"
+        if ctype.startswith("text/html"):
+            data = in_preview(data, tid)
         handler.send_response(r.status)
-        handler.send_header("content-type", r.getheader("content-type") or "application/octet-stream")
-        if r.getheader("location"):
-            handler.send_header("location", r.getheader("location"))
+        handler.send_header("content-type", ctype)
+        loc = r.getheader("location")
+        if loc:      # a redirect to "/somewhere" must stay inside the preview
+            handler.send_header("location", f"/tasks/{tid}/preview{loc}" if loc.startswith("/") and not loc.startswith("//") else loc)
         handler.send_header("content-length", str(len(data)))
         handler.end_headers()
         handler.wfile.write(data)
@@ -549,12 +595,12 @@ class H(BaseHTTPRequestHandler):
             rel = self.path.split("/preview", 1)[1]
             plan = preview_plan(t)
             if plan["mode"] == "static":
-                return serve_static(self, t, plan, rel)
+                return serve_static(self, int(parts[1]), t, plan, rel)
             if plan["mode"] == "command":
                 why = ensure_preview(int(parts[1]), t, plan)
                 if why:
                     return self.send(503, {"error": why})
-                return proxy_app(self, method, rel, self.body(MAX_PREVIEW_BODY) if method in ("POST", "PUT", "PATCH") else None)
+                return proxy_app(self, int(parts[1]), method, rel, self.body(MAX_PREVIEW_BODY) if method in ("POST", "PUT", "PATCH") else None)
             return self.send(404, {"error": plan["why"]})
         if parts == ["healthz"]:
             return self.send(200, {"ok": True, "busy": any(t["state"] in ("created", "running") for t in tasks.values())})
@@ -635,7 +681,7 @@ class H(BaseHTTPRequestHandler):
                 return self.send(409, {"error": "running"})
             body = json.loads(self.body(100_000) or b"{}")
             try:
-                sha = checkpoint(repo, str(body.get("label") or "Checkpoint")) if action == "checkpoints" else restore(repo, str(body.get("id", "")))
+                sha = checkpoint(repo, str(body.get("label") or "Checkpoint"), named=True) if action == "checkpoints" else restore(repo, str(body.get("id", "")))
             except ValueError as e:
                 return self.send(404, {"error": str(e)})
             t["changed"] = len(file_summary(repo))
@@ -725,4 +771,5 @@ if __name__ == "__main__":
         raise SystemExit("AGENT_RUNNER_SECRET missing or too short")
     os.makedirs(WORK, exist_ok=True)
     load_state()
+    stop_preview()        # a preview server left by a previous runner process would show stale files
     ThreadingHTTPServer(("0.0.0.0", int(os.environ.get("AGENT_PORT", "7070"))), H).serve_forever()
