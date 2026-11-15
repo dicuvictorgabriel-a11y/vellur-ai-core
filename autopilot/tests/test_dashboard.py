@@ -135,3 +135,67 @@ assert.match(reportCard({ run: 3 }).innerHTML, /class="publication" hidden/);
     assert result.returncode == 0, result.stderr
     assert 'updateReportPublication(t.report.run, t.report.publication)' in html
     assert 'updateReportPublication(CUR.report.run, CUR.report.publication)' in html
+
+def test_3d_navigation_syncs_on_task_changes_even_when_preview_is_closed():
+    html = open(PAGE).read()
+    new_task = html[html.index("  function newTask() {"):html.index("  async function openTask(id) {")]
+    open_task = html[html.index("  async function openTask(id) {"):html.index("  function renderLegacy(t) {")]
+    preview = html[html.index("  async function loadPreview(force) {"):html.index("  function pvRefreshSoon")]
+    assert "sync3DLink();" in new_task
+    assert "sync3DLink();" in open_task
+    assert preview.index("sync3DLink();") < preview.index("if (!studioOpen()) return;")
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_3d_navigation_link_keeps_task_and_model_across_closed_preview():
+    html = open(PAGE).read()
+    helper = html[html.index("  function sync3DLink()"):html.index("  const SANDBOX_WEB")]
+    preview = html[html.index("  async function loadPreview(force) {"):html.index("  function pvRefreshSoon")]
+    setup = '''
+const assert = require("assert");
+const els = { nav3D: { href: "" } };
+const $ = id => els[id] ||= {};
+let TASK = null, CUR = null;
+let PV = { task: null, model: "" };
+const studioOpen = () => false;
+'''
+    checks = '''
+(async () => {
+  TASK = 7; CUR = {};
+  await loadPreview();
+  assert.equal($("nav3D").href, "/autopilot/3d/?task=7");
+  PV.task = 7; PV.model = "robot.glb";
+  await loadPreview();
+  assert.equal($("nav3D").href, "/autopilot/3d/?task=7&model=robot.glb");
+  TASK = 8;
+  await loadPreview();
+  assert.equal($("nav3D").href, "/autopilot/3d/?task=8");
+  TASK = null; PV.task = null; PV.model = "";
+  await loadPreview();
+  assert.equal($("nav3D").href, "/autopilot/3d/");
+})().catch(e => { console.error(e); process.exitCode = 1; });
+'''
+    result = subprocess.run(["node", "-e", setup + helper + preview + checks], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_3d_navigation_restores_saved_task_before_async_load():
+    html = open(PAGE).read()
+    helper = html[html.index("  function sync3DLink()"):html.index("  const SANDBOX_WEB")]
+    start = html.index('  try { const saved = Number(sessionStorage.getItem("vellurTask"));')
+    boot = html[start:html.index("\n  (async () => {", start)]
+    setup = '''
+const assert = require("assert");
+const els = { nav3D: { href: "/autopilot/3d/" } };
+const $ = id => els[id] ||= {};
+let TASK = null;
+let PV = { task: null, model: "" };
+const sessionStorage = { getItem: k => k === "vellurTask" ? "42" : null };
+'''
+    checks = '''
+assert.equal($("nav3D").href, "/autopilot/3d/?task=42");
+assert.equal(TASK, 42);
+'''
+    result = subprocess.run(["node", "-e", setup + helper + boot + checks], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr

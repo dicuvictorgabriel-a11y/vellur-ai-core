@@ -936,6 +936,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   }
   function newTask() {
     closeStream(); TASK = null; CUR = null; EXPLORE = null; clearAgentAtts(); try { sessionStorage.setItem("vellurTask", ""); } catch (e) {}
+    sync3DLink();
     const ex = ["Explain how this repository is organised and suggest 3 improvements (no changes).", "Find one real bug, fix it and add a test.", "Improve the mobile layout of the main page and show me before/after screenshots."];
     box().innerHTML = `<div class="agempty"><h3>What should we build?</h3><p>Pick a repository, describe the task in your own words and watch the agent work. Publishing depends on your preferences and server support.</p><div class="chips">${ex.map(x => `<button class="chip">${esc(x)}</button>`).join("")}</div>${AGENT.available === false ? `<div class="alert" style="margin-top:18px;text-align:left">${esc(AGENT.why || "The agent is not available.")}</div>` : ""}</div>`;
     box().querySelectorAll(".agempty .chip").forEach(c => c.onclick = () => { $("agIn").value = c.textContent; $("agIn").focus(); agGrow(); });
@@ -947,6 +948,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   }
   async function openTask(id) {
     closeStream(); TASK = id; EXPLORE = null; LAST_EV = 0; RUN_T0 = 0; clearAgentAtts(); try { sessionStorage.setItem("vellurTask", String(id)); } catch (e) {}
+    sync3DLink();
     let t; try { t = await send("agent/tasks/" + id, "GET"); } catch (e) { newTask(); return; }
     CUR = t; header(); composer(); renderTasks(); box().innerHTML = "";
     if (t.legacy) { renderLegacy(t); loadPreview(); return; }
@@ -974,6 +976,11 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   }
   // ── studio: live preview of the project next to the conversation ────────────────────────────
   let PV = { url: "", mode: "", timer: null, task: null, view: "web", models: [], model: "", loadTimer: null, loadSeq: 0 };
+  function sync3DLink() {
+    const task = TASK == null ? "" : encodeURIComponent(TASK);
+    const model = task && String(PV.task) === String(TASK) && PV.model ? "&model=" + encodeURIComponent(PV.model) : "";
+    $("nav3D").href = task ? "/autopilot/3d/?task=" + task + model : "/autopilot/3d/";
+  }
   const SANDBOX_WEB = "allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock";
   const SANDBOX_3D = "allow-scripts allow-same-origin allow-downloads allow-popups allow-modals";
   const studioOpen = () => document.body.classList.contains("studio-open");
@@ -1001,6 +1008,8 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     PV.view = "3d";
     if (!PV.models.length) return loadPreview();
     if (entry) PV.model = entry;
+    PV.task = TASK;
+    sync3DLink();
     const task = encodeURIComponent(TASK);
     const model = PV.model ? "&model=" + encodeURIComponent(PV.model) : "";
     PV.url = "/autopilot/3d/?task=" + task + "&embed=1" + model;
@@ -1033,11 +1042,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     pvWait(seq);
   }
   async function loadPreview(force) {
+    sync3DLink();
     if (!studioOpen()) return;
     if (!CUR) { PV.task = null; PV.models = []; PV.model = ""; $("pv3D").style.display = "none"; $("nav3D").href = "/autopilot/3d/"; $("pvInfo").textContent = "Live preview"; return pvEmpty("Nothing to show yet", "The live preview of your project appears here as soon as the agent starts working."); }
     if (PV.task !== TASK) { PV.task = TASK; PV.view = "web"; PV.models = []; PV.model = ""; }
-    const model = PV.model ? "&model=" + encodeURIComponent(PV.model) : "";
-    $("nav3D").href = "/autopilot/3d/?task=" + encodeURIComponent(TASK) + model;
     clearTimeout(PV.loadTimer); PV.loadTimer = null; PV.loadSeq++;
     pvLoading(true, "Checking preview…", "Looking for a web page or 3D model in this task.");
     let info; try { info = await send("agent/tasks/" + TASK + "/preview", "POST", {}); } catch (e) { $("pvInfo").textContent = "Preview unavailable"; return pvEmpty("Preview unavailable", e.message); }
@@ -1071,9 +1079,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     if (d.type === "vellur-3d-ready") {
       if (String(d.taskId) !== String(TASK)) return;
       PV.model = String(d.model || "");
+      PV.task = TASK;
+      sync3DLink();
       const task = encodeURIComponent(TASK);
       const model = PV.model ? "&model=" + encodeURIComponent(PV.model) : "";
-      $("nav3D").href = "/autopilot/3d/?task=" + task + model;
       $("pvOpen").href = "/autopilot/3d/?task=" + task + model;
       return;
     }
@@ -1297,6 +1306,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     location.reload();
   };
   $("btnLogout").onclick = async () => { await post("auth/logout"); location.reload(); };
+  try { const saved = Number(sessionStorage.getItem("vellurTask")); if (saved) { TASK = saved; sync3DLink(); } } catch (e) {}
   (async () => {
     let me = { logged_in: false };
     try { me = await (await fetch("/autopilot/api/auth/me", { cache: "no-store", credentials: "same-origin" })).json(); } catch (e) {}
