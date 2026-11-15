@@ -785,3 +785,48 @@ def test_optional_screenshot_notice_is_not_an_error():
     from app.agent import normalize
     kind, data = normalize({"type": "raw", "category": "screenshot_notice", "text": "browser unavailable"})
     assert kind == "notice" and data["text"] == "browser unavailable"
+
+
+async def test_conversation_work_keeps_context_task_and_followups(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    cid = (await admin.post('/autopilot/api/conversations', headers=WRITE, json={})).json()['id']
+    ctrl.db.x("INSERT INTO messages(conv_id,role,content,created) VALUES(?,?,?,?)", (cid, 'user', 'Use accessible controls.', 1))
+    r = await admin.post(f'/autopilot/api/conversations/{cid}/work', headers=WRITE,
+                         json={'prompt': 'Build a demo landing page', 'repo': 'o/r'})
+    assert r.status_code == 200, r.text
+    tid = r.json()['task_id']
+    await wait_final(mgr, tid)
+    assert 'Use accessible controls.' in runner.meta['prompt']
+    assert (await admin.get(f'/autopilot/api/conversations/{cid}', headers=ADMIN)).json()['task_id'] == tid
+    # Rebuilding the API does not lose the link; it lives in SQLite, not in the browser.
+    fresh = httpx.AsyncClient(transport=httpx.ASGITransport(app=build_admin(ctrl, router=router, agent=mgr)), base_url='https://ai.example')
+    try:
+        assert (await fresh.get(f'/autopilot/api/conversations/{cid}', headers=ADMIN)).json()['task_id'] == tid
+        r = await fresh.post(f'/autopilot/api/conversations/{cid}/work', headers=WRITE, json={'prompt': 'Improve the headings'})
+        assert r.status_code == 200 and r.json()['task_id'] == tid
+        await wait_final(mgr, tid)
+        conv = (await fresh.get(f'/autopilot/api/conversations/{cid}', headers=ADMIN)).json()
+        assert [m['content'] for m in conv['messages']][-2:] == ['Build a demo landing page', 'Improve the headings']
+        assert mgr.task(tid)['runs'] == 2
+        await fresh.delete(f'/autopilot/api/conversations/{cid}', headers=WRITE)
+        assert ctrl.db.kv_get(f'conversation_task_{cid}') is None
+        assert mgr.task(tid) is not None  # deleting chat must not erase the project
+    finally:
+        await fresh.aclose()
+
+
+async def test_conversation_work_guards_missing_image_and_busy_requests(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    cid = (await admin.post('/autopilot/api/conversations', headers=WRITE, json={})).json()['id']
+    url = f'/autopilot/api/conversations/{cid}/work'
+    body = {'prompt': 'Build a small demo'}
+    assert (await admin.post(url, json=body)).status_code == 401
+    assert (await admin.post(url, headers=ADMIN, json=body)).status_code == 403
+    assert (await admin.post('/autopilot/api/conversations/999/work', headers=WRITE, json=body)).status_code == 404
+    assert (await admin.post(url, headers=WRITE, json={**body, 'model': 'vellur-image'})).status_code == 400
+    runner.finish_after = 10**9
+    tid = (await admin.post(url, headers=WRITE, json=body)).json()['task_id']
+    assert (await admin.post(url, headers=WRITE, json=body)).status_code == 409
+    assert len((await admin.get(f'/autopilot/api/conversations/{cid}', headers=ADMIN)).json()['messages']) == 1
+    await mgr.cancel(tid)
+    await wait_final(mgr, tid)
