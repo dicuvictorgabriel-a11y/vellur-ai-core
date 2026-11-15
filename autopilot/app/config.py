@@ -88,6 +88,11 @@ DEFAULT_SETTINGS: dict = {
     "agent_auto_screenshots": False,
     "agent_auto_publish": True,
     "agent_auto_publish_main_repo": "",
+    "attachment_max_mb": 25,           # largest single file the owner may attach
+    "attachment_max_count": 10,        # files per message or task
+    "attachment_max_total_mb": 60,     # total bytes accepted by one upload request
+    "attachment_max_text_chars": 120000,  # extracted text included in model context
+    "attachment_vision_max_mb": 10,    # larger images are described locally instead of sent to the model
 }
 
 ROLES: dict = {

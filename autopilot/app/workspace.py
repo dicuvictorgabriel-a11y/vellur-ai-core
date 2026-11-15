@@ -11,7 +11,7 @@ import re
 
 from fastapi import Depends, FastAPI, Request
 from fastapi.responses import FileResponse, JSONResponse, Response, StreamingResponse
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from .agent import AgentError, AgentManager
 from .budget import month_key
@@ -31,8 +31,9 @@ class ConvBody(BaseModel):
 
 
 class MsgBody(BaseModel):
-    content: str
+    content: str = ""
     model: Optional[str] = None
+    attachments: list[str] = Field(default_factory=list)
 
 
 class TargetBody(BaseModel):
@@ -46,6 +47,7 @@ class TaskBody(BaseModel):
     base: str = ""
     visual_inspection: Optional[bool] = None
     auto_screenshots: Optional[bool] = None
+    attachments: list[str] = Field(default_factory=list)
 
 
 class FollowBody(BaseModel):
@@ -53,6 +55,7 @@ class FollowBody(BaseModel):
     model: Optional[str] = None
     visual_inspection: Optional[bool] = None
     auto_screenshots: Optional[bool] = None
+    attachments: list[str] = Field(default_factory=list)
 
 
 class CheckpointBody(BaseModel):
@@ -94,6 +97,7 @@ def _brief(t: dict) -> dict:
 
 def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager, admin, admin_write) -> None:
     db = ctrl.db
+    attachments = agent.attachments
 
     def err(e) -> JSONResponse:
         return JSONResponse(status_code=getattr(e, "status", 400),
@@ -137,6 +141,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
 
     @app.delete("/autopilot/api/conversations/{cid}", dependencies=[Depends(admin_write)])
     async def delete_conversation(cid: int):
+        attachments.delete_for_conversation(cid)
         db.x("DELETE FROM messages WHERE conv_id=?", (cid,))
         db.x("DELETE FROM conversations WHERE id=?", (cid,))
         return {"ok": True}
@@ -147,20 +152,34 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         if not conv:
             return JSONResponse(status_code=404, content={"error": "not_found", "message": "unknown conversation"})
         content = (body.content or "").strip()
-        if not content or len(content) > MAX_MESSAGE:
-            return JSONResponse(status_code=400, content={"error": "invalid", "message": "empty or too long message"})
+        if len(content) > MAX_MESSAGE:
+            return JSONResponse(status_code=400, content={"error": "invalid", "message": "message is too long"})
+        try:
+            rows = attachments.select(body.attachments, conv_id=cid)
+        except ValueError as e:
+            return JSONResponse(status_code=400, content={"error": "invalid", "message": str(e)})
+        if not content and not rows:
+            return JSONResponse(status_code=400, content={"error": "invalid", "message": "empty message"})
         model = body.model if body.model in ROLES else conv["model"]
         now = time.time()
         first = db.one("SELECT COUNT(*) AS n FROM messages WHERE conv_id=?", (cid,))["n"] == 0
-        db.x("INSERT INTO messages(conv_id,role,content,created) VALUES(?,?,?,?)", (cid, "user", content, now))
-        title = " ".join(content.split())[:60] if first and conv["title"] == "New conversation" else conv["title"]
+        meta = {"attachments": [attachments.public(r) for r in rows]} if rows else {}
+        db.x("INSERT INTO messages(conv_id,role,content,created,meta) VALUES(?,?,?,?,?)",
+             (cid, "user", content, now, json.dumps(meta)))
+        if first and conv["title"] == "New conversation":
+            title = " ".join(content.split())[:60] or (rows[0]["name"][:60] if rows else "New conversation")
+        else:
+            title = conv["title"]
         db.x("UPDATE conversations SET updated=?, model=?, title=? WHERE id=?", (now, model, title, cid))
+        vision = bool(ctrl.settings.get().get("agent_vision"))
         history, used = [], 0
-        for m in reversed(db.all("SELECT role, content FROM messages WHERE conv_id=? ORDER BY id", (cid,))):
-            used += len(m["content"])
+        for m in reversed(db.all("SELECT role, content, meta FROM messages WHERE conv_id=? ORDER BY id", (cid,))):
+            mmeta = json.loads(m.get("meta") or "{}")
+            mrows = [r for r in (attachments.get(a.get("id", "")) for a in mmeta.get("attachments", [])) if r]
+            used += len(m["content"]) + sum(len(r.get("extracted") or "") + len(r["name"]) for r in mrows)
             if history and used > HISTORY_CHARS:
                 break
-            history.append({"role": m["role"], "content": m["content"]})
+            history.append({"role": m["role"], "content": attachments.chat_content(m["content"], mrows, vision)})
         history.reverse()
         memory = ctrl.settings.get()["memory"].strip()
         messages = ([{"role": "system", "content": "Notes from the owner (always apply):\n" + memory}] if memory else []) + history
@@ -293,7 +312,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     async def create_task(body: TaskBody):
         try:
             visual, shots = visual_prefs(body)
-            return await agent.create(body.prompt, body.model, body.repo, body.base, visual, shots)
+            return await agent.create(body.prompt, body.model, body.repo, body.base, visual, shots, body.attachments)
         except AgentError as e:
             return err(e)
 
@@ -308,7 +327,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     async def task_message(tid: int, body: FollowBody):
         try:
             visual, shots = visual_prefs(body)
-            return await agent.message(tid, body.text, body.model, visual, shots)
+            return await agent.message(tid, body.text, body.model, visual, shots, body.attachments)
         except AgentError as e:
             return err(e)
 

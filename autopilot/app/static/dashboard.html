@@ -109,7 +109,23 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .iconbtn{display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;border-radius:50%;padding:0;margin:0;background:transparent;color:var(--soft);border:1px solid var(--line2);cursor:pointer;flex:none}
 .iconbtn:hover{background:var(--raise)}
 #btnSend{width:34px;height:34px;border-radius:50%;padding:0;background:var(--accent);color:#111;display:inline-flex;align-items:center;justify-content:center;flex:none;font-size:0}
-#chatFile{display:none}
+#chatFile,#agFile{display:none}
+.atts{display:flex;flex-wrap:wrap;gap:6px;padding:5px 2px 7px}
+.atts:empty{display:none}
+.att{position:relative;display:flex;align-items:center;gap:7px;max-width:230px;min-height:40px;padding:5px 8px;border:1px solid var(--line2);border-radius:12px;background:var(--raise);font-size:12px;overflow:hidden}
+.att img{width:34px;height:34px;object-fit:cover;border-radius:7px;flex:none;background:#111}
+.att .ic{width:22px;height:22px;flex:none;color:var(--soft)}
+.att .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.att .sz{color:var(--muted);font-size:10.5px}
+.att .x{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;padding:0;background:#111d;border:0;color:var(--soft);font-size:13px;line-height:1;cursor:pointer}
+.att .bar{position:absolute;left:0;bottom:0;height:2px;background:var(--accent);transition:width .15s}
+.att.pending{opacity:.75}
+.att.failed{border-color:#ffb9a3}
+.att.failed .nm{color:#ffb9a3}
+.composer.drag{border-color:var(--accent);background:var(--raise)}
+.msgatts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
+.msgatts a{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line2);border-radius:9px;background:var(--panel);color:var(--text);text-decoration:none;font-size:11.5px}
+.msgatts img{width:30px;height:30px;object-fit:cover;border-radius:5px}
 .chatfoot{max-width:800px;width:calc(100% - 32px);margin:0 auto 12px;font-size:12px;color:var(--muted)}
 .chatfoot details summary{cursor:pointer;list-style:none;text-align:center}.chatfoot details[open] summary{text-align:left;margin-bottom:6px}
 /* agent: a conversation with an AI developer */
@@ -368,6 +384,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         <div><label>Max cost per GPU session (USD)</label><input data-k="max_session_usd" type="number" step="0.5" min="0.1"></div>
         <div><label>Agent task limits: minutes</label><input data-k="agent_max_minutes" type="number" min="1" max="240"></div>
         <div><label>Agent task limits: USD per task</label><input data-k="agent_max_usd" type="number" step="0.1" min="0"></div>
+        <div><label>Attachments: max MB per file</label><input data-k="attachment_max_mb" type="number" min="1" max="100"></div>
+        <div><label>Attachments: max files per message</label><input data-k="attachment_max_count" type="number" min="1" max="20"></div>
+        <div><label>Attachments: max MB per upload</label><input data-k="attachment_max_total_mb" type="number" min="1" max="500"></div>
+        <div><label>Attachments: image MB sent to model</label><input data-k="attachment_vision_max_mb" type="number" min="0" max="50"></div>
       </div>
       <div class="row" style="margin-top:14px"><button id="btnSave">Save settings</button><span class="note" id="saveNote"></span></div>
       <div class="note" id="profileNote"></div>
@@ -380,9 +400,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       </div>
       <div class="msgs" id="msgs"></div>
       <div class="composer">
+        <div class="atts" id="chatAtts" aria-live="polite"></div>
         <textarea id="chatIn" rows="1" placeholder="Message VELLUR AI…"></textarea>
         <div class="cbar">
-          <label class="iconbtn" for="chatFile" title="Attach text or code files"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></label><input type="file" id="chatFile" multiple>
+          <label class="iconbtn" for="chatFile" title="Attach images, PDFs, documents, code or 3D files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></label><input type="file" id="chatFile" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.json,.xml,.yaml,.yml,.toml,.py,.js,.ts,.tsx,.jsx,.css,.html,.sh,.sql,.zip,.glb,.gltf,.obj,.stl,.blend">
           <select id="chatModel" style="width:auto;border-radius:99px;padding:6px 10px;font-size:13px"></select>
           <span class="grow" id="chatFileNote"></span>
           <button id="btnSend" aria-label="Send"><svg class="ic" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
@@ -410,8 +431,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
           <select id="tBase" aria-label="Branch"><option value="">default branch</option></select>
         </div>
         <input id="agOther" placeholder="owner/name" autocomplete="off">
+        <div class="atts" id="agAtts" aria-live="polite"></div>
         <textarea id="agIn" rows="1" placeholder="Describe what you want built or changed…"></textarea>
         <div class="cbar">
+          <label class="iconbtn" for="agFile" title="Attach images, documents, data or 3D files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></label><input type="file" id="agFile" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.json,.xml,.yaml,.yml,.toml,.py,.js,.ts,.tsx,.jsx,.css,.html,.sh,.sql,.zip,.glb,.gltf,.obj,.stl,.blend">
           <details id="agTools"><summary title="Agent tools" aria-label="Agent tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/><circle cx="9" cy="6" r="2"/><circle cx="15" cy="12" r="2"/><circle cx="8" cy="18" r="2"/></svg></summary><div id="agToolsPanel">
             <label><input type="checkbox" id="agInspect" disabled> <span>AI visual inspection <small>(requires model image support below)</small></span></label>
             <label><input type="checkbox" id="agAutoShots" disabled> <span>Automatic screenshots</span></label>
@@ -548,6 +571,9 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     document.querySelectorAll("[data-k]").forEach(i => { const v = st[i.dataset.k]; if (i.type === "checkbox") i.checked = !!v; else i.value = v; });
     $("hHost").value = st.hyperai_ssh_host || ""; $("hPort").value = st.hyperai_ssh_port || "";
     const p = profiles[st.profile]; $("profileNote").textContent = p ? "Profile model: " + p.model + ", context " + p.context + " tokens. " + p.verified : "";
+    if (st.attachment_max_mb != null) ATT_MAX_MB = Math.max(1, Number(st.attachment_max_mb) || 25);
+    if (st.attachment_max_total_mb != null) ATT_MAX_MB = Math.min(ATT_MAX_MB, Math.max(1, Number(st.attachment_max_total_mb) || 60));
+    if (st.attachment_max_count != null) ATT_MAX = Math.max(1, Number(st.attachment_max_count) || 10);
   }
   document.querySelectorAll("[data-k]").forEach(i => i.addEventListener("input", () => { dirty = true; $("saveNote").textContent = "unsaved changes"; }));
   $("btnSave").onclick = async () => {
@@ -572,6 +598,75 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   const md = (t) => esc(t).split(/```/).map((part, i) => i % 2 ? "<pre>" + part.replace(/^[a-zA-Z0-9_+-]*\n/, "") + "</pre>"
     : part.replace(/`([^`\n]+)`/g, "<code>$1</code>").replace(/\*\*([^*\n]+)\*\*/g, "<b>$1</b>")).join("");
   const send = (path, method, body) => api(path, { method, body: body === undefined ? undefined : JSON.stringify(body) });
+  // ── attachments: upload once, then reference by id from chat or an agent task ────────────────
+  let ATT_MAX_MB = 25, ATT_MAX = 10;
+  const fmtSize = (n) => n >= 1048576 ? (n / 1048576).toFixed(n >= 10485760 ? 0 : 1) + " MB" : n >= 1024 ? Math.round(n / 1024) + " KB" : (n || 0) + " B";
+  const isImage = (a) => (a.mime || "").startsWith("image/") && a.mime !== "image/svg+xml";
+  function attIcon() { return '<svg class="ic" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><path d="M14 2v6h6"/></svg>'; }
+  function msgAtts(atts) {
+    if (!atts || !atts.length) return "";
+    return '<div class="msgatts">' + atts.map(a => `<a href="${esc(a.url || ("/autopilot/api/attachments/" + a.id + "/content"))}" target="_blank" rel="noopener">${isImage(a) ? `<img src="${esc(a.url)}" alt="">` : ""}${esc(a.name || "file")}</a>`).join("") + "</div>";
+  }
+  function renderAtts(el, list, rerender) {
+    el.innerHTML = (list || []).map((a, i) => {
+      const thumb = a.id && isImage(a) ? `<img src="${esc(a.url)}" alt="">` : attIcon();
+      const sub = a.error ? "tap to retry" : a.id ? fmtSize(a.size) : "uploading " + (a.progress || 0) + "%";
+      return `<div class="att ${a.pending ? "pending" : ""} ${a.error ? "failed" : ""}" data-i="${i}" title="${esc(a.name)}">${thumb}<div><div class="nm">${esc(a.name)}</div><div class="sz">${esc(sub)}</div></div><button class="x" data-x="${i}" aria-label="Remove ${esc(a.name)}">×</button>${a.pending ? `<i class="bar" style="width:${a.progress || 0}%"></i>` : ""}</div>`;
+    }).join("");
+    el.querySelectorAll("[data-x]").forEach(b => b.onclick = async (ev) => {
+      ev.stopPropagation(); const i = Number(b.dataset.x), a = list[i]; if (!a) return;
+      if (a.id) { try { await send("attachments/" + a.id, "DELETE"); } catch (e) {} }
+      a.removed = true; list.splice(i, 1); rerender();
+    });
+    el.querySelectorAll(".att.failed").forEach(b => b.onclick = () => {
+      const a = list[Number(b.dataset.i)]; if (!a || !a._file) return;
+      a.error = ""; a.pending = true; a.progress = 0; rerender(); uploadOne(a, rerender);
+    });
+  }
+  function uploadOne(a, rerender) {
+    return new Promise((resolve) => {
+      const x = new XMLHttpRequest();
+      x.open("POST", "/autopilot/api/attachments");
+      x.setRequestHeader("X-Vellur-Request", "1");
+      x.setRequestHeader("X-Filename", encodeURIComponent(a.name));
+      x.setRequestHeader("Content-Type", a._file.type || "application/octet-stream");
+      x.upload.onprogress = (e) => { if (e.lengthComputable) { a.progress = Math.round(e.loaded / e.total * 100); rerender(); } };
+      x.onload = () => {
+        let j = {}; try { j = JSON.parse(x.responseText || "{}"); } catch (e) {}
+        if (x.status >= 200 && x.status < 300) {
+          Object.assign(a, j.id ? j : (j.attachments || [])[0] || {});
+          a.pending = false; a.progress = 100;
+          if (a.removed) send("attachments/" + a.id, "DELETE").catch(() => {});
+        } else { a.pending = false; a.error = j.message || ("HTTP " + x.status); }
+        rerender(); resolve(a);
+      };
+      x.onerror = () => { a.pending = false; a.error = "network error"; rerender(); resolve(a); };
+      x.send(a._file);
+    });
+  }
+  async function addFiles(files, list, rerender, note) {
+    const picked = Array.from(files || []);
+    if (!picked.length) return;
+    if (list.length + picked.length > ATT_MAX) { note("At most " + ATT_MAX + " files per message."); return; }
+    const queued = [];
+    for (const f of picked) {
+      if (f.size > ATT_MAX_MB * 1048576) { note(f.name + " is larger than " + ATT_MAX_MB + " MB."); continue; }
+      const a = { name: f.name || "file", size: f.size, pending: true, progress: 0, _file: f };
+      list.push(a); queued.push(a);
+    }
+    rerender();
+    for (const a of queued) await uploadOne(a, rerender);
+    const bad = list.filter(a => a.error).length;
+    note(bad ? bad + " file(s) could not be uploaded." : list.length ? list.length + " file(s) ready." : "");
+  }
+  function wireComposer(el, input, list, rerender, note) {
+    input.onchange = () => { addFiles(input.files, list, rerender, note); input.value = ""; };
+    el.addEventListener("dragover", (e) => { if ([...(e.dataTransfer || {}).types || []].includes("Files")) { e.preventDefault(); el.classList.add("drag"); } });
+    el.addEventListener("dragleave", (e) => { if (!el.contains(e.relatedTarget)) el.classList.remove("drag"); });
+    el.addEventListener("drop", (e) => { if (e.dataTransfer && e.dataTransfer.files.length) { e.preventDefault(); el.classList.remove("drag"); addFiles(e.dataTransfer.files, list, rerender, note); } });
+    el.addEventListener("paste", (e) => { const f = [...((e.clipboardData || {}).files || [])]; if (f.length) { e.preventDefault(); addFiles(f, list, rerender, note); } });
+  }
+  const attsReady = (list) => list.every(a => a.id && !a.pending && !a.error);
   const ROLE_NAMES = ["vellur-coder", "vellur-chat", "vellur-max"];
   function fillModels(sel, value) { sel.innerHTML = ""; ROLE_NAMES.forEach(r => sel.add(new Option(r, r))); if (value) sel.value = value; }
   let VIEW = "chat";
@@ -585,42 +680,45 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => setView(b.dataset.view));
 
   // chat
-  let CONV = null, attached = [];
-  function addMsg(role, text) {
+  let CONV = null, chatAtts = [];
+  const renderChatAtts = () => renderAtts($("chatAtts"), chatAtts, renderChatAtts);
+  const clearChatAtts = () => { chatAtts.length = 0; $("chatFile").value = ""; renderChatAtts(); $("chatFileNote").textContent = ""; };
+  wireComposer($("chatCard").querySelector(".composer"), $("chatFile"), chatAtts, renderChatAtts,
+    (t) => { $("chatFileNote").textContent = t || ""; });
+  function addMsg(role, text, atts) {
     const d = document.createElement("div"); d.className = "m " + role;
     d.innerHTML = '<div class="who">' + (role === "user" ? "You" : "VELLUR AI") + '</div><div class="txt"></div>';
-    d.querySelector(".txt").innerHTML = md(text); $("msgs").appendChild(d); $("msgs").scrollTop = $("msgs").scrollHeight; return d.querySelector(".txt");
+    d.querySelector(".txt").innerHTML = md(text || "") + msgAtts(atts);
+    $("msgs").appendChild(d); $("msgs").scrollTop = $("msgs").scrollHeight; return d.querySelector(".txt");
   }
   async function loadConvs(selectId) {
+    clearChatAtts();
     const list = (await send("conversations", "GET")).conversations; const sel = $("convSel"); sel.innerHTML = "";
     list.forEach(c => sel.add(new Option(c.title, c.id)));
     if (!list.length) { CONV = null; $("msgs").innerHTML = '<div class="note">Ask anything, or attach a file to analyse.</div>'; fillModels($("chatModel"), "vellur-chat"); return; }
     await openConv(selectId || CONV || list[0].id);
   }
   async function openConv(id) {
+    clearChatAtts();
     const c = await send("conversations/" + id, "GET"); CONV = c.id; $("convSel").value = c.id; fillModels($("chatModel"), c.model);
-    $("msgs").innerHTML = ""; c.messages.forEach(m => addMsg(m.role, m.content));
+    $("msgs").innerHTML = ""; c.messages.forEach(m => addMsg(m.role, m.content, (m.meta || {}).attachments || []));
     if (!c.messages.length) $("msgs").innerHTML = '<div class="note">Ask anything, or attach a file to analyse.</div>';
   }
   $("convSel").onchange = () => openConv($("convSel").value);
   $("convNew").onclick = async () => { const c = await send("conversations", "POST", { model: $("chatModel").value }); await loadConvs(c.id); $("chatIn").focus(); };
   $("convDel").onclick = async () => { if (CONV && confirm("Delete this conversation?")) { await send("conversations/" + CONV, "DELETE"); CONV = null; await loadConvs(); } };
-  $("chatFile").onchange = async () => {
-    attached = []; let total = 0;
-    for (const f of $("chatFile").files) { const t = await f.text(); total += t.length; if (total > 200000) { $("chatFileNote").textContent = "Too large: 200 KB in total."; attached = []; $("chatFile").value = ""; return; } attached.push({ name: f.name, text: t }); }
-    $("chatFileNote").textContent = attached.length ? attached.length + " file(s) attached to the next message." : "";
-  };
   $("btnSend").onclick = async () => {
-    let text = $("chatIn").value.trim(); if (!text) return;
-    attached.forEach(f => { text += "\n\nFile `" + f.name + "`:\n```\n" + f.text + "\n```"; });
+    const text = $("chatIn").value.trim(); if (!text && !chatAtts.length) return;
+    if (!attsReady(chatAtts)) { $("chatFileNote").textContent = "Wait for the attachments to finish uploading."; return; }
+    const ids = chatAtts.map(a => a.id), shown = chatAtts.slice();
     $("btnSend").disabled = true;
     try {
       if (!CONV) { const c = await send("conversations", "POST", { model: $("chatModel").value }); CONV = c.id; $("msgs").innerHTML = ""; }
       if ($("msgs").querySelector(".note")) $("msgs").innerHTML = "";
-      $("chatIn").value = ""; attached = []; $("chatFile").value = ""; $("chatFileNote").textContent = "";
-      addMsg("user", text); const out = addMsg("assistant", "…"); let acc = "", errText = "";
+      $("chatIn").value = ""; chatAtts.length = 0; renderChatAtts(); $("chatFile").value = ""; $("chatFileNote").textContent = "";
+      addMsg("user", text, shown); const out = addMsg("assistant", "…"); let acc = "", errText = "";
       const r = await fetch("/autopilot/api/conversations/" + CONV + "/messages", { method: "POST", credentials: "same-origin",
-        headers: { "Content-Type": "application/json", "X-Vellur-Request": "1" }, body: JSON.stringify({ content: text, model: $("chatModel").value }) });
+        headers: { "Content-Type": "application/json", "X-Vellur-Request": "1" }, body: JSON.stringify({ content: text, model: $("chatModel").value, attachments: ids }) });
       if (!r.ok) { const j = await r.json().catch(() => ({})); throw new Error(j.message || ("HTTP " + r.status)); }
       const reader = r.body.getReader(), dec = new TextDecoder(); let buf = "", thinking = false;
       for (;;) { const { value, done } = await reader.read(); if (done) break; buf += dec.decode(value, { stream: true });
@@ -641,6 +739,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   // agent
   // ── agent: one conversation per task, live timeline from the server's event log ─────────────
   let TASK = null, TASKS = [], REPOS_LOADED = false, AGENT = {}, ES = null, LAST_EV = 0, CUR = null, RUN_T0 = 0, TICK = null, EXPLORE = null;
+  let agentAtts = [];
+  const renderAgentAtts = () => renderAtts($("agAtts"), agentAtts, renderAgentAtts);
+  wireComposer($("agComposer"), $("agFile"), agentAtts, renderAgentAtts, (t) => { $("agNote").textContent = t || ""; });
+  const clearAgentAtts = () => { agentAtts.length = 0; $("agFile").value = ""; renderAgentAtts(); };
   const PREF_CONTROLS = { agent_visual_inspection: "agInspect", agent_auto_screenshots: "agAutoShots", agent_auto_publish: "agAutoPublish", agent_auto_publish_main_repo: "agMainPublish" };
   let PREFS = null, PREF_PENDING = new Set();
   function syncAgentPrefs(st) {
@@ -717,7 +819,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   function renderEvent(e) {
     const d = e.data || {}, end = stick();
     if (e.kind !== "tool" || !toolView(d).explore) EXPLORE = null;
-    if (e.kind === "user") return put(div("m user", `<div class="txt">${esc(d.text)}</div>`), true);
+    if (e.kind === "user") return put(div("m user", `<div class="txt">${esc(d.text)}${msgAtts(d.attachments)}</div>`), true);
     if (e.kind === "text") { const t = mdx(d.text); return t ? put(div("m assistant", `<div class="txt">${t}</div>`), end) : null; }
     if (e.kind === "status" && d.state === "running") RUN_T0 = e.ts;
     if (e.kind === "status") return put(div("sysline", esc(d.text) + " · " + new Date(e.ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })), end);
@@ -833,7 +935,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     if (want && TASKS.some(t => t.id === want)) await openTask(want); else newTask();
   }
   function newTask() {
-    closeStream(); TASK = null; CUR = null; EXPLORE = null; try { sessionStorage.setItem("vellurTask", ""); } catch (e) {}
+    closeStream(); TASK = null; CUR = null; EXPLORE = null; clearAgentAtts(); try { sessionStorage.setItem("vellurTask", ""); } catch (e) {}
     const ex = ["Explain how this repository is organised and suggest 3 improvements (no changes).", "Find one real bug, fix it and add a test.", "Improve the mobile layout of the main page and show me before/after screenshots."];
     box().innerHTML = `<div class="agempty"><h3>What should we build?</h3><p>Pick a repository, describe the task in your own words and watch the agent work. Publishing depends on your preferences and server support.</p><div class="chips">${ex.map(x => `<button class="chip">${esc(x)}</button>`).join("")}</div>${AGENT.available === false ? `<div class="alert" style="margin-top:18px;text-align:left">${esc(AGENT.why || "The agent is not available.")}</div>` : ""}</div>`;
     box().querySelectorAll(".agempty .chip").forEach(c => c.onclick = () => { $("agIn").value = c.textContent; $("agIn").focus(); agGrow(); });
@@ -844,7 +946,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     header(); composer(); renderTasks(); loadPreview();
   }
   async function openTask(id) {
-    closeStream(); TASK = id; EXPLORE = null; LAST_EV = 0; RUN_T0 = 0; try { sessionStorage.setItem("vellurTask", String(id)); } catch (e) {}
+    closeStream(); TASK = id; EXPLORE = null; LAST_EV = 0; RUN_T0 = 0; clearAgentAtts(); try { sessionStorage.setItem("vellurTask", String(id)); } catch (e) {}
     let t; try { t = await send("agent/tasks/" + id, "GET"); } catch (e) { newTask(); return; }
     CUR = t; header(); composer(); renderTasks(); box().innerHTML = "";
     if (t.legacy) { renderLegacy(t); loadPreview(); return; }
@@ -1054,13 +1156,16 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   async function agSend() {
     if (CUR && !FINAL_STATES.includes(CUR.state)) { if (!confirm("Stop the agent now?")) return; await send("agent/tasks/" + TASK + "/cancel", "POST", {}); return; }
     if (!PREFS || PREF_PENDING.has("agent_visual_inspection") || PREF_PENDING.has("agent_auto_screenshots")) { $("agNote").textContent = "Wait for visual preferences to finish loading or saving."; return; }
-    const text = $("agIn").value.trim(); if (!text) return; $("agNote").textContent = ""; $("agSend").disabled = true;
+    const text = $("agIn").value.trim(); if (!text) return;
+    if (!attsReady(agentAtts)) { $("agNote").textContent = "Wait for the attachments to finish uploading."; return; }
+    const ids = agentAtts.map(a => a.id);
+    $("agNote").textContent = ""; $("agSend").disabled = true;
     try {
       if (!CUR) {
-        const t = await send("agent/tasks", "POST", { prompt: text, model: $("tModel").value, repo: repoValue(), base: $("tBase").value, visual_inspection: $("agInspect").checked, auto_screenshots: $("agAutoShots").checked });
-        $("agIn").value = ""; agGrow(); try { AGENT = await send("agent", "GET"); TASKS = AGENT.tasks || []; } catch (e) {} await openTask(t.id);
+        const t = await send("agent/tasks", "POST", { prompt: text, model: $("tModel").value, repo: repoValue(), base: $("tBase").value, visual_inspection: $("agInspect").checked, auto_screenshots: $("agAutoShots").checked, attachments: ids });
+        $("agIn").value = ""; agGrow(); clearAgentAtts(); try { AGENT = await send("agent", "GET"); TASKS = AGENT.tasks || []; } catch (e) {} await openTask(t.id);
       } else {
-        await send("agent/tasks/" + TASK + "/messages", "POST", { text, model: $("tModel").value, visual_inspection: $("agInspect").checked, auto_screenshots: $("agAutoShots").checked }); $("agIn").value = ""; agGrow();
+        await send("agent/tasks/" + TASK + "/messages", "POST", { text, model: $("tModel").value, visual_inspection: $("agInspect").checked, auto_screenshots: $("agAutoShots").checked, attachments: ids }); $("agIn").value = ""; agGrow(); clearAgentAtts();
         CUR = await send("agent/tasks/" + TASK, "GET"); header(); composer();
         await catchUp(); live();
       }

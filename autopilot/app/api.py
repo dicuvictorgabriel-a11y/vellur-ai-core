@@ -69,6 +69,7 @@ class ChatBody(BaseModel):
 def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | None = None,
                 router=None, agent=None) -> FastAPI:
     from .agent import AgentManager
+    from .attachments import register as register_attachments
     from .router import Router
     from .workspace import register as register_workspace
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -313,6 +314,7 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
         ctrl.db.event("info", "check", f"provider check {name}", result=out)
         return out
 
+    register_attachments(app, ctrl, agent.attachments, admin, admin_write)
     register_workspace(app, ctrl, router, agent, admin, admin_write)
 
     return app

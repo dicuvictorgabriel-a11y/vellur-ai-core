@@ -114,6 +114,9 @@ class Settings:
             "idle_timeout_min": (5, 240), "max_session_hours": (0.25, 24), "hyperai_ssh_port": (0, 65535),
             "hyperai_included_hours": (0, 1000), "hyperai_hourly_after_usd": (0, 10),
             "vast_min_reliability": (0.5, 1.0), "vast_disk_gb": (30, 500),
+            "attachment_max_mb": (1, 100), "attachment_max_count": (1, 20),
+            "attachment_max_total_mb": (1, 500), "attachment_max_text_chars": (1000, 500000),
+            "attachment_vision_max_mb": (0, 50),
         }
         for k, (lo, hi) in rules.items():
             if k in clean and not (lo <= clean[k] <= hi):

@@ -33,6 +33,7 @@ KEEP_TASKS = 12
 MAX_EVENT = 6000          # characters kept per string field of an event (tool output, file contents)
 MAX_SHOT = 4 * 1024 * 1024
 MAX_SOURCE = 400 * 1024 * 1024
+MAX_ATTACHMENT = 100 * 1024 * 1024
 MAX_DIFF = 2 * 1024 * 1024
 MAX_FILE = 5 * 1024 * 1024
 MAX_FILES_TOTAL = 30 * 1024 * 1024
@@ -210,7 +211,7 @@ def initialize_repo(repo):
         git(repo, "init", "-q", "-b", "main")
         with open(os.path.join(repo, ".git", "info", "exclude"), "a") as f:
             f.write("\n__pycache__/\n*.pyc\nnode_modules/\n.pytest_cache/\n.mypy_cache/\n.ruff_cache/\n.venv/\n"
-                    ".next/\n.turbo/\n.cache/\n.DS_Store\n")
+                    ".next/\n.turbo/\n.cache/\n.DS_Store\n.vellur/attachments/\n")
         git(repo, "add", "-A")
         git(repo, "commit", "-q", "--allow-empty", "-m", "baseline")
         git(repo, "tag", BASE)
@@ -1054,6 +1055,27 @@ class H(BaseHTTPRequestHandler):
             safe_extract(self.body(MAX_SOURCE), repo)
             initialize_repo(repo)
             return self.send(200, {"ok": True})
+        if method == "PUT" and action == "attachments":
+            if t["state"] == "running":
+                return self.send(409, {"error": "cannot add attachments while the workspace is running"})
+            if len(parts) < 4:
+                return self.send(400, {"error": "missing file name"})
+            name = os.path.basename(unquote(parts[3])).strip().replace("\x00", "")
+            if not name or name in (".", "..") or len(name) > 180:
+                return self.send(400, {"error": "invalid file name"})
+            data = self.body(MAX_ATTACHMENT)
+            if not data:
+                return self.send(400, {"error": "empty file"})
+            folder = os.path.join(repo, ".vellur", "attachments")
+            os.makedirs(folder, mode=0o700, exist_ok=True)
+            target = os.path.join(folder, name)
+            if not os.path.realpath(target).startswith(os.path.realpath(folder) + os.sep):
+                return self.send(400, {"error": "invalid file name"})
+            with open(target + ".tmp", "wb") as f:
+                f.write(data)
+            os.replace(target + ".tmp", target)
+            os.chmod(target, 0o600)
+            return self.send(200, {"ok": True, "path": f".vellur/attachments/{name}", "size": len(data)})
         if method == "POST" and action == "start":
             if t["state"] != "created":
                 return self.send(409, {"error": "already started"})

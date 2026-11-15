@@ -19,6 +19,7 @@ from urllib.parse import quote
 
 import httpx
 
+from .attachments import AttachmentStore
 from .config import ROLES
 from .lifecycle import Controller
 from .router import Router
@@ -285,6 +286,7 @@ class AgentManager:
         self._jobs: dict[int, asyncio.Task] = {}
         self.activity: dict[int, list] = {}      # processes running right now in each task (from the runner)
         self.previews: dict[str, tuple] = {}     # preview link token -> (task id, expiry); minted only for a logged-in owner
+        self.attachments = AttachmentStore(ctrl)
 
     # ── helpers ─────────────────────────────────────────────────────────────────────────────────
     def available(self) -> tuple:
@@ -383,7 +385,7 @@ class AgentManager:
 
     # ── API ─────────────────────────────────────────────────────────────────────────────────────
     async def create(self, prompt: str, model: str, repo: str = "", base: str = "", visual_inspection: bool = False,
-                     auto_screenshots: bool = False) -> dict:
+                     auto_screenshots: bool = False, attachments: Optional[list[str]] = None) -> dict:
         prompt, repo, base = (prompt or "").strip(), (repo or "").strip(), (base or "").strip()
         if not 5 <= len(prompt) <= 20000:
             raise AgentError("invalid", "describe the task (5–20000 characters)")
@@ -396,17 +398,22 @@ class AgentManager:
         if visual_inspection and not self.ctrl.settings.get().get("agent_vision"):
             raise AgentError("vision_unavailable", "Enable image support for the selected model and its fallbacks before requesting AI visual inspection")
         self._check_can_run()
+        try:
+            rows = self.attachments.select(attachments or [])
+        except ValueError as e:
+            raise AgentError("invalid", str(e))
         now = time.time()
         cur = self.db.x("INSERT INTO tasks(created,updated,state,repo,base,model,prompt,outcome,runs) VALUES(?,?,?,?,?,?,?,?,?)",
                         (now, now, "queued", repo, base, model, prompt, "", 1))
         tid = cur.lastrowid
-        self._ev(tid, 1, "user", text=prompt)
+        self.attachments.select([r["id"] for r in rows], task_id=tid)
+        self._ev(tid, 1, "user", text=prompt, attachments=[self.attachments.public(r) for r in rows])
         self.db.event("info", "agent", f"task {tid} created", repo=repo, model=model)
         self._jobs[tid] = asyncio.create_task(self._drive(tid, prompt, first=True, visual_inspection=visual_inspection, auto_screenshots=auto_screenshots))
         return self.task(tid)
 
     async def message(self, tid: int, text: str, model: Optional[str] = None, visual_inspection: bool = False,
-                      auto_screenshots: bool = False) -> dict:
+                      auto_screenshots: bool = False, attachments: Optional[list[str]] = None) -> dict:
         """Follow-up: continue the same OpenCode session in the same workspace (the agent keeps its context)."""
         t = self.task(tid)
         if not t:
@@ -423,9 +430,13 @@ class AgentManager:
         if visual_inspection and not self.ctrl.settings.get().get("agent_vision"):
             raise AgentError("vision_unavailable", "Enable image support for the selected model and its fallbacks before requesting AI visual inspection")
         self._check_can_run()
+        try:
+            rows = self.attachments.select(attachments or [], task_id=tid)
+        except ValueError as e:
+            raise AgentError("invalid", str(e))
         run = int(t["runs"] or 1) + 1
         self._set(tid, state="queued", runs=run, error="", outcome="", model=model or t["model"], ended=None)
-        self._ev(tid, run, "user", text=text)
+        self._ev(tid, run, "user", text=text, attachments=[self.attachments.public(r) for r in rows])
         self._jobs[tid] = asyncio.create_task(self._drive(tid, text, first=False, visual_inspection=visual_inspection, auto_screenshots=auto_screenshots))
         return self.task(tid)
 
@@ -499,18 +510,27 @@ class AgentManager:
                     finally:
                         await gh.c.aclose()
                     self._set(tid, base=base, base_sha=sha)
-                await self._runner("POST", "/tasks", json={"id": tid, "prompt": self._first_prompt(prompt, t["repo"]) + (VISUAL_PROMPT if visual_inspection else ""),
+                images = bool(self.db.one("SELECT 1 FROM attachments WHERE task_id=? AND kind='image'", (tid,)))
+                vision = bool(visual_inspection or (images and st.get("agent_vision")))
+                manifest = self._attachment_manifest(tid, vision)
+                await self._runner("POST", "/tasks", json={"id": tid, "prompt": self._first_prompt(prompt, t["repo"]) + manifest + (VISUAL_PROMPT if visual_inspection else ""),
                                                            "model": t["model"], "proxy_url": self.env.agent_proxy_url,
                                                            "proxy_token": token, "max_minutes": st["agent_max_minutes"],
-                                                           "vision": visual_inspection, "auto_screenshots": auto_screenshots})
+                                                           "vision": vision,
+                                                           "auto_screenshots": auto_screenshots})
                 if source is not None:
                     await self._runner("PUT", f"/tasks/{tid}/source", content=source)
+                await self._deliver_attachments(tid)
                 await self._runner("POST", f"/tasks/{tid}/start")
             else:
+                images = bool(self.db.one("SELECT 1 FROM attachments WHERE task_id=? AND kind='image'", (tid,)))
+                vision = bool(visual_inspection or (images and st.get("agent_vision")))
+                manifest = await self._deliver_attachments(tid, vision)
                 await self._runner("POST", f"/tasks/{tid}/message", json={
-                    "prompt": prompt + FOLLOWUP_SUFFIX + (VISUAL_PROMPT if visual_inspection else ""),
+                    "prompt": prompt + FOLLOWUP_SUFFIX + manifest + (VISUAL_PROMPT if visual_inspection else ""),
                     "model": self.task(tid)["model"], "proxy_url": self.env.agent_proxy_url,
-                    "proxy_token": token, "max_minutes": st["agent_max_minutes"], "vision": visual_inspection,
+                    "proxy_token": token, "max_minutes": st["agent_max_minutes"],
+                    "vision": vision,
                     "auto_screenshots": auto_screenshots})
             started = time.time()
             self._set(tid, state="running", started=t["started"] or started)
@@ -568,6 +588,25 @@ class AgentManager:
             self._ev(tid, run, "error", message=e.message)
         finally:
             self.router.revoke_tag(tag)
+
+    def _attachment_rows(self, tid: int) -> list[dict]:
+        rows = self.db.all("SELECT * FROM attachments WHERE task_id=? ORDER BY created,id", (tid,))
+        for row in rows:
+            row["meta"] = json.loads(row.get("meta") or "{}")
+        return rows
+
+    def _attachment_manifest(self, tid: int, vision: bool = True) -> str:
+        return self.attachments.prompt_manifest(self._attachment_rows(tid), vision)
+
+    async def _deliver_attachments(self, tid: int, vision: bool = True) -> str:
+        rows = self._attachment_rows(tid)
+        for row in rows:
+            try:
+                data = self.attachments.content(row)
+            except OSError as e:
+                raise AgentError("attachment", f"attachment {row['name']} is no longer available: {e}", 410)
+            await self._runner("PUT", f"/tasks/{tid}/attachments/{quote(self.attachments.workspace_name(row), safe='')}", content=data)
+        return self.attachments.prompt_manifest(rows, vision)
 
     async def _auto_publish(self, tid: int) -> None:
         t = self.task(tid)

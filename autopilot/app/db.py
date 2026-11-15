@@ -58,6 +58,13 @@ CREATE TABLE IF NOT EXISTS task_events (
   kind TEXT NOT NULL, data TEXT NOT NULL DEFAULT '{}'
 );
 CREATE INDEX IF NOT EXISTS task_events_task ON task_events(task_id, id);
+CREATE TABLE IF NOT EXISTS attachments (
+  id TEXT PRIMARY KEY, name TEXT NOT NULL, mime TEXT NOT NULL, kind TEXT NOT NULL, size INTEGER NOT NULL,
+  sha256 TEXT NOT NULL, created REAL NOT NULL, conv_id INTEGER, task_id INTEGER,
+  extracted TEXT DEFAULT '', meta TEXT DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS attachments_conv ON attachments(conv_id);
+CREATE INDEX IF NOT EXISTS attachments_task ON attachments(task_id);
 """
 
 # Columns added after the first release (ALTER TABLE ... ADD COLUMN is skipped when the column exists).
