@@ -343,6 +343,14 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         if not db.one("SELECT id FROM tasks WHERE id=?", (body.task_id,)):
             return JSONResponse(status_code=404, content={"error": "not_found", "message": "unknown task"})
         try:
+            # Nobody is there to confirm an agent's image: a paid model whose price is unknown cannot be checked against
+            # the per-image limit before it is called, so the agent may only use it once a manual price is set.
+            est = images.estimate(body.prompt, "vellur-image", body.size, body.n, st.get("agent_image_max_usd"))
+            if not est["cost_known"]:
+                return JSONResponse(status_code=402, content={
+                    "error": "image_price_unknown",
+                    "message": "The image model has no known price per image, so the agent cannot check it against its "
+                               "limit. Set a manual image price in Models to let agent tasks use it."})
             return await images.generate(body.prompt, "vellur-image", body.size, body.n, True,
                                          f"task:{body.task_id}", task_id=body.task_id,
                                          max_usd=st.get("agent_image_max_usd"))

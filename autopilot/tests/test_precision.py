@@ -24,6 +24,13 @@ def test_geometry_and_svg_export():
     assert " C " in path.attrib["d"]
 
 
+def test_studio_document_editing_and_project_files():
+    if not shutil.which("node"):
+        pytest.skip("node not installed")
+    r = subprocess.run(["node", "--test", str(ROOT / "tests/precision_studio.test.js")], capture_output=True, text=True)
+    assert r.returncode == 0, r.stdout + r.stderr
+
+
 async def test_studio_requires_login_and_serves_only_known_assets(rig):
     app = build_admin(rig())
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://ap") as client:

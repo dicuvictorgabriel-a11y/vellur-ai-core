@@ -267,3 +267,26 @@ async def test_status_lists_verified_image_models_without_prices(env):
     assert "openrouter:black-forest-labs/flux.2-klein-4b" in targets
     assert all("price" not in m for m in st["suggested"])
     assert st["modalities"] == ["image"]
+
+
+async def test_agent_cannot_spend_on_an_image_model_with_unknown_price(rig):
+    ctrl = rig(agent_runner_secret="r" * 32)
+    up = OpenRouterMock()
+    router = Router(ctrl, transport=httpx.MockTransport(up.handler))
+    router.update_provider("openrouter", {"api_key": "sk-or-v1-abcdefgh1234"})
+    await router.catalog("openrouter")
+    ctrl.settings.update({"routes": {"vellur-image": ["openrouter:" + FLUX]}, "agent_image_generation": True})
+    app = build_admin(ctrl, router=router, agent=AgentManager(ctrl, router))
+    client = httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="https://ai.example")
+    now = 1_800_000_000.0
+    tid = ctrl.db.x("INSERT INTO tasks(created,updated,state,model,prompt) VALUES(?,?,?,?,?)",
+                    (now, now, "running", "vellur-coder", "draw")).lastrowid
+    r = await client.post("/autopilot/api/agent/images", headers={"X-Runner-Secret": "r" * 32},
+                          json={"prompt": "a cube", "task_id": tid})
+    assert r.status_code == 402 and r.json()["error"] == "image_price_unknown"
+    assert gen_calls(up) == []
+    ctrl.settings.update({"image_prices": {"openrouter:" + FLUX: 0.02}})
+    r = await client.post("/autopilot/api/agent/images", headers={"X-Runner-Secret": "r" * 32},
+                          json={"prompt": "a cube", "task_id": tid})
+    assert r.status_code == 200, r.text
+    assert gen_calls(up)[0]["modalities"] == ["image"]

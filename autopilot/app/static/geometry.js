@@ -93,5 +93,50 @@
     const width = Math.max(0, Number(project.thickness) || 0);
     return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${project.width} ${project.height}" width="${project.width}" height="${project.height}"><path d="${d}" fill="#20252b" fill-rule="evenodd" stroke="#20252b" stroke-width="${num(width)}" stroke-linejoin="round"/></svg>`;
   }
-  return { trace, pathData, svg };
+  // ── editing a document: insert / delete points, save and open project files ─────────────────
+  function segmentDistance(p, a, b) {
+    const dx = b.x - a.x, dy = b.y - a.y, len = dx * dx + dy * dy;
+    const t = len ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / len)) : 0;
+    const x = a.x + t * dx, y = a.y + t * dy;
+    return Math.hypot(p.x - x, p.y - y);
+  }
+  // Insert `p` into the closest edge of the closest contour; returns {contour, point} indices of the new point.
+  function insertPoint(contours, p) {
+    let best = null;
+    contours.forEach((c, ci) => c.forEach((a, i) => {
+      const d = segmentDistance(p, a, c[(i + 1) % c.length]);
+      if (!best || d < best.d) best = { d, ci, at: i + 1 };
+    }));
+    if (!best) return null;
+    contours[best.ci].splice(best.at, 0, { x: p.x, y: p.y });
+    return { contour: best.ci, point: best.at };
+  }
+  // A closed contour keeps at least 3 points; deleting below that removes the whole contour.
+  function deletePoint(contours, ci, pi) {
+    const c = contours[ci]; if (!c || !c[pi]) return false;
+    if (c.length > 3) c.splice(pi, 1); else contours.splice(ci, 1);
+    return true;
+  }
+  const FORMAT = 'vellur-precision';
+  function serialize(project, source) {
+    return JSON.stringify({ format: FORMAT, version: 1, saved: new Date().toISOString(), width: project.width, height: project.height,
+      smoothness: project.smoothness, thickness: project.thickness, contours: project.contours, source: source || '' });
+  }
+  // Validates an opened file strictly: it may come from anywhere, so only known fields and sane numbers are accepted.
+  function parseProject(text) {
+    let d; try { d = JSON.parse(text); } catch (e) { throw new Error('This file is not a VELLUR Precision project.'); }
+    if (!d || d.format !== FORMAT || d.version !== 1) throw new Error('This file is not a VELLUR Precision project.');
+    const n = (v, lo, hi) => { const x = Number(v); if (!Number.isFinite(x) || x < lo || x > hi) throw new Error('The project file is damaged.'); return x; };
+    const width = n(d.width, 1, 8192), height = n(d.height, 1, 8192);
+    if (!Array.isArray(d.contours) || d.contours.length > 5000) throw new Error('The project file is damaged.');
+    let total = 0;
+    const contours = d.contours.map(c => {
+      if (!Array.isArray(c) || c.length < 3) throw new Error('The project file is damaged.');
+      total += c.length; if (total > 200000) throw new Error('The project is too large.');
+      return c.map(p => ({ x: n(p && p.x, -1e5, 1e5), y: n(p && p.y, -1e5, 1e5) }));
+    });
+    const source = typeof d.source === 'string' && /^data:image\/(png|jpeg);base64,[A-Za-z0-9+/=]+$/.test(d.source) ? d.source : '';
+    return { project: { width, height, contours, smoothness: n(d.smoothness ?? .55, 0, 1), thickness: n(d.thickness ?? 0, 0, 100) }, source };
+  }
+  return { trace, pathData, svg, insertPoint, deletePoint, serialize, parseProject };
 });
