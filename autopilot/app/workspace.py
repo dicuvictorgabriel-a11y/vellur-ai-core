@@ -407,6 +407,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         by_day = db.all("SELECT date(ts,'unixepoch') AS day, COUNT(*) AS requests, SUM(cost_usd) AS cost_usd, "
                         "SUM(in_tokens+out_tokens) AS tokens FROM usage WHERE month=? GROUP BY day ORDER BY day", (m,))
         by_use = db.all("SELECT CASE WHEN tag LIKE 'task:%' THEN 'agent tasks' WHEN tag LIKE 'chat:%' THEN 'workspace chat' "
+                        "WHEN tag='image' OR tag LIKE 'image:%' THEN 'image generation' "
                         "WHEN tag='probe' THEN 'tests' ELSE 'API clients (OpenCode, apps)' END AS use, COUNT(*) AS requests, "
                         "SUM(cost_usd) AS cost_usd FROM usage WHERE month=? GROUP BY use ORDER BY cost_usd DESC", (m,))
         subs = [{"name": p["display"], "usd": p["monthly_usd"]} for p in router.providers().values()

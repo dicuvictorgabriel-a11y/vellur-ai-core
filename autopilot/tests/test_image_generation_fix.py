@@ -290,3 +290,23 @@ async def test_agent_cannot_spend_on_an_image_model_with_unknown_price(rig):
                           json={"prompt": "a cube", "task_id": tid})
     assert r.status_code == 200, r.text
     assert gen_calls(up)[0]["modalities"] == ["image"]
+
+
+async def test_every_suggested_image_model_can_be_saved_as_the_image_route(env):
+    from app.model_intel import SUGGESTED_IMAGE_MODELS
+    ctrl, router, up, client = await env(FLUX)
+    for m in SUGGESTED_IMAGE_MODELS:
+        r = await client.put("/autopilot/api/llm/routes", headers=WRITE, json={"vellur-image": [m["target"]]})
+        assert r.status_code == 200, r.text
+        assert ctrl.settings.get()["routes"]["vellur-image"] == [m["target"]]
+
+
+async def test_chat_images_are_counted_as_image_generation_in_costs(env):
+    ctrl, router, up, client = await env(FLUX)
+    conv = (await client.post("/autopilot/api/conversations", headers=WRITE, json={})).json()
+    r = await client.post("/autopilot/api/images/generate", headers=WRITE,
+                          json={"prompt": "x", "confirm": True, "conversation_id": conv["id"]})
+    assert r.status_code == 200
+    uses = {u["use"]: u for u in (await client.get("/autopilot/api/costs", headers=ADMIN)).json()["by_use"]}
+    assert uses["image generation"]["cost_usd"] == pytest.approx(0.0123)
+    assert "API clients (OpenCode, apps)" not in uses

@@ -129,6 +129,7 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .mmeta button{background:transparent;border:1px solid transparent;color:var(--faint);padding:4px 8px;border-radius:6px;font:500 11px var(--mono);min-height:0}
 .mmeta button:hover{border-color:var(--line2);color:var(--text);opacity:1}
 .m.assistant .mmeta{opacity:.0;transition:opacity .15s}.m.assistant:hover .mmeta,.m.assistant:focus-within .mmeta,.m.assistant.last .mmeta{opacity:1}
+@media (hover:none){.m.assistant .mmeta{opacity:1}}
 .typing{display:inline-flex;gap:4px;padding:8px 0}.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
 .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
 @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
