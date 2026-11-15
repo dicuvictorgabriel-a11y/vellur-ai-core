@@ -9,6 +9,7 @@ Provider keys are write-only: stored on the server, never returned to the browse
 """
 from __future__ import annotations
 
+import asyncio
 import json
 import re
 import secrets
@@ -84,11 +85,17 @@ def error_response(code: str, message: str, status: int = 503) -> RouterResponse
 class _Sniffer:
     """Finds the OpenAI `usage` object in a response while it streams through, without altering it."""
 
+    GEN_RE = re.compile(rb'"id"\s*:\s*"(gen-[A-Za-z0-9_-]{4,100})"')
+
     def __init__(self, sse: bool):
-        self.sse, self.buf, self.found, self.total = sse, b"", None, 0
+        self.sse, self.buf, self.found, self.total, self.gen_id = sse, b"", None, 0, ""
 
     def feed(self, chunk: bytes) -> None:
         self.total += len(chunk)
+        if not self.gen_id:          # OpenRouter's generation id: lets us ask for the real cost if usage never arrives
+            m = self.GEN_RE.search(chunk)
+            if m:
+                self.gen_id = m.group(1).decode()
         if self.sse:
             self.buf += chunk
             *lines, self.buf = self.buf.split(b"\n")
@@ -132,6 +139,7 @@ class Router:
         self.client = httpx.AsyncClient(transport=transport,
                                         timeout=httpx.Timeout(connect=15, read=900, write=120, pool=30))
         self.tokens: dict[str, str] = {}
+        self._reconciling: set = set()
 
     # ── providers ───────────────────────────────────────────────────────────────────────────────
     def providers(self) -> dict:
@@ -447,18 +455,50 @@ class Router:
         return 0.0, "unpriced"
 
     def record(self, role: str, target: str, info: dict, ok: bool, status: int, usage: Optional[dict],
-               t0: float, tag: str, error: str = "", images: int = 0) -> None:
+               t0: float, tag: str, error: str = "", images: int = 0) -> int:
         u = dict(usage or {})
         if images and not u.get("images"):
             u["images"] = images
-        cost, source = self.cost(target, info, u) if ok else (0.0, "")
+        # no usage at all (a stream cut before its last chunk) is "unknown", never a $0 estimate
+        cost, source = self.cost(target, info, u if (usage is not None or images) else None) if ok else (0.0, "")
         cached = ((u.get("prompt_tokens_details") or {}).get("cached_tokens") or 0) if isinstance(u.get("prompt_tokens_details"), dict) else 0
         now = self.ctrl.clock()
-        self.db.x("INSERT INTO usage(ts,month,role,target,provider,model,ok,status,in_tokens,out_tokens,cached_tokens,"
-                  "cost_usd,cost_source,latency_ms,tag,error,images) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                  (now, month_key(now), role, target, info["provider"], info["model"], 1 if ok else 0, status,
-                   int(u.get("prompt_tokens") or 0), int(u.get("completion_tokens") or 0), int(cached), cost, source,
-                   int((time.monotonic() - t0) * 1000), tag, error[:300], int(u.get("images") or 0)))
+        cur = self.db.x("INSERT INTO usage(ts,month,role,target,provider,model,ok,status,in_tokens,out_tokens,cached_tokens,"
+                        "cost_usd,cost_source,latency_ms,tag,error,images) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
+                        (now, month_key(now), role, target, info["provider"], info["model"], 1 if ok else 0, status,
+                         int(u.get("prompt_tokens") or 0), int(u.get("completion_tokens") or 0), int(cached), cost, source,
+                         int((time.monotonic() - t0) * 1000), tag, error[:300], int(u.get("images") or 0)))
+        return int(getattr(cur, "lastrowid", 0) or 0)
+
+    # ── reconciliation: a stream stopped early never receives its usage, but the provider still bills it ─────
+    RECONCILE_DELAYS = (3, 10, 30, 90)
+
+    def reconcile_later(self, row_id: int, info: dict, gen_id: str) -> None:
+        if not (row_id and gen_id and info.get("provider") == "openrouter"):
+            return
+        task = asyncio.get_running_loop().create_task(self._reconcile(row_id, info, gen_id))
+        self._reconciling.add(task)
+        task.add_done_callback(self._reconciling.discard)
+
+    async def _reconcile(self, row_id: int, info: dict, gen_id: str) -> None:
+        """Ask OpenRouter what generation `gen_id` really cost (its stats appear a few seconds later)."""
+        base, key = info["cfg"]["base_url"], self.key(info["provider"])
+        for delay in self.RECONCILE_DELAYS:
+            await asyncio.sleep(delay)
+            try:
+                r = await self.client.get(f"{base}/generation", params={"id": gen_id},
+                                          headers={"Authorization": f"Bearer {key}"}, timeout=20)
+                data = r.json().get("data") if r.status_code == 200 else None
+            except (httpx.HTTPError, ValueError, AttributeError):
+                data = None
+            cost = provider_usd((data or {}).get("total_cost")) if isinstance(data, dict) else None
+            if cost is None:
+                continue
+            tin = int(data.get("tokens_prompt") or data.get("native_tokens_prompt") or 0)
+            tout = int(data.get("tokens_completion") or data.get("native_tokens_completion") or 0)
+            self.db.x("UPDATE usage SET cost_usd=?, cost_source='provider', in_tokens=MAX(in_tokens,?), "
+                      "out_tokens=MAX(out_tokens,?) WHERE id=?", (cost, tin, tout, row_id))
+            return
 
     def tag_cost(self, tag: str) -> float:
         r = self.db.one("SELECT SUM(cost_usd) AS c FROM usage WHERE tag=?", (tag,))
@@ -569,7 +609,10 @@ class Router:
                 await r.aclose()
                 if scope:
                     await scope.__aexit__(None, None, None)
-                self.record(role, target, info, 200 <= status < 300, status, sniff.usage(), t0, tag)
+                usage = sniff.usage()
+                row = self.record(role, target, info, 200 <= status < 300, status, usage, t0, tag)
+                if 200 <= status < 300 and provider_usd((usage or {}).get("cost")) is None:
+                    self.reconcile_later(row, info, sniff.gen_id)
 
         out_headers = {k: v for k, v in r.headers.items() if k.lower() not in HOP}
         out_headers["X-Vellur-Target"] = target
