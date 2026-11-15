@@ -104,3 +104,25 @@ appears while the agent works, refreshes after a follow-up, sandbox isolation, a
 and its refusal when the branch moved, the updater's install / skip / restore logic with a fake installer. Not tested
 here: a real model, a preview that needs a dev server for a large app (memory limit of the agent container is 2 GB),
 the systemd timer on the VPS.
+
+## Workspace persistence (16.11.2026)
+
+Incident: a running task later failed with "the workspace of this task no longer exists on the server (only the
+latest tasks are kept)". That one message covered four different situations, and two of them did not lose any files:
+
+| Cause | Before | Now |
+|---|---|---|
+| The runner kept only the 12 most recently *finished* workspaces and deleted older ones after every request, even when the owner was still continuing that conversation | files deleted | The runner never deletes by itself. The controller removes a workspace only when the task is finished, not running here, not among the 12 most recently **used** and unused for 14 days; the runner refuses deletion of an active task under the same lock that starts runs. |
+| The agent container was recreated during the first run (deploy, `vac agent enable`): the OpenCode session id was saved only at the end, so the follow-up was refused with "no session" | files intact, conversation unusable | The session id is saved as soon as it is known. If it is still missing, the follow-up starts a fresh session **in the same workspace** with a recap of the earlier work. |
+| A folder without a readable `state.json` (restart between creating and starting a task) was silently ignored | files intact, invisible | It is loaded as a failed task, so it can be continued or recovered. |
+| An older runner image without a newer route (the agent image is rebuilt only when the server has 2.5 GB free RAM) answered "not found" | reported as a lost workspace | Reported as "the agent workspace runs an older version … `sudo vac agent enable`". |
+
+Also: a "new" task never wipes an existing folder with the same id (it is moved to `t<id>.preserved-<time>`); during a
+run the controller saves the workspace's changes every 60 s; when a workspace really is gone, the conversation offers
+**Recover into a new task**, which re-applies the last saved changes (text files; binary files are not in the saved
+diff) onto a fresh snapshot. `sudo vac agent workspaces` lists what the persistent volume contains (read-only).
+
+Tests: `tests/test_runner_workspaces.py` runs the real runner with a fake OpenCode (no automatic deletion beyond the old
+limit, active task protected, concurrent delete/follow-up, restart mid-run keeps files and session, folder without
+state, distinct 404 codes, patch recovery); `tests/test_agent.py` covers the controller side (fresh-session continue,
+recovery, outdated runner, retention policy).

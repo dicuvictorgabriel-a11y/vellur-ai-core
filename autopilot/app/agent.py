@@ -30,6 +30,9 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[A-Za-z]")
 FINAL = ("done", "failed", "cancelled", "timeout", "over_budget")
 MAX_TARBALL = 400 * 1024 * 1024
 OUTPUT_LIMIT = 16384          # max tokens per model reply, set in the runner's OpenCode config
+SNAPSHOT_SECONDS = 60          # during a run, the controller saves the workspace's changes this often
+KEEP_RECENT = 12               # retention: always keep the workspaces of the 12 most recently used tasks…
+KEEP_DAYS = 14                 # …and of every task used in the last 14 days
 PREVIEW_TTL = 12 * 3600       # lifetime of a preview link token
 AUTO_CONTINUE = 2             # automatic "continue" runs when a reply was cut off at OUTPUT_LIMIT
 STATUS_RE = re.compile(r"STATUS:\s*\**\s*(COMPLETE|PARTIAL|BLOCKED)\b", re.I)
@@ -368,6 +371,7 @@ class AgentManager:
                                         headers={"X-Runner-Secret": self.env.agent_runner_secret},
                                         transport=runner_transport, timeout=httpx.Timeout(30, read=300, write=300))
         self._jobs: dict[int, asyncio.Task] = {}
+        self._retention_lock = asyncio.Lock()
         self.activity: dict[int, list] = {}      # processes running right now in each task (from the runner)
         self.previews: dict[str, tuple] = {}     # preview link token -> (task id, expiry); minted only for a logged-in owner
         self.attachments = AttachmentStore(ctrl)
@@ -483,9 +487,22 @@ class AgentManager:
             raise AgentError("runner", f"agent workspace unreachable ({e.__class__.__name__})", 502)
         if r.status_code == 409:
             raise AgentError("busy", "the agent workspace is busy with another task", 409)
-        if r.status_code in (404, 410):
-            raise AgentError("expired", "the workspace of this task no longer exists on the server "
-                                        "(only the latest tasks are kept); start a new task", 410)
+        if r.status_code in (404, 405, 410):
+            try:
+                body = r.json() if r.headers.get("content-type", "").startswith("application/json") else {}
+            except ValueError:
+                body = {}
+            code = body.get("code") or ("workspace_missing" if body.get("error") == "unknown task" else
+                                        "no_session" if r.status_code == 410 else "unknown_route")
+            if code == "workspace_missing":
+                kept = body.get("preserved") or []
+                raise AgentError("workspace_missing", "The files of this task are not on the agent server any more. "
+                                 + (f"A preserved copy exists ({', '.join(kept)}). " if kept else "")
+                                 + "You can recover its last saved changes into a new task.", 410)
+            if code == "no_session":
+                raise AgentError("no_session", "the agent session of this task was interrupted before it was saved", 410)
+            raise AgentError("runner_outdated", f"the agent workspace runs an older version that does not support "
+                             f"{method} {path.split('?')[0]}; update it on the server (sudo vac agent enable)", 502)
         if r.status_code >= 400:
             raise AgentError("runner", f"agent workspace error {r.status_code}: {r.text[:200]}", 502)
         return r
@@ -501,7 +518,8 @@ class AgentManager:
 
     # ── API ─────────────────────────────────────────────────────────────────────────────────────
     async def create(self, prompt: str, model: str, repo: str = "", base: str = "", visual_inspection: bool = False,
-                     auto_screenshots: bool = False, attachments: Optional[list[str]] = None) -> dict:
+                     auto_screenshots: bool = False, attachments: Optional[list[str]] = None,
+                     recover_patch: str = "") -> dict:
         prompt, repo, base = (prompt or "").strip(), (repo or "").strip(), (base or "").strip()
         if not 5 <= len(prompt) <= 20000:
             raise AgentError("invalid", "describe the task (5–20000 characters)")
@@ -525,6 +543,8 @@ class AgentManager:
         self.attachments.select([r["id"] for r in rows], task_id=tid)
         self._ev(tid, 1, "user", text=prompt, attachments=[self.attachments.public(r) for r in rows])
         self.db.event("info", "agent", f"task {tid} created", repo=repo, model=model)
+        if recover_patch:
+            self.db.kv_set(f"task_recover_patch_{tid}", recover_patch)
         self._jobs[tid] = asyncio.create_task(self._drive(tid, prompt, first=True, visual_inspection=visual_inspection, auto_screenshots=auto_screenshots))
         return self.task(tid)
 
@@ -593,6 +613,8 @@ class AgentManager:
             self._ev(tid, run, "error", message=f"{e.__class__.__name__}: {e}")
         finally:
             self._jobs.pop(tid, None)
+            with contextlib.suppress(Exception):
+                await self.retention()
 
     async def _one_run(self, tid: int, prompt: str, first: bool, tag: str, visual_inspection: bool = False,
                        auto_screenshots: bool = False) -> None:
@@ -636,22 +658,41 @@ class AgentManager:
                                                            "auto_screenshots": auto_screenshots})
                 if source is not None:
                     await self._runner("PUT", f"/tasks/{tid}/source", content=source)
+                patch = self.db.kv_get(f"task_recover_patch_{tid}")
+                if patch:
+                    res = (await self._runner("PUT", f"/tasks/{tid}/patch", content=patch.encode())).json()
+                    self.db.x("DELETE FROM kv WHERE key=?", (f"task_recover_patch_{tid}",))
+                    self._ev(tid, run, "notice", text="Re-applied the saved changes of the lost workspace"
+                             + (" completely." if res.get("ok") else " partly (some hunks did not apply; the agent checks them): "
+                                + res.get("output", "")[-500:]))
                 await self._deliver_attachments(tid)
                 await self._runner("POST", f"/tasks/{tid}/start")
             else:
                 images = bool(self.db.one("SELECT 1 FROM attachments WHERE task_id=? AND kind='image'", (tid,)))
                 vision = bool(visual_inspection or (images and (st.get("agent_vision") or self.router.can_vision(self.task(tid)["model"]))))
                 manifest = await self._deliver_attachments(tid, vision)
-                await self._runner("POST", f"/tasks/{tid}/message", json={
-                    "prompt": prompt + FOLLOWUP_SUFFIX + manifest + (VISUAL_PROMPT if visual_inspection else ""),
-                    "model": self.task(tid)["model"], "proxy_url": self.env.agent_proxy_url,
-                    "proxy_token": token, "max_minutes": st["agent_max_minutes"],
-                    "vision": vision,
-                    "auto_screenshots": auto_screenshots})
+                body = {"prompt": prompt + FOLLOWUP_SUFFIX + manifest + (VISUAL_PROMPT if visual_inspection else ""),
+                        "model": self.task(tid)["model"], "proxy_url": self.env.agent_proxy_url,
+                        "proxy_token": token, "max_minutes": st["agent_max_minutes"],
+                        "vision": vision, "auto_screenshots": auto_screenshots}
+                try:
+                    await self._runner("POST", f"/tasks/{tid}/message", json=body)
+                except AgentError as e:
+                    if e.code != "no_session":
+                        raise
+                    # The files are still there, only the model's conversation was lost (e.g. the container restarted
+                    # during the first run). Continue in the same workspace with a fresh session and a recap.
+                    self._ev(tid, run, "notice", text="The agent's previous session was interrupted before it was "
+                             "saved. The files are intact; the agent continues in the same workspace with a fresh "
+                             "session and a summary of the earlier work.")
+                    body["prompt"] = self._recap(tid) + body["prompt"]
+                    body["new_session"] = True
+                    await self._runner("POST", f"/tasks/{tid}/message", json=body)
             started = time.time()
             self._set(tid, state="running", started=t["started"] or started)
             self._ev(tid, run, "status", text="Agent started" if first else "Agent continues", state="running")
             limit_note = ""
+            last_snapshot = time.time()
             while True:
                 await asyncio.sleep(self.poll)
                 info = (await self._runner("GET", f"/tasks/{tid}")).json()
@@ -661,6 +702,12 @@ class AgentManager:
                 await self._import_shots(tid, run)
                 if info["state"] in ("done", "failed", "cancelled", "timeout"):
                     break
+                if time.time() - last_snapshot > SNAPSHOT_SECONDS:      # recent work stays recoverable if the
+                    last_snapshot = time.time()                          # workspace is lost in the middle of a run
+                    with contextlib.suppress(AgentError):
+                        d = (await self._runner("GET", f"/tasks/{tid}/diff")).json()
+                        if d.get("diff"):
+                            self.db.kv_set(f"task_diff_{tid}", {"stat": d.get("stat", ""), "diff": d.get("diff", "")[:400000]})
                 state = self.task(tid)["state"]
                 if state == "cancelling":
                     await self._runner("POST", f"/tasks/{tid}/cancel")
@@ -701,7 +748,7 @@ class AgentManager:
                           cost=round(self.router.tag_cost(tag), 4))
         except AgentError as e:
             self._set(tid, state="failed", outcome="failed", error=e.message, ended=time.time())
-            self._ev(tid, run, "error", message=e.message)
+            self._ev(tid, run, "error", message=e.message, code=e.code)
         finally:
             self.router.revoke_tag(tag)
 
@@ -1083,6 +1130,56 @@ class AgentManager:
         self._ev(tid, int(t["runs"] or 1), "published", url=url, branch=t["base"], files=len(files))
         self.db.event("info", "agent", f"task {tid} published to {t['base']}", url=url)
         return self.task(tid)
+
+    def _recap(self, tid: int) -> str:
+        """Short summary of a task's earlier work, for a fresh agent session in the same workspace."""
+        evs = self.events(tid, 0, 100000)
+        asks = [e["data"].get("text", "") for e in evs if e["kind"] == "user"][-5:]
+        said = [e["data"].get("text", "") for e in evs if e["kind"] == "text"][-3:]
+        files = [f["path"] for f in (self.task(tid)["report"].get("files") or [])][:40]
+        return ("Context: you are continuing earlier work in THIS workspace; the previous agent session was lost. "
+                "Inspect the files (git status, git diff vellur-base) before changing anything.\n"
+                "Earlier requests:\n" + "\n".join("- " + a[:600] for a in asks) +
+                ("\nLast messages of the earlier session:\n" + "\n".join("- " + x[:800] for x in said) if said else "") +
+                ("\nFiles changed so far: " + ", ".join(files) if files else "") + "\n\nNew request:\n")
+
+    async def retention(self) -> list:
+        """Delete runner workspaces only for tasks that are safely finished and not recently used.
+        Never: a task that is not final, has a job running here, or was used in the last KEEP_DAYS days, or one of the
+        KEEP_RECENT most recently used. The runner refuses as well while a task runs (same lock as starting)."""
+        async with self._retention_lock:
+            rows = self.db.all("SELECT id, state, updated FROM tasks ORDER BY updated DESC")
+            cutoff = time.time() - KEEP_DAYS * 86400
+            removed = []
+            for i, r in enumerate(rows):
+                if i < KEEP_RECENT or r["state"] not in FINAL or r["id"] in self._jobs or (r["updated"] or 0) > cutoff:
+                    continue
+                if self.db.kv_get(f"task_workspace_removed_{r['id']}"):
+                    continue
+                try:
+                    await self._runner("DELETE", f"/tasks/{r['id']}")
+                except AgentError as e:
+                    if e.code != "workspace_missing":
+                        continue
+                self.db.kv_set(f"task_workspace_removed_{r['id']}", time.time())
+                removed.append(r["id"])
+            if removed:
+                self.db.event("info", "agent", f"retention: removed {len(removed)} old workspace(s)", tasks=removed)
+            return removed
+
+    async def recover_into_new_task(self, tid: int) -> dict:
+        """The workspace of `tid` is gone: start a new task on a fresh snapshot with the last saved changes re-applied."""
+        t = self.task(tid)
+        if not t:
+            raise AgentError("not_found", "unknown task", 404)
+        d = (self.db.kv_get(f"task_diff_{tid}") or {}).get("diff", "")
+        prompt = (f"Recovered from task {tid}, whose workspace was lost. Its last saved changes were re-applied to a fresh "
+                  f"copy of the repository. Check that they are complete and working, then continue the original request:\n\n"
+                  + t["prompt"])
+        nt = await self.create(prompt, t["model"], t["repo"], t["base"], recover_patch=d)
+        self._ev(tid, int(t["runs"] or 1), "notice", text=f"Recovered into task {nt['id']}"
+                 + ("" if d else " (no saved changes were available; it starts from the repository)") + ".")
+        return nt
 
     async def recover(self) -> None:
         """After a controller restart, tasks that were in flight cannot be resumed: mark them and stop the runner."""

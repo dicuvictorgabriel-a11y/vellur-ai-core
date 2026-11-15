@@ -14,7 +14,7 @@
 #   vac autopilot enable|disable|status|password|live on|off|limits <monthly> <hourly>
 #                                    GPU Autopilot (dry-run until "live on"; dashboard at /autopilot/,
 #                                    "password" sets a temporary login password that must be changed on the page)
-#   vac agent enable | disable | status   isolated coding-agent workspace (OpenCode)
+#   vac agent enable | disable | status | workspaces   isolated coding-agent workspace (OpenCode)
 #   vac backup | restore <file>
 #
 # Touches only: the vellur-ai-core compose project and volume, /etc/caddy/vellur-ai-core.caddy,
@@ -537,6 +537,12 @@ print("budget %s: total $%s of $%s (confirmed $%s, estimated $%s)" % (b["month"]
 cmd_agent() {
 	need_root agent
 	case "${1:-status}" in
+	workspaces)   # read-only: what is in the agent's persistent volume (task folders, sizes, saved state)
+		docker exec vellur-ai-agent sh -c 'cd /work 2>/dev/null || exit 1
+			for d in t*; do [ -d "$d" ] || continue
+				st=$(python3 -c "import json,sys; s=json.load(open(sys.argv[1])); print(s.get(\"state\"), \"session=\" + (\"yes\" if s.get(\"session\") else \"no\"))" "$d/state.json" 2>/dev/null || echo "no state file")
+				printf "%-28s %8s  %s\n" "$d" "$(du -sh "$d" 2>/dev/null | cut -f1)" "$st"
+			done' || die "the agent container is not running" ;;
 	enable)
 		has_profile autopilot || die "Enable Autopilot first: sudo vac autopilot enable"
 		[ "$(envval AGENT_RUNNER_SECRET | wc -c)" -gt 32 ] || setenv AGENT_RUNNER_SECRET "$(openssl rand -hex 32)"

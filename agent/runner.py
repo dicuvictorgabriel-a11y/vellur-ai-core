@@ -47,6 +47,11 @@ tasks = {}
 lock = threading.Lock()
 
 
+RUNNER_VERSION = 3
+FEATURES = ["events", "message", "new_session", "checkpoints", "preview", "attachments", "patch", "workspaces",
+            "controller_retention"]
+
+
 def tdir(tid):
     return os.path.join(WORK, f"t{int(tid)}")
 
@@ -174,13 +179,19 @@ def load_state():
         return
     for name in os.listdir(WORK):
         f = os.path.join(WORK, name, "state.json")
-        if not (name.startswith("t") and name[1:].isdigit() and os.path.exists(f)):
+        if not (name.startswith("t") and name[1:].isdigit() and os.path.isdir(os.path.join(WORK, name))):
             continue
         try:
             st = json.load(open(f))
         except (OSError, ValueError):
-            continue
+            # Files without (readable) state: keep them reachable instead of silently ignoring the folder.
+            if not os.path.isdir(os.path.join(WORK, name, "repo")):
+                continue
+            st = {"state": "failed", "started": None, "ended": os.path.getmtime(os.path.join(WORK, name)), "exit": None,
+                  "changed": 0, "error": "the workspace state file was missing; its files were kept", "session": "",
+                  "run": 1, "meta": {}}
         t = dict(st, dir=os.path.join(WORK, name), proc=None)
+        t.setdefault("meta", {})
         if t["state"] in ("created", "running"):
             t["state"], t["error"], t["ended"] = "failed", "the agent workspace restarted during this run", time.time()
         tasks[int(name[1:])] = t
@@ -203,6 +214,8 @@ def pump(t, stream, path):
             ev["run"] = t["run"]
             if not t.get("session") and isinstance(ev.get("sessionID"), str):
                 t["session"] = ev["sessionID"]
+                with contextlib.suppress(OSError):
+                    save_state(t)          # a restart in the middle of this run must not lose the session
             out.write((json.dumps(ev) + "\n").encode())
 
 
@@ -975,13 +988,38 @@ def auto_shots(tid, t):
             screenshot_notice(t, f"{size} screenshot failed: {type(e).__name__}: {e}")
 
 
+def glob_preserved(tid):
+    import glob
+    return glob.glob(f"{tdir(tid)}.preserved-*")
+
+
+def dir_size(path):
+    total = 0
+    for root, _, files in os.walk(path):
+        for f in files:
+            with contextlib.suppress(OSError):
+                total += os.lstat(os.path.join(root, f)).st_size
+    return total
+
+
+def list_workspaces():
+    out = []
+    for name in sorted(os.listdir(WORK)) if os.path.isdir(WORK) else []:
+        full = os.path.join(WORK, name)
+        if not (name.startswith("t") and os.path.isdir(full)):
+            continue
+        tid = name[1:].split(".", 1)[0]
+        t = tasks.get(int(tid)) if tid.isdigit() and name[1:].isdigit() else None
+        out.append({"name": name, "task": int(tid) if tid.isdigit() else None, "loaded": t is not None,
+                    "state": t["state"] if t else "preserved" if ".preserved-" in name else "unknown",
+                    "ended": t.get("ended") if t else None, "mb": round(dir_size(full) / 1e6, 1)})
+    return out
+
+
 def cleanup():
-    done = sorted((t["ended"] or 0, tid) for tid, t in tasks.items() if t["state"] not in ("created", "running"))
-    for _, tid in done[:-KEEP_TASKS]:
-        if preview["tid"] == tid:
-            stop_preview()
-        shutil.rmtree(tasks[tid]["dir"], ignore_errors=True)
-        tasks.pop(tid, None)
+    """The runner never deletes workspaces by itself any more. Retention is decided by the controller, which knows
+    which tasks are still active conversations, and is applied through DELETE /tasks/<id> (refused while running)."""
+    return
 
 
 class H(BaseHTTPRequestHandler):
@@ -1031,9 +1069,12 @@ class H(BaseHTTPRequestHandler):
                 return self.send(404, {"error": "this project has 3D models but no web page; open VELLUR 3D Studio"})
             return self.send(404, {"error": plan["why"]})
         if parts == ["healthz"]:
-            return self.send(200, {"ok": True, "busy": any(t["state"] in ("created", "running") for t in tasks.values())})
+            return self.send(200, {"ok": True, "busy": any(t["state"] in ("created", "running") for t in tasks.values()),
+                                   "version": RUNNER_VERSION, "features": FEATURES})
+        if parts == ["workspaces"] and method == "GET":
+            return self.send(200, {"workspaces": list_workspaces()})
         if not parts or parts[0] != "tasks":
-            return self.send(404, {"error": "not found"})
+            return self.send(404, {"error": "not found", "code": "unknown_route"})
         if method == "POST" and len(parts) == 1:
             meta = json.loads(self.body(1_000_000))
             tid = int(meta["id"])
@@ -1041,16 +1082,22 @@ class H(BaseHTTPRequestHandler):
                 if any(t["state"] in ("created", "running") for t in tasks.values()):
                     return self.send(409, {"error": "busy"})
                 d = tdir(tid)
-                shutil.rmtree(d, ignore_errors=True)
+                if tid in tasks or os.path.exists(d):
+                    # Task ids are never reused by the controller, so an existing folder means something unexpected
+                    # (e.g. a reset controller database). Never delete it: move it aside, it stays recoverable.
+                    tasks.pop(tid, None)
+                    os.rename(d, f"{d}.preserved-{int(time.time())}")
                 os.makedirs(os.path.join(d, "repo"))
                 os.makedirs(os.path.join(d, "home"))
                 tasks[tid] = {"state": "created", "dir": d, "meta": meta, "proc": None, "started": None, "ended": None,
                               "exit": None, "changed": 0, "error": "", "session": "", "run": 1}
+                save_state(tasks[tid])
             return self.send(200, {"ok": True})
         tid = int(parts[1])
         t = tasks.get(tid)
         if t is None:
-            return self.send(404, {"error": "unknown task"})
+            return self.send(404, {"error": "unknown task", "code": "workspace_missing",
+                                   "preserved": [os.path.basename(x) for x in sorted(glob_preserved(tid))]})
         repo = os.path.join(t["dir"], "repo")
         action = parts[2] if len(parts) > 2 else ""
         if method == "PUT" and action == "source":
@@ -1059,6 +1106,20 @@ class H(BaseHTTPRequestHandler):
             safe_extract(self.body(MAX_SOURCE), repo)
             initialize_repo(repo)
             return self.send(200, {"ok": True})
+        if method == "PUT" and action == "patch":
+            # Recovery: re-apply changes saved by the controller (from a workspace that was lost) onto a fresh snapshot.
+            if t["state"] != "created":
+                return self.send(409, {"error": "a patch can only be applied before the task starts"})
+            initialize_repo(repo)
+            pf = os.path.join(t["dir"], "recovered.patch")
+            with open(pf, "wb") as f:
+                f.write(self.body(MAX_DIFF * 2))
+            r = subprocess.run(["git", "-c", "safe.directory=*", "apply", "--3way", "--whitespace=nowarn", pf], cwd=repo,
+                               capture_output=True, text=True, timeout=120)
+            if r.returncode != 0:
+                r = subprocess.run(["git", "-c", "safe.directory=*", "apply", "--reject", "--whitespace=nowarn", pf], cwd=repo,
+                                   capture_output=True, text=True, timeout=120)
+            return self.send(200, {"ok": r.returncode == 0, "output": (r.stdout + r.stderr)[-3000:]})
         if method == "PUT" and action == "attachments":
             if t["state"] == "running":
                 return self.send(409, {"error": "cannot add attachments while the workspace is running"})
@@ -1093,8 +1154,8 @@ class H(BaseHTTPRequestHandler):
             with lock:
                 if any(x["state"] in ("created", "running") for x in tasks.values()):
                     return self.send(409, {"error": "busy"})
-                if not t.get("session"):
-                    return self.send(410, {"error": "this task has no agent session to continue"})
+                if not t.get("session") and not body.get("new_session"):
+                    return self.send(410, {"error": "this task has no agent session to continue", "code": "no_session"})
                 t["meta"].update({k: body[k] for k in ("prompt", "proxy_token", "proxy_url", "model", "max_minutes", "vision") if k in body})
                 t["meta"]["auto_screenshots"] = body.get("auto_screenshots") is True
                 t.update(state="running", started=time.time(), ended=None, exit=None, error="", cancel=False,
@@ -1196,12 +1257,15 @@ class H(BaseHTTPRequestHandler):
         if method == "GET" and action == "files":
             return self.send(200, {"files": changed_files(repo)})
         if method == "DELETE" and action == "":
-            if t["state"] == "running":
-                return self.send(409, {"error": "running"})
-            shutil.rmtree(t["dir"], ignore_errors=True)
-            tasks.pop(tid, None)
+            with lock:                       # same lock as create / message: no race with a starting run
+                if t["state"] in ("created", "running"):
+                    return self.send(409, {"error": "running"})
+                if preview["tid"] == tid:
+                    stop_preview()
+                tasks.pop(tid, None)
+                shutil.rmtree(t["dir"], ignore_errors=True)
             return self.send(200, {"ok": True})
-        return self.send(404, {"error": "not found"})
+        return self.send(404, {"error": "not found", "code": "unknown_route"})
 
     def handle_one(self, method):
         try:

@@ -585,6 +585,20 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         except AgentError as e:
             return err(e)
 
+    @app.post("/autopilot/api/agent/tasks/{tid}/recover", dependencies=[Depends(admin_write)])
+    async def task_recover(tid: int):
+        try:
+            return await agent.recover_into_new_task(tid)
+        except AgentError as e:
+            return err(e)
+
+    @app.get("/autopilot/api/agent/workspaces", dependencies=[Depends(admin)])
+    async def agent_workspaces():
+        try:
+            return (await agent._runner("GET", "/workspaces")).json()
+        except AgentError as e:
+            return err(e)
+
     @app.post("/autopilot/api/agent/tasks/{tid}/cancel", dependencies=[Depends(admin_write)])
     async def cancel_task(tid: int):
         try:

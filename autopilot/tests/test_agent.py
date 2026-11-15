@@ -1,6 +1,7 @@
 import asyncio
 import base64
 import json
+import time
 import importlib.util
 from pathlib import Path
 
@@ -55,6 +56,12 @@ class FakeRunner:
         assert req.headers["x-runner-secret"] == "r" * 32
         p = req.url.path
         self.calls.append((req.method, p))
+        if req.method == "DELETE":
+            self.deleted = getattr(self, "deleted", []) + [int(p.split("/")[2])]
+            return httpx.Response(200, json={"ok": True})
+        if req.method == "PUT" and p.endswith("/patch"):
+            self.patch = req.content
+            return httpx.Response(200, json={"ok": True, "output": ""})
         if req.method == "POST" and p == "/tasks":
             self.meta, self.state = json.loads(req.content), "created"
         elif p.endswith("/source"):
@@ -62,7 +69,12 @@ class FakeRunner:
         elif p.endswith("/start"):
             self._begin()
         elif p.endswith("/message"):
-            self.messages.append(json.loads(req.content))
+            body = json.loads(req.content)
+            self.messages.append(body)
+            if getattr(self, "lost_session", False) and not body.get("new_session"):
+                return httpx.Response(410, json={"error": "this task has no agent session to continue", "code": "no_session"})
+            if getattr(self, "missing", False):
+                return httpx.Response(404, json={"error": "unknown task", "code": "workspace_missing", "preserved": []})
             self._begin()
         elif p.endswith("/cancel"):
             self.state = "cancelled"
@@ -785,3 +797,78 @@ def test_optional_screenshot_notice_is_not_an_error():
     from app.agent import normalize
     kind, data = normalize({"type": "raw", "category": "screenshot_notice", "text": "browser unavailable"})
     assert kind == "notice" and data["text"] == "browser unavailable"
+
+
+
+async def test_lost_session_continues_in_the_same_workspace_with_a_recap(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    tid = (await mgr.create("Build VELLUR Creative Lab", "vellur-coder"))["id"]
+    await wait_final(mgr, tid)
+    await asyncio.sleep(0.05)
+    runner.lost_session = True                         # the container was recreated during the first run
+    await admin.post(f"/autopilot/api/agent/tasks/{tid}/messages", headers=WRITE, json={"text": "Continue"})
+    await wait_final(mgr, tid)
+    for _ in range(100):
+        if mgr.task(tid)["outcome"]:
+            break
+        await asyncio.sleep(0.01)
+    assert [m.get("new_session", False) for m in runner.messages] == [False, True]
+    assert runner.messages[1]["prompt"].startswith("Context: you are continuing earlier work in THIS workspace")
+    assert "Build VELLUR Creative Lab" in runner.messages[1]["prompt"]
+    assert mgr.task(tid)["outcome"] == "completed"
+    assert any(e["kind"] == "notice" and "files are intact" in e["data"]["text"] for e in mgr.events(tid))
+
+
+async def test_missing_workspace_is_reported_clearly_and_can_be_recovered(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    tid = (await mgr.create("Build VELLUR Creative Lab", "vellur-coder"))["id"]
+    await wait_final(mgr, tid)
+    await asyncio.sleep(0.05)
+    runner.missing = True
+    await admin.post(f"/autopilot/api/agent/tasks/{tid}/messages", headers=WRITE, json={"text": "Continue"})
+    await wait_final(mgr, tid)
+    err = [e for e in mgr.events(tid) if e["kind"] == "error"][-1]["data"]
+    assert err["code"] == "workspace_missing" and "recover" in err["message"] and "only the latest" not in err["message"]
+    runner.missing = False
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/recover", headers=WRITE)
+    new = r.json()["id"]
+    assert r.status_code == 200 and new != tid
+    await wait_final(mgr, new)
+    assert runner.patch == ctrl.db.kv_get(f"task_diff_{tid}")["diff"].encode()     # the saved changes were re-applied
+    assert "Recovered from task" in mgr.task(new)["prompt"]
+
+
+async def test_unknown_runner_route_is_not_reported_as_a_lost_workspace(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    real = runner.handler
+
+    def old_runner(req):
+        if req.url.path.endswith("/checkpoints"):
+            return httpx.Response(404, json={"error": "not found"})      # an older runner image without the route
+        return real(req)
+    mgr.runner._transport = httpx.MockTransport(old_runner)
+    tid = (await mgr.create("Anything at all", "vellur-coder"))["id"]
+    await wait_final(mgr, tid)
+    r = await admin.get(f"/autopilot/api/agent/tasks/{tid}/checkpoints", headers=ADMIN)
+    assert r.json()["error"] == "runner_outdated" and "sudo vac agent enable" in r.json()["message"]
+
+
+async def test_retention_only_removes_old_finished_unused_workspaces(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    old = time.time() - 30 * 86400
+    ids = []
+    for i in range(16):
+        cur = ctrl.db.x("INSERT INTO tasks(created,updated,state,model,prompt) VALUES(?,?,?,?,?)",
+                        (old, old + i, "done", "vellur-coder", f"t{i}"))
+        ids.append(cur.lastrowid)
+    ctrl.db.x("UPDATE tasks SET state='running' WHERE id=?", (ids[0],))                  # active: never
+    ctrl.db.x("UPDATE tasks SET updated=? WHERE id=?", (time.time() - 3600, ids[1]))     # used recently: never
+    mgr._jobs[ids[2]] = object()                                                         # a job runs here: never
+    removed = await mgr.retention()
+    assert await mgr.retention() == []                                                   # nothing removed twice
+    # the 12 most recently used are kept; of the rest only finished, idle, job-less ones go
+    recent = [r["id"] for r in ctrl.db.all("SELECT id FROM tasks ORDER BY updated DESC")][:12]
+    assert ids[0] not in removed and ids[1] not in removed and ids[2] not in removed
+    assert not set(removed) & set(recent)
+    assert removed and sorted(removed) == sorted(runner.deleted)
+    mgr._jobs.clear()

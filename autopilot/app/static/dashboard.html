@@ -868,7 +868,15 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     if (e.kind === "status" && d.state === "running") RUN_T0 = e.ts;
     if (e.kind === "status") return put(div("sysline", esc(d.text) + " · " + new Date(e.ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })), end);
     if (e.kind === "notice") return put(div("alert info", esc(d.text)), end);
-    if (e.kind === "error") return put(div("alert", "<b>Error.</b> " + esc(d.message)), end);
+    if (e.kind === "error") {
+      const el = put(div("alert", "<b>Error.</b> " + esc(d.message)), end);
+      if (d.code === "workspace_missing") {          // offer recovery instead of a dead end
+        const b = document.createElement("button"); b.className = "chip"; b.style.marginTop = "8px"; b.textContent = "Recover into a new task";
+        b.onclick = async () => { b.disabled = true; try { const t = await send("agent/tasks/" + TASK + "/recover", "POST", {}); AGENT = await send("agent", "GET"); TASKS = AGENT.tasks || []; await openTask(t.id); } catch (x) { b.disabled = false; alert(x.message); } };
+        el.appendChild(document.createElement("br")); el.appendChild(b);
+      }
+      return el;
+    }
     if (e.kind === "step" && d.reason === "length") return put(div("alert info", "The model's reply reached its output limit here."), end);
     if (e.kind === "shot") return put(div("shot", `<img src="${shotUrl(d.name)}" alt="Screenshot ${esc(d.name)}" loading="lazy"><figcaption>Screenshot taken by the agent: ${esc(d.name)}</figcaption>`), end);
     if (e.kind === "pr") return put(div("alert info", `Pull request ${d.updated ? "updated" : "opened"}: <a href="${esc(d.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(d.url)}</a>`), end);
