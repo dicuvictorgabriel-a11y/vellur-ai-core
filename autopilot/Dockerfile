@@ -6,6 +6,8 @@ RUN pip install -r /app/requirements.txt \
  && useradd -r -u 10001 -d /data -s /usr/sbin/nologin autopilot \
  && mkdir -p /data && chown 10001:10001 /data
 COPY app /app/app
+# the controller runs as user 10001: make sure it can read every file, whatever rights they had on the host
+RUN chmod -R a+rX /app/app
 WORKDIR /app
 USER 10001
 EXPOSE 8000 8080

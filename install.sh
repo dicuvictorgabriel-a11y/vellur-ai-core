@@ -104,7 +104,10 @@ install -m 644 "$SRC/opencode/"* "$DEST/opencode/"
 install -m 644 "$SRC/autopilot/Dockerfile" "$SRC/autopilot/requirements.txt" "$SRC/autopilot/.dockerignore" "$DEST/autopilot/"
 install -m 644 "$SRC/autopilot/app/"*.py "$DEST/autopilot/app/"
 install -m 644 "$SRC/autopilot/app/providers/"*.py "$DEST/autopilot/app/providers/"
-cp -a "$SRC/autopilot/app/static/." "$DEST/autopilot/app/static/"   # includes subdirs (3d/vendor)
+cp -r "$SRC/autopilot/app/static/." "$DEST/autopilot/app/static/"   # includes subdirs (3d/vendor)
+# Files copied from Windows or a private temp folder can arrive without read rights for others; the controller runs
+# as a non-root user inside its container, so every app file must be world-readable (dirs traversable).
+chmod -R u=rwX,go=rX "$DEST/autopilot/app"
 install -d -m 755 "$DEST/agent"
 install -m 644 "$SRC/agent/Dockerfile" "$SRC/agent/runner.py" "$DEST/agent/"
 install -m 755 "$SRC/agent/vellur-screenshot" "$SRC/agent/vellur-image" "$DEST/agent/"
