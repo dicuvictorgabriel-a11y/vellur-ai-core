@@ -1,9 +1,8 @@
 """Image generation through any configured OpenAI-compatible provider.
 
 Two provider shapes are supported:
-  * `chat`    — image-output models that answer `/chat/completions` (OpenRouter's image models). Image-only models
-                (FLUX, Seedream, …) are asked for `modalities: ["image"]`, models that also write text for
-                `["image", "text"]`, following the catalog's `output_modalities` (see model_intel.image_modalities);
+  * `chat`    — image-output models that answer `/chat/completions` with `modalities: ["image", "text"]`
+                (OpenRouter's image models use this shape);
   * `images`  — the classic `/images/generations` endpoint (OpenAI and compatible providers).
 
 Nothing is generated unless an explicit image target is configured and declares image-output support. Paid requests
@@ -11,7 +10,6 @@ require confirmation, and a per-request ceiling is enforced before the provider 
 """
 from __future__ import annotations
 
-import asyncio
 import base64
 import binascii
 import contextlib
@@ -33,9 +31,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel, Field
 
 from .attachments import IMAGE_MIMES, _image_size
-from .budget import month_key
 from .lifecycle import Controller
-from .model_intel import SUGGESTED_IMAGE_MODELS, image_modalities
 from .router import Router, RouterError
 
 ID_RE = re.compile(r"^img_[a-f0-9]{32}$")
@@ -216,31 +212,10 @@ def _ext(mime: str) -> str:
     return {"image/png": ".png", "image/jpeg": ".jpg", "image/webp": ".webp", "image/gif": ".gif"}.get(mime, ".png")
 
 
-REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9_-]{8,64}$")
-DONE_TTL = 15 * 60
-ASPECTS = ((1, 1), (2, 3), (3, 2), (3, 4), (4, 3), (4, 5), (5, 4), (9, 16), (16, 9), (21, 9))
-MODALITY_404 = re.compile(r"output modalit", re.I)
-
-
-def aspect_ratio(size: str) -> str:
-    """The OpenRouter `image_config.aspect_ratio` closest to a WIDTHxHEIGHT size."""
-    m = SIZE_RE.match(size or "")
-    if not m:
-        return "1:1"
-    w, h = (int(x) for x in m.groups())
-    best = min(ASPECTS, key=lambda a: abs(a[0] / a[1] - w / h))
-    return f"{best[0]}:{best[1]}"
-
-
 class ImageService:
     def __init__(self, ctrl: Controller, router: Router, store: Optional[ImageStore] = None):
         self.ctrl, self.router, self.db, self.settings = ctrl, router, ctrl.db, ctrl.settings
         self.store = store or ImageStore(ctrl)
-        # Shared by every ImageService on this router (the chat and the image API each build one), so one paid request
-        # is made per request id however many times the browser sends it (double click, retry after a timeout).
-        if not hasattr(router, "_image_requests"):
-            router._image_requests = {"inflight": {}, "done": {}}
-        self._requests = router._image_requests
 
     def _target(self, role: str) -> Optional[str]:
         for i, target in enumerate(self.router.chain(role)):
@@ -258,14 +233,7 @@ class ImageService:
         return {"available": True, "role": role, "target": target, "provider": info.get("provider"),
                 "model": info.get("model"), "free": bool(info.get("free")),
                 "price_per_image": self.router.image_price(target),
-                "price_source": self._price_source(target),
-                "modalities": image_modalities(info.get("model", ""), self.router.image_outputs(target)),
                 "capabilities": self.router.capabilities(target)}
-
-    def _price_source(self, target: str) -> str:
-        if self.settings.get().get("image_prices", {}).get(target) is not None:
-            return "manual"
-        return "catalog" if self.router.image_price(target) is not None else "unknown"
 
     def estimate(self, prompt: str = "", role: str = "vellur-image", size: str = "1024x1024",
                  n: int = 1, max_usd: Optional[float] = None) -> dict:
@@ -288,75 +256,27 @@ class ImageService:
         price = self.router.image_price(target)
         free = bool(info.get("free"))
         est = 0.0 if free else (price * n if price is not None else None)
-        st = self.settings.get()
-        limit = float(st.get("image_max_usd", 1.0) if max_usd is None else max_usd)
+        limit = float(self.settings.get().get("image_max_usd", 1.0) if max_usd is None else max_usd)
         if est is not None and est > limit:
             raise ImageError("image_budget",
                              f"this request would cost about ${est:.4f}, above the ${limit:.2f} image limit", 400)
-        remaining = None
-        if not free:
-            try:
-                remaining = float(self.ctrl.budget.status(st, None, self.ctrl.clock())["remaining_usd"])
-            except Exception:  # noqa: BLE001 - a broken budget read must not hide the price, the router still checks it
-                remaining = None
-            if remaining is not None and est is not None and est > remaining:
-                raise ImageError("image_budget",
-                                 f"this request would cost about ${est:.4f}, more than the ${remaining:.2f} left in "
-                                 "this month's budget", 400)
-        cost_known = free or price is not None
-        # A paid image with an unknown price always needs an explicit yes, whatever the "ask before paid" setting says.
-        confirm = (not free) and (bool(st.get("image_confirm_paid", True)) or not cost_known)
         return {"available": True, "target": target, "provider": info.get("provider"), "model": info.get("model"),
-                "free": free, "price_per_image": price, "price_source": "plan" if free else self._price_source(target),
-                "n": n, "size": size, "estimated_usd": est, "limit_usd": limit, "budget_remaining_usd": remaining,
-                "requires_confirmation": confirm, "cost_known": cost_known,
-                "cost_reported_by_provider": bool((info.get("cfg") or {}).get("reports_cost"))}
+                "free": free, "price_per_image": price, "n": n, "size": size,
+                "estimated_usd": est, "limit_usd": limit,
+                "requires_confirmation": bool((not free) and self.settings.get().get("image_confirm_paid", True)),
+                "cost_known": free or price is not None}
 
     async def generate(self, prompt: str, role: str = "vellur-image", size: str = "1024x1024", n: int = 1,
                        confirm: bool = False, tag: str = "image", conv_id: Optional[int] = None,
-                       task_id: Optional[int] = None, max_usd: Optional[float] = None,
-                       request_id: Optional[str] = None) -> dict:
-        if request_id is not None and not REQUEST_ID_RE.match(str(request_id)):
-            raise ImageError("invalid", "invalid request id")
-        if not request_id:
-            return await self._generate(prompt, role, size, n, confirm, tag, conv_id, task_id, max_usd)
-        now = time.time()
-        done = self._requests["done"]
-        for k in [k for k, (ts, _) in done.items() if now - ts > DONE_TTL]:
-            done.pop(k, None)
-        if request_id in done:
-            return {**done[request_id][1], "duplicate": True}
-        inflight = self._requests["inflight"]
-        if request_id in inflight:
-            result = await asyncio.shield(inflight[request_id])
-            return {**result, "duplicate": True}
-        fut = asyncio.get_running_loop().create_future()
-        inflight[request_id] = fut
-        try:
-            result = await self._generate(prompt, role, size, n, confirm, tag, conv_id, task_id, max_usd)
-        except BaseException as e:
-            if not fut.done():
-                fut.set_exception(e if isinstance(e, Exception) else ImageError("cancelled", "request cancelled", 499))
-                fut.exception()          # mark retrieved: nobody else may be waiting
-            raise
-        finally:
-            inflight.pop(request_id, None)
-        done[request_id] = (time.time(), result)
-        if not fut.done():
-            fut.set_result(result)
-        return result
-
-    async def _generate(self, prompt, role, size, n, confirm, tag, conv_id, task_id, max_usd) -> dict:
+                       task_id: Optional[int] = None, max_usd: Optional[float] = None) -> dict:
         prompt = str(prompt or "").strip()
         if not prompt:
             raise ImageError("invalid", "write a description of the image you want")
         estimate = self.estimate(prompt, role, size, n, max_usd)
         if estimate["requires_confirmation"] and not confirm:
-            message = ("This image is generated by a paid model. Confirm the estimated cost to continue."
-                       if estimate["cost_known"] else
-                       "This paid model does not publish a price per image. Confirm to generate anyway; the real cost "
-                       "is recorded when the provider reports it.")
-            raise ImageError("image_confirmation", message, 409, estimate)
+            raise ImageError("image_confirmation",
+                             "This image is generated by a paid model. Confirm the estimated cost to continue.",
+                             409, estimate)
         target = estimate["target"]
         info = self.router.info(target) or {}
         t0 = time.monotonic()
@@ -368,21 +288,23 @@ class ImageService:
         except Exception as e:  # noqa: BLE001
             self.router.record(role, target, info, False, 0, None, t0, tag, f"{e.__class__.__name__}: {e}")
             raise ImageError("provider", f"image provider failed ({e.__class__.__name__})", 502)
-        provider_cost = usage.get("cost") if isinstance(usage, dict) else None
         if not results:
-            # A provider that charged for an answer without a usable image is still recorded as spending.
-            self.router.record(role, target, info, False, 502, usage or None, t0, tag, "provider returned no images")
-            if isinstance(provider_cost, (int, float)) and provider_cost > 0:
-                self._record_charge(role, target, info, float(provider_cost), t0, tag)
+            self.router.record(role, target, info, False, 502, None, t0, tag, "provider returned no images")
             raise ImageError("invalid_image", "the provider answered but returned no image", 502)
-        if isinstance(provider_cost, (int, float)):
-            cost, source = float(provider_cost), "provider"
-        elif estimate["free"]:
-            cost, source = 0.0, "plan"
-        elif estimate["price_per_image"] is not None:
-            cost, source = estimate["price_per_image"] * len(results), "estimate"
-        else:
-            cost, source = 0.0, "unpriced"
+        provider_cost = usage.get("cost") if isinstance(usage, dict) else None
+        cost, source = 0.0, "unpriced"
+        got_provider_cost = False
+        if provider_cost is not None:
+            try:
+                cost, source = float(provider_cost), "provider"
+                got_provider_cost = True
+            except (TypeError, ValueError):
+                pass
+        if not got_provider_cost:
+            if estimate["free"]:
+                cost, source = 0.0, "plan"
+            elif estimate["price_per_image"] is not None:
+                cost, source = estimate["price_per_image"] * len(results), "estimate"
         usage = {**(usage or {}), "images": len(results)}
         self.router.record(role, target, info, True, 200, usage, t0, tag, images=len(results))
         saved = []
@@ -392,34 +314,8 @@ class ImageService:
                                   per_image, source, conv_id=conv_id, task_id=task_id,
                                   meta={"revised_prompt": result.revised_prompt} if result.revised_prompt else {})
             saved.append(self.store.public(row))
-        out = {"images": saved, "estimate": estimate, "cost_usd": cost, "cost_source": source,
-               "target": target, "provider": info.get("provider"), "model": info.get("model")}
-        if source == "provider" and cost > estimate["limit_usd"]:
-            out["warning"] = (f"the provider charged ${cost:.4f}, above the ${estimate['limit_usd']:.2f} image limit; "
-                              "set a manual image price so the limit can be checked before the next request")
-        return out
-
-    def _record_charge(self, role, target, info, cost, t0, tag) -> None:
-        now = self.ctrl.clock()
-        self.db.x("INSERT INTO usage(ts,month,role,target,provider,model,ok,status,in_tokens,out_tokens,cached_tokens,"
-                  "cost_usd,cost_source,latency_ms,tag,error,images) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
-                  (now, month_key(now), role, target, info["provider"], info["model"], 0, 502, 0, 0, 0, cost,
-                   "provider", int((time.monotonic() - t0) * 1000), tag, "charged without a usable image", 0))
-
-    async def _post(self, url: str, headers: dict, body: dict) -> httpx.Response:
-        try:
-            return await self.router.client.post(url, headers=headers, json=body, timeout=300)
-        except httpx.HTTPError as e:
-            raise ImageError("provider", f"the image provider did not answer ({e.__class__.__name__})", 502)
-
-    @staticmethod
-    def _error_text(r: httpx.Response) -> str:
-        try:
-            error = r.json().get("error")
-            message = error.get("message") if isinstance(error, dict) else (error or r.text)
-        except (ValueError, AttributeError):
-            message = r.text
-        return str(message or "")[:300]
+        return {"images": saved, "estimate": estimate, "cost_usd": cost, "cost_source": source,
+                "target": target, "provider": info.get("provider"), "model": info.get("model")}
 
     async def _call(self, target: str, info: dict, prompt: str, size: str, n: int) -> tuple[list[ImageResult], dict]:
         cfg = info.get("cfg") or {}
@@ -435,51 +331,47 @@ class ImageService:
         headers = {"Authorization": f"Bearer {key}", "Content-Type": "application/json"}
         if mode == "chat":
             url = f"{base}/chat/completions"
-            modalities = image_modalities(info["model"], self.router.image_outputs(target))
-            body = {"model": info["model"], "messages": [{"role": "user", "content": prompt}],
-                    "modalities": modalities, "image_config": {"aspect_ratio": aspect_ratio(size)}}
-            if n > 1:
-                body["n"] = n
-            if info["provider"] == "openrouter":
-                body["usage"] = {"include": True}       # ask OpenRouter to report the real cost in the answer
-            r = await self._post(url, headers, body)
-            if r.status_code == 404 and MODALITY_404.search(self._error_text(r)):
-                # No endpoint serves these output modalities: nothing was generated or billed. Try the other shape once.
-                body["modalities"] = ["image"] if modalities != ["image"] else ["image", "text"]
-                r = await self._post(url, headers, body)
+            body: dict[str, Any] = {"model": info["model"], "messages": [{"role": "user", "content": prompt}],
+                                    "modalities": ["image", "text"], "n": n}
         else:
             url = f"{base}/images/generations"
-            body = {"model": info["model"], "prompt": prompt, "n": n, "size": size, "response_format": "b64_json"}
-            r = await self._post(url, headers, body)
+            body: dict[str, Any] = {"model": info["model"], "prompt": prompt, "n": n, "size": size,
+                                    "response_format": "b64_json"}
+        if info["provider"] == "openrouter":
+            body["usage"] = {"include": True}
+        try:
+            r = await self.router.client.post(url, headers=headers, json=body, timeout=300)
+        except httpx.HTTPError as e:
+            raise ImageError("provider", f"the image provider did not answer ({e.__class__.__name__})", 502)
         if r.status_code in (401, 403):
             raise ImageError("auth", "the image provider rejected the API key", 502)
         if r.status_code == 402:
             raise ImageError("provider_credit", "the image provider has no credit left", 502)
         if r.status_code == 429:
-            raise ImageError("rate_limited", "the image provider is rate limiting requests; wait a minute and retry", 502)
-        if r.status_code == 404 and MODALITY_404.search(self._error_text(r)):
-            raise ImageError("unsupported_model",
-                             f"{info['model']} cannot generate images through this API (the provider has no endpoint for "
-                             "image output for it). Pick another image model in Models.", 502)
+            raise ImageError("rate_limited", "the image provider is rate limiting requests", 502)
         if r.status_code >= 400:
-            raise ImageError("provider", f"image provider answered HTTP {r.status_code}: {self._error_text(r)}", 502)
+            try:
+                error = r.json().get("error")
+                message = error.get("message") if isinstance(error, dict) else (error or r.text)
+            except ValueError:
+                message = r.text
+            raise ImageError("provider", f"image provider answered HTTP {r.status_code}: {str(message)[:300]}", 502)
         try:
             data = r.json()
         except ValueError:
             raise ImageError("invalid_image", "the image provider did not return JSON", 502)
-        if not isinstance(data, dict):
-            raise ImageError("invalid_image", "the image provider returned an unexpected answer", 502)
         refs = []
         for choice in data.get("choices") or []:
             msg = choice.get("message") if isinstance(choice, dict) else None
             if not isinstance(msg, dict):
                 continue
-            refs.extend(msg.get("images") or [])
+            for item in msg.get("images") or []:
+                refs.append(item)
             content = msg.get("content")
             if isinstance(content, list):
                 refs.extend(p for p in content if isinstance(p, dict) and p.get("type") in ("image_url", "output_image"))
         refs.extend(data.get("data") or [])
-        results, bad = [], 0
+        results = []
         for item in refs[:MAX_IMAGES]:
             if isinstance(item, str):
                 item = {"url": item}
@@ -497,27 +389,17 @@ class ImageService:
                 except (ValueError, binascii.Error):
                     raw = None
             if raw is None:
-                if url_value.startswith("data:") or not _safe_remote(url_value):
-                    bad += 1
+                if not _safe_remote(url_value):
                     continue
                 try:
                     remote = await self.router.client.get(url_value, timeout=60)
                     remote.raise_for_status()
                     raw = remote.content
                 except httpx.HTTPError:
-                    bad += 1
                     continue
-            try:
-                mime, width, height = _sniff_image(raw)
-            except ImageError:
-                bad += 1
-                continue
+            mime, width, height = _sniff_image(raw)
             results.append(ImageResult(raw, mime, width, height, str(item.get("revised_prompt") or "")))
-        usage = data.get("usage") if isinstance(data.get("usage"), dict) else {}
-        if not results and bad:
-            raise ImageError("invalid_image", "the provider returned image data that could not be read", 502,
-                             {"provider_cost": usage.get("cost")} if usage.get("cost") else None)
-        return results, usage
+        return results, data.get("usage") if isinstance(data.get("usage"), dict) else {}
 
 
 class GenerateBody(BaseModel):
@@ -529,7 +411,6 @@ class GenerateBody(BaseModel):
     conversation_id: Optional[int] = None
     task_id: Optional[int] = None
     max_usd: Optional[float] = None
-    request_id: Optional[str] = None
 
 
 class EstimateBody(BaseModel):
@@ -546,7 +427,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, service: ImageServi
 
     @app.get("/autopilot/api/images/status", dependencies=[Depends(admin)])
     async def image_status():
-        return {**service.status(), "suggested": [dict(m) for m in SUGGESTED_IMAGE_MODELS]}
+        return service.status()
 
     @app.post("/autopilot/api/images/estimate", dependencies=[Depends(admin_write)])
     async def estimate(body: EstimateBody):
@@ -565,17 +446,15 @@ def register(app: FastAPI, ctrl: Controller, router: Router, service: ImageServi
             result = await service.generate(body.prompt, body.model, body.size, body.n, body.confirm,
                                             f"image:chat:{body.conversation_id}" if body.conversation_id else "image",
                                             conv_id=body.conversation_id, task_id=body.task_id,
-                                            max_usd=body.max_usd, request_id=body.request_id)
+                                            max_usd=body.max_usd)
         except ImageError as e:
             return err(e)
-        if result.get("duplicate"):
-            return result            # the first request already saved the message: never store an image twice
         if body.conversation_id and ctrl.db.one("SELECT id FROM conversations WHERE id=?", (body.conversation_id,)):
             ctrl.db.x("INSERT INTO messages(conv_id,role,content,created,meta) VALUES(?,?,?,?,?)",
                       (body.conversation_id, "assistant", "Generated image", time.time(),
                        json.dumps({"images": result["images"], "model": "vellur-image",
                                    "target": result["target"], "cost_usd": result["cost_usd"],
-                                   "cost_source": result["cost_source"], "prompt": body.prompt[:MAX_PROMPT]})))
+                                   "cost_source": result["cost_source"]})))
             ctrl.db.x("UPDATE conversations SET updated=? WHERE id=?", (time.time(), body.conversation_id))
         return result
 
