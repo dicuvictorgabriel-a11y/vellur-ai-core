@@ -7,14 +7,28 @@
 <title>VELLUR AI Core</title>
 <style>
 :root{
-  /* OBSIDIAN: deep neutral surfaces, one chartreuse signal colour used only for state and the primary action */
-  --bg:#0b0d0f;--side:#0e1113;--panel:#15191d;--raise:#20262b;--sunk:#090b0c;--line:#1d2327;--line2:#2b3338;
-  --text:#f2f3f1;--soft:#c3c9c8;--muted:#7f898e;--faint:#5b6469;
-  --lime:#c8ff3d;--accent:#c8ff3d;--accent-ink:#0b0d0f;--accent-dim:rgba(200,255,61,.12);--accent-line:rgba(200,255,61,.32);
-  --orange:#ff8a5c;--cyan:#6fd6e0;--warn:#f2cf66;--r:10px;
+  /* VELLUR PEARL: graphite and nacre. One lavender accent; green/amber/red only for state. Dark is the default. */
+  --bg:#0b0b0e;--side:#0e0e12;--panel:#141419;--raise:#1c1c23;--sunk:#08080a;--hover:#18181f;--code:#1a1a21;--line:#1f1f27;--line2:#2b2b35;--line3:#3a3a46;
+  --text:#f1eff4;--soft:#c6c3cd;--muted:#8a8795;--faint:#5f5c6a;
+  --accent:#c3b4f3;--lime:#c3b4f3;--accent-ink:#15121d;--accent-dim:rgba(195,180,243,.11);--accent-line:rgba(195,180,243,.34);
+  --good:#86d7a0;--warn:#efcd6c;--warn-line:#5a4a16;--warn-bg:#1b180f;--bad:#ffad98;--bad-line:#5a2a1c;--bad-bg:#1a1110;--info:#a4e0e9;--info-line:#1d4a50;--info-bg:#0f191b;
+  --orange:#ff8a5c;--cyan:#8fd3e0;--bar:#8a79c9;--r:16px;--shadow:0 1px 0 rgba(255,255,255,.03) inset,0 18px 50px rgba(0,0,0,.35);--glass:rgba(28,28,35,.62);
+  --pearl-a:rgba(255,255,255,.85);--pearl-b:rgba(180,160,245,.45);--pearl-c:rgba(255,190,170,.28);
   --mono:"JetBrains Mono","SF Mono","IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
-  --sans:"Inter","SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-  color-scheme:dark}
+  --sans:"Inter","SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --send:#eceaf2;--send-ink:#15121d;--pearl-shadow:rgba(10,6,24,.5);color-scheme:dark}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#efedf1;--side:#eae7ed;--panel:#f7f6f9;--raise:#ffffff;--sunk:#e7e4eb;--hover:#e2deea;--code:#e9e6ee;--line:#e0dce6;--line2:#d0cbd9;--line3:#b9b3c6;
+  --text:#1c1a22;--soft:#3d3a47;--muted:#6c6878;--faint:#9591a1;
+  --accent:#7a64d4;--lime:#7a64d4;--accent-ink:#ffffff;--accent-dim:rgba(122,100,212,.10);--accent-line:rgba(122,100,212,.38);
+  --good:#1f7f49;--warn:#8a6406;--warn-line:#dcc98e;--warn-bg:#f7f0d9;--bad:#b0412a;--bad-line:#e5b9ac;--bad-bg:#f9e9e4;--info:#14707d;--info-line:#a9d3d9;--info-bg:#e3f1f3;
+  --orange:#c2532f;--cyan:#1b7f8e;--bar:#7a64d4;--shadow:0 1px 2px rgba(60,50,90,.05),0 12px 32px rgba(60,50,90,.07);--glass:rgba(255,255,255,.62);
+  --pearl-a:rgba(255,255,255,.95);--pearl-b:rgba(190,170,245,.55);--pearl-c:rgba(255,205,190,.35);--send:linear-gradient(160deg,#c9bbf7,#a893ec);--send-ink:#1c1a22;--pearl-shadow:rgba(90,70,150,.28);color-scheme:light}}
+:root[data-theme="light"]{--bg:#efedf1;--side:#eae7ed;--panel:#f7f6f9;--raise:#ffffff;--sunk:#e7e4eb;--hover:#e2deea;--code:#e9e6ee;--line:#e0dce6;--line2:#d0cbd9;--line3:#b9b3c6;
+  --text:#1c1a22;--soft:#3d3a47;--muted:#6c6878;--faint:#9591a1;
+  --accent:#7a64d4;--lime:#7a64d4;--accent-ink:#ffffff;--accent-dim:rgba(122,100,212,.10);--accent-line:rgba(122,100,212,.38);
+  --good:#1f7f49;--warn:#8a6406;--warn-line:#dcc98e;--warn-bg:#f7f0d9;--bad:#b0412a;--bad-line:#e5b9ac;--bad-bg:#f9e9e4;--info:#14707d;--info-line:#a9d3d9;--info-bg:#e3f1f3;
+  --orange:#c2532f;--cyan:#1b7f8e;--bar:#7a64d4;--shadow:0 1px 2px rgba(60,50,90,.05),0 12px 32px rgba(60,50,90,.07);--glass:rgba(255,255,255,.62);
+  --pearl-a:rgba(255,255,255,.95);--pearl-b:rgba(190,170,245,.55);--pearl-c:rgba(255,205,190,.35);--send:linear-gradient(160deg,#c9bbf7,#a893ec);--send-ink:#1c1a22;--pearl-shadow:rgba(90,70,150,.28);color-scheme:light}
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--text)}
 body{font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased;display:flex;min-height:100dvh;font-feature-settings:"cv11","ss01"}
 code,pre,.mono{font-family:var(--mono)}
@@ -30,7 +44,7 @@ a{color:inherit}
 .logo small{color:var(--faint);font:500 9.5px/1 var(--mono);letter-spacing:.24em;display:block;margin-top:3px}
 #tabs{display:flex;flex-direction:column;gap:2px}
 #tabs button,.navbtn{position:relative;display:flex;align-items:center;gap:10px;width:100%;background:transparent;color:var(--muted);border:0;border-radius:8px;padding:8px 10px;font:inherit;font-size:13.5px;font-weight:500;text-align:left;cursor:pointer;transition:background .12s,color .12s}
-#tabs button:hover,.navbtn:hover{background:#161b1f;color:var(--text);opacity:1}#tabs button.on{background:#161b1f;color:var(--text)}
+#tabs button:hover,.navbtn:hover{background:var(--hover);color:var(--text);opacity:1}#tabs button.on{background:var(--hover);color:var(--text)}
 #tabs button.on:before{content:"";position:absolute;left:-10px;top:9px;bottom:9px;width:2px;border-radius:2px;background:var(--accent)}
 #tabs button.on svg{color:var(--accent)}
 .navbtn .ext{margin-left:auto;font:500 10px var(--mono);color:var(--faint);letter-spacing:.06em}
@@ -39,7 +53,7 @@ svg.ic{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-wid
 .sidehead{display:flex;align-items:center;justify-content:space-between;color:var(--faint);font:500 10.5px/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;padding:18px 10px 8px}
 #convList{flex:1;overflow:auto;display:flex;flex-direction:column;gap:1px;min-height:40px}
 #convList button{background:transparent;border:0;color:var(--muted);text-align:left;padding:7px 10px;border-radius:7px;font:inherit;font-size:13px;font-weight:400;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;cursor:pointer;flex:none}
-#convList button:hover{background:#161b1f;color:var(--soft);opacity:1}#convList button.on{background:#161b1f;color:var(--text)}
+#convList button:hover{background:var(--hover);color:var(--soft);opacity:1}#convList button.on{background:var(--hover);color:var(--text)}
 #sideBudget{border-top:1px solid var(--line);padding:12px 10px 4px;font-size:12.5px;color:var(--muted)}
 #sideBudget b{color:var(--text);font-weight:600}
 .bar{height:3px;border-radius:99px;background:var(--line);overflow:hidden;margin:9px 0 4px}.bar i{display:block;height:100%;background:var(--accent);width:0;transition:width .4s}
@@ -66,19 +80,19 @@ body:not(.is-admin) .admin-only{display:none!important}body.is-admin .public-onl
 .hero{display:flex;align-items:center;justify-content:space-between;gap:16px;flex-wrap:wrap}
 .phase{font-size:20px;font-weight:600;display:flex;align-items:center;gap:10px}
 .dot{width:9px;height:9px;border-radius:50%;background:var(--muted);flex:none}
-.ok .dot{background:var(--accent)}.busy .dot{background:var(--cyan);animation:p 1.2s infinite}.bad .dot{background:var(--orange)}
+.ok .dot{background:var(--good)}.busy .dot{background:var(--cyan);animation:p 1.2s infinite}.bad .dot{background:var(--orange)}
 @keyframes p{50%{opacity:.35}}
 .steps{display:flex;gap:6px;flex-wrap:wrap;margin-top:12px}
 .step{font-size:11.5px;padding:3px 9px;border-radius:99px;border:1px solid var(--line);color:var(--muted)}
-.step.on{border-color:var(--cyan);color:var(--cyan)}.step.done{border-color:#3a4a14;color:var(--accent)}
+.step.on{border-color:var(--cyan);color:var(--cyan)}.step.done{border-color:var(--line3);color:var(--good)}
 .kv{display:grid;grid-template-columns:auto 1fr;gap:7px 14px;margin:0;font-size:13.5px}.kv dt{color:var(--muted)}.kv dd{margin:0;text-align:right;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12.5px;overflow-wrap:anywhere}
 .note,.viewnote{color:var(--muted);font-size:12.5px;margin-top:8px}
 .msg{margin-top:12px;padding:10px 12px;border-radius:10px;border:1px solid var(--line);font-size:13px;display:none}
-.msg.show{display:block}.msg.bad{border-color:#5a2616;color:#ffb9a3;background:#1c1210}.msg.info{border-color:#1d4a50;color:#a8eef5;background:#0f191b}
+.msg.show{display:block}.msg.bad{border-color:var(--bad-line);color:var(--bad);background:var(--bad-bg)}.msg.info{border-color:var(--info-line);color:var(--info);background:var(--info-bg)}
 button{background:var(--text);color:var(--accent-ink);border:0;border-radius:8px;padding:8px 14px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;transition:opacity .15s,background .15s,border-color .15s}
-button:hover{opacity:.9}button.ghost{background:transparent;color:var(--text);border:1px solid var(--line2)}button.ghost:hover{background:var(--raise);border-color:#3a444a;opacity:1}
+button:hover{opacity:.9}button.ghost{background:transparent;color:var(--text);border:1px solid var(--line2)}button.ghost:hover{background:var(--raise);border-color:var(--line3);opacity:1}
 button.primary{background:var(--accent);color:var(--accent-ink)}
-button.danger{background:transparent;color:var(--orange);border:1px solid #5a2616}button:disabled{opacity:.35;cursor:not-allowed}
+button.danger{background:transparent;color:var(--orange);border:1px solid var(--bad-line)}button:disabled{opacity:.35;cursor:not-allowed}
 .row{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
 label{display:block;font-size:12.5px;color:var(--muted);margin:12px 0 5px}
 input,select,textarea{width:100%;background:var(--sunk);color:var(--text);border:1px solid var(--line2);border-radius:8px;padding:9px 11px;font:inherit;font-size:14px}
@@ -87,16 +101,16 @@ input:focus,select:focus,textarea:focus,button:focus-visible,a:focus-visible,sum
 .toggle{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:9px 0;border-bottom:1px solid var(--line)}
 .toggle:last-child{border-bottom:0}.toggle span{font-size:14px}.toggle small{display:block;color:var(--muted);font-size:12px}
 .sw{position:relative;width:40px;height:23px;flex:none;margin:0}.sw input{opacity:0;width:0;height:0}
-.sw b{position:absolute;inset:0;background:#2a2a31;border-radius:99px;transition:.2s}.sw b:after{content:"";position:absolute;left:3px;top:3px;width:17px;height:17px;border-radius:50%;background:#9a9aa6;transition:.2s}
-.sw input:checked+b{background:#36481a}.sw input:checked+b:after{transform:translateX(17px);background:var(--accent)}
+.sw b{position:absolute;inset:0;background:var(--line2);border-radius:99px;transition:.2s}.sw b:after{content:"";position:absolute;left:3px;top:3px;width:17px;height:17px;border-radius:50%;background:var(--muted);transition:.2s}
+.sw input:checked+b{background:var(--accent-line)}.sw input:checked+b:after{transform:translateX(17px);background:var(--accent)}
 .f2{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}@media(max-width:640px){.f2{grid-template-columns:1fr}}
 table{width:100%;border-collapse:collapse;font-size:13px}td,th{text-align:left;padding:8px;border-bottom:1px solid var(--line);vertical-align:top}
 th{color:var(--muted);font-weight:500;font-size:12px}td.m{font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;white-space:nowrap;font-size:12px}
 td input,td select{padding:6px 8px;font-size:12.5px}td select{min-width:118px}
-.lv-alert,.lv-error,.badc{color:#ffb9a3}.lv-warn,.warnc{color:#ffd76a}.good{color:var(--accent)}
+.lv-alert,.lv-error,.badc{color:var(--bad)}.lv-warn,.warnc{color:var(--warn)}.good{color:var(--good)}
 .pill{display:inline-block;font-size:11.5px;padding:2px 9px;border-radius:99px;border:1px solid var(--line2);color:var(--muted)}
-.pill.live{border-color:#5a2616;color:var(--orange)}.pill.dry{border-color:#1d4a50;color:var(--cyan)}
-pre.box{background:#0a0a0c;border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;font-size:12.5px;line-height:1.5;max-height:340px;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0}
+.pill.live{border-color:var(--bad-line);color:var(--orange)}.pill.dry{border-color:var(--info-line);color:var(--cyan)}
+pre.box{background:var(--sunk);border:1px solid var(--line);border-radius:10px;padding:12px;overflow:auto;font-size:12.5px;line-height:1.5;max-height:340px;white-space:pre-wrap;overflow-wrap:anywhere;margin:6px 0}
 details.adv{margin-top:14px;border-top:1px solid var(--line);padding-top:10px}details.adv summary{cursor:pointer;color:var(--muted);font-size:13px}
 /* chat */
 body.is-admin[data-view="chat"] main{padding:0;overflow:hidden;display:flex;flex-direction:column}
@@ -122,7 +136,7 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .m pre{position:relative;background:var(--sunk);border:1px solid var(--line);border-radius:9px;padding:34px 14px 12px;overflow:auto;font-size:13px;line-height:1.55;white-space:pre;margin:12px 0;cursor:copy}
 .m pre:before{content:attr(data-lang) "  ·  copy";position:absolute;top:9px;left:14px;font:500 10px var(--mono);letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
 .m pre.copied:before{content:"copied";color:var(--accent)}
-.m code{font-size:13px;background:#1b2125;border:1px solid var(--line);padding:1px 5px;border-radius:5px}
+.m code{font-size:13px;background:var(--code);border:1px solid var(--line);padding:1px 5px;border-radius:5px}
 .m pre code{background:transparent;border:0;padding:0}
 .mmeta{display:flex;align-items:center;gap:10px;margin-top:8px;font:500 11px/1 var(--mono);color:var(--faint);letter-spacing:.02em;min-height:24px}
 .mmeta .sp{flex:1}
@@ -133,9 +147,9 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .typing{display:inline-flex;gap:4px;padding:8px 0}.typing i{width:6px;height:6px;border-radius:50%;background:var(--muted);animation:blink 1.2s infinite}
 .typing i:nth-child(2){animation-delay:.15s}.typing i:nth-child(3){animation-delay:.3s}
 @keyframes blink{0%,80%,100%{opacity:.25}40%{opacity:1}}
-.err{border:1px solid #4a2418;background:#160f0c;border-radius:10px;padding:11px 14px;color:#ffc9b6;font-size:14px;white-space:normal}
-.err b{display:block;color:#ffdccf;font-weight:600;margin-bottom:2px}
-.err details{margin-top:6px;font-size:12px;color:#d9a593}.err summary{cursor:pointer}
+.err{border:1px solid var(--bad-line);background:var(--bad-bg);border-radius:10px;padding:11px 14px;color:var(--bad);font-size:14px;white-space:normal}
+.err b{display:block;color:var(--bad);font-weight:600;margin-bottom:2px}
+.err details{margin-top:6px;font-size:12px;color:var(--bad)}.err summary{cursor:pointer}
 .chatempty{margin:14vh auto 0;text-align:left;max-width:620px!important}
 .chatempty .label{color:var(--accent)}
 .chatempty h3{font-size:32px;line-height:1.15;font-weight:600;letter-spacing:-.03em;margin:14px 0 10px}
@@ -145,7 +159,7 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .starter b{display:block;font:500 10px/1 var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin-bottom:7px}
 .starter:hover{border-color:var(--line2);background:var(--panel);color:var(--text);opacity:1}
 .composer{max-width:780px;width:calc(100% - 32px);margin:0 auto 10px;background:var(--panel);border:1px solid var(--line2);border-radius:16px;padding:10px 12px 8px;box-shadow:0 10px 40px rgba(0,0,0,.45)}
-.composer:focus-within{border-color:#3d474d}
+.composer:focus-within{border-color:var(--line3)}
 .composer textarea{border:0;background:transparent;padding:4px 6px;font:15.5px/1.5 "Inter",-apple-system,system-ui,sans-serif;resize:none;max-height:200px;outline:0}
 .composer textarea:focus{outline:0}
 .cbar{display:flex;align-items:center;gap:8px;margin-top:4px}
@@ -164,15 +178,15 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .atts{display:flex;flex-wrap:wrap;gap:6px;padding:5px 2px 7px}
 .atts:empty{display:none}
 .att{position:relative;display:flex;align-items:center;gap:7px;max-width:230px;min-height:40px;padding:5px 8px;border:1px solid var(--line2);border-radius:12px;background:var(--raise);font-size:12px;overflow:hidden}
-.att img{width:34px;height:34px;object-fit:cover;border-radius:7px;flex:none;background:#111}
+.att img{width:34px;height:34px;object-fit:cover;border-radius:7px;flex:none;background:var(--sunk)}
 .att .ic{width:22px;height:22px;flex:none;color:var(--soft)}
 .att .nm{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .att .sz{color:var(--muted);font-size:10.5px}
-.att .x{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;padding:0;background:#111d;border:0;color:var(--soft);font-size:13px;line-height:1;cursor:pointer}
+.att .x{position:absolute;top:2px;right:2px;width:20px;height:20px;border-radius:50%;padding:0;background:var(--glass);border:0;color:var(--soft);font-size:13px;line-height:1;cursor:pointer}
 .att .bar{position:absolute;left:0;bottom:0;height:2px;background:var(--accent);transition:width .15s}
 .att.pending{opacity:.75}
-.att.failed{border-color:#ffb9a3}
-.att.failed .nm{color:#ffb9a3}
+.att.failed{border-color:var(--bad)}
+.att.failed .nm{color:var(--bad)}
 .composer.drag{border-color:var(--accent);background:var(--raise)}
 .msgatts{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px}
 .msgatts a{display:inline-flex;align-items:center;gap:6px;padding:4px 8px;border:1px solid var(--line2);border-radius:9px;background:var(--panel);color:var(--text);text-decoration:none;font-size:11.5px}
@@ -190,13 +204,13 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .imgcard .warnline{color:var(--warn);font-size:12.5px;line-height:1.5}
 .imgcard .acts{display:flex;gap:8px;flex-wrap:wrap}.imgcard .acts button{min-height:0;padding:7px 12px}
 .imgcard .stage{aspect-ratio:1/1;background:var(--sunk);display:grid;place-items:center;color:var(--muted);font-size:13px;position:relative;overflow:hidden}
-.imgcard .stage:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(200,255,61,.05) 50%,transparent 70%);animation:sweep 1.8s linear infinite}
+.imgcard .stage:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,var(--accent-dim) 50%,transparent 70%);animation:sweep 1.8s linear infinite}
 @keyframes sweep{from{transform:translateX(-100%)}to{transform:translateX(100%)}}
 .imgcard .stage span{position:relative;font:500 11px var(--mono);letter-spacing:.1em;text-transform:uppercase}
 .imgcard.done{border:0;background:transparent}.imgcard.done .msgimgs{margin-top:0}
 .caps{display:flex;gap:4px;flex-wrap:wrap;margin:5px 0 0}
 .cap{font-size:10.5px;line-height:1;padding:4px 6px;border-radius:99px;border:1px solid var(--line2);color:var(--soft);white-space:nowrap}
-.cap.vision{color:#a8eef5;border-color:#1d4a50}.cap.image_generation{color:#ffd76a;border-color:#5a4a16}.cap.coding{color:#cdf58a;border-color:#3a4a1a}
+.cap.vision{color:var(--info);border-color:var(--info-line)}.cap.image_generation{color:var(--warn);border-color:var(--warn-line)}.cap.coding{color:var(--good);border-color:var(--accent-line)}
 .mgroup{margin-top:18px}.mgroup>.label{display:flex;align-items:center;gap:8px;margin-bottom:8px}.mgroup>.label i{font-style:normal;color:var(--muted)}
 .suggest{display:grid;grid-template-columns:repeat(auto-fill,minmax(240px,1fr));gap:8px;margin-top:10px}
 .suggest .modelcard{display:flex;flex-direction:column;gap:6px}.suggest .modelcard .row{margin-top:auto}
@@ -210,11 +224,11 @@ body.is-admin[data-view="chat"] .wrap,body.is-admin[data-view="chat"] .grid{disp
 .rchain li.first{border-color:var(--accent-line)}
 .rchain .n{font:500 10.5px var(--mono);color:var(--faint);width:52px;flex:none;letter-spacing:.06em;text-transform:uppercase}.rchain li.first .n{color:var(--accent)}
 .rchain .t{flex:1;min-width:0}.rchain .t b{display:block;font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.rchain .t small{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rchain .t small.bad{color:#ffb9a3}.rchain .t small.ok{color:var(--accent)}
+.rchain .t small{display:block;font-size:11.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.rchain .t small.bad{color:var(--bad)}.rchain .t small.ok{color:var(--good)}
 .rchain button{width:30px;height:30px;padding:0;min-height:0;border-radius:7px;background:transparent;color:var(--muted);border:1px solid transparent;font-size:14px;flex:none}
 .rchain button:hover{border-color:var(--line2);color:var(--text);background:var(--raise);opacity:1}.rchain button:disabled{opacity:.2}
 .daytot{text-align:right}.daytot b{display:block;font-size:24px;font-weight:600;letter-spacing:-.02em;margin-top:6px}
-.daychart{--bar:#729521;position:relative;display:grid;grid-template-columns:44px 1fr;gap:8px;margin-top:18px;height:180px}
+.daychart{--bar:var(--bar);position:relative;display:grid;grid-template-columns:44px 1fr;gap:8px;margin-top:18px;height:180px}
 .daychart .yax{position:relative;font:500 10.5px var(--mono);color:var(--faint);text-align:right}.daychart .yax span{position:absolute;right:0;transform:translateY(-50%)}
 .daychart .plot{position:relative;border-bottom:1px solid var(--line2);display:flex;align-items:flex-end;gap:2px}
 .daychart .grid{position:absolute;left:0;right:0;border-top:1px dashed var(--line);pointer-events:none}
@@ -234,7 +248,7 @@ section:has(> .daychart){position:relative}
 .modelcard{border:1px solid var(--line);border-radius:11px;background:var(--panel);padding:10px 11px;min-width:0}
 .modelcard b{display:block;font-size:12.5px;font-weight:600;overflow-wrap:anywhere}.modelcard .note{margin:3px 0 0;font-size:11px}
 .modelcard .row{margin-top:7px;gap:5px}.modelcard button{padding:4px 8px;font-size:11px;min-height:0}
-.setup{padding:10px 12px;border:1px solid #5a4a16;border-radius:11px;background:#1b180f;color:#ffd76a;font-size:12.5px;margin-top:8px}
+.setup{padding:10px 12px;border:1px solid var(--warn-line);border-radius:11px;background:var(--warn-bg);color:var(--warn);font-size:12.5px;margin-top:8px}
 @media(max-width:640px){.msgimgs{grid-template-columns:1fr;max-width:100%}.modelgrid{grid-template-columns:1fr;max-height:none}}
 .chatfoot{max-width:800px;width:calc(100% - 32px);margin:0 auto 12px;font-size:12px;color:var(--muted)}
 .chatfoot details summary{cursor:pointer;list-style:none;text-align:center}.chatfoot details[open] summary{text-align:left;margin-bottom:6px}
@@ -243,7 +257,7 @@ body.is-admin[data-view="agent"] main{padding:0;overflow:hidden;display:flex;fle
 body.is-admin[data-view="agent"] .wrap,body.is-admin[data-view="agent"] .grid{display:contents}
 #agentCard{display:flex;flex-direction:row;flex:1;min-height:0}
 #agMain{display:flex;flex-direction:column;flex:1;min-width:0;min-height:0}
-#studio{display:none;flex-direction:column;width:46%;min-width:340px;max-width:900px;border-left:1px solid var(--line);background:#0a0a0c}
+#studio{display:none;flex-direction:column;width:46%;min-width:340px;max-width:900px;border-left:1px solid var(--line);background:var(--sunk)}
 body.studio-open #studio{display:flex}
 #pvBar{display:flex;align-items:center;gap:8px;padding:10px 12px;border-bottom:1px solid var(--line);min-height:56px}
 #pvInfo{flex:1;min-width:0;font-size:12.5px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -253,10 +267,10 @@ body.studio-open #studio{display:flex}
 .seg button.on{background:var(--raise);color:var(--text)}
 #pvStage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;overflow:auto;padding:0;position:relative}
 #pvFrame{border:0;background:#fff;width:100%;flex:1 1 auto;min-height:0;display:none}
-#studio.phone #pvStage{padding:16px;background:#060607}#studio.phone #pvFrame{width:390px;max-width:100%;flex:0 1 844px;border-radius:18px;border:1px solid var(--line2)}
+#studio.phone #pvStage{padding:16px;background:var(--sunk)}#studio.phone #pvFrame{width:390px;max-width:100%;flex:0 1 844px;border-radius:18px;border:1px solid var(--line2)}
 #pvEmpty{margin:auto;max-width:340px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6;padding:24px}
 #pvEmpty b{display:block;color:var(--text);font-size:15px;margin-bottom:6px}
-#pvLoading{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center;color:var(--muted);font-size:13px;line-height:1.5;background:rgba(10,10,12,.94)}
+#pvLoading{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center;color:var(--muted);font-size:13px;line-height:1.5;background:var(--glass)}
 #pvLoading[hidden]{display:none}
 #pvLoading b{color:var(--text);font-size:15px;font-weight:600}
 #pvLoading small{max-width:320px;color:var(--muted);font-size:12.5px}
@@ -276,7 +290,7 @@ body.studio-open #pvToggle{background:var(--raise)}
 #agHead .t small{display:block;color:var(--muted);font-size:12.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
 .oc{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 10px;border-radius:99px;border:1px solid var(--line2);color:var(--soft);white-space:nowrap}
 .oc:before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
-.oc.ok{color:var(--accent);border-color:#3d4d12}.oc.warn{color:#ffd76a;border-color:#5a4a16}.oc.bad{color:#ff9d8a;border-color:#5a2616}.oc.run{color:var(--cyan);border-color:#1d4a50}
+.oc.ok{color:var(--good);border-color:var(--line3)}.oc.warn{color:var(--warn);border-color:var(--warn-line)}.oc.bad{color:var(--bad);border-color:var(--bad-line)}.oc.run{color:var(--cyan);border-color:var(--info-line)}
 .oc.run:before{animation:pulse 1.2s ease-in-out infinite}
 @keyframes pulse{50%{opacity:.25}}
 @keyframes spin{to{transform:rotate(360deg)}}
@@ -286,21 +300,21 @@ body.studio-open #pvToggle{background:var(--raise)}
 .act summary::-webkit-details-marker{display:none}
 .act summary .v{color:var(--text);font-weight:500;flex:none}.act summary .o{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12.5px;color:var(--muted)}
 .act summary .st{flex:none;width:18px;height:18px;display:inline-flex;align-items:center;justify-content:center;font-size:12px;border-radius:50%}
-.st.ok{color:var(--accent)}.st.bad{color:#ff9d8a}.st.run:after{content:"";width:12px;height:12px;border:2px solid #3a3a44;border-top-color:var(--cyan);border-radius:50%;animation:spin .8s linear infinite}
+.st.ok{color:var(--good)}.st.bad{color:var(--bad)}.st.run:after{content:"";width:12px;height:12px;border:2px solid var(--line2);border-top-color:var(--cyan);border-radius:50%;animation:spin .8s linear infinite}
 .act summary:after{content:"›";color:var(--muted);font-size:16px;transition:transform .15s;flex:none}.act[open] summary:after{transform:rotate(90deg)}
 .act .body{border-top:1px solid var(--line);padding:10px 12px;font-size:12.5px}
 .act .body pre{margin:0;background:transparent;border:0;padding:0;white-space:pre-wrap;overflow-wrap:anywhere;max-height:320px;overflow:auto;font:12px/1.55 "JetBrains Mono",ui-monospace,Menlo,monospace;color:var(--soft);cursor:text}
 .act .body pre:before{display:none}
 .act .body .cmd{color:var(--text);margin-bottom:6px}
 .act .files{display:flex;flex-direction:column;gap:3px;font-family:"JetBrains Mono",ui-monospace,Menlo,monospace;font-size:12px;color:var(--soft)}
-.dadd{color:#b7f08a}.ddel{color:#ff9d8a}.dhdr{color:var(--muted)}
+.dadd{color:var(--good)}.ddel{color:var(--bad)}.dhdr{color:var(--muted)}
 .plan{margin-top:8px;margin-bottom:8px;padding:10px 14px;border:1px solid var(--line);border-radius:11px;font-size:13.5px}
 .plan b{display:block;font-size:12px;color:var(--muted);font-weight:500;margin-bottom:6px;text-transform:uppercase;letter-spacing:.04em}
 .plan div{padding:2px 0;color:var(--soft)}.plan .done{color:var(--muted);text-decoration:line-through}.plan .in_progress{color:var(--text);font-weight:500}
 .sysline{font-size:12.5px;color:var(--muted);margin-top:10px;margin-bottom:10px;display:flex;align-items:center;gap:8px}
 .sysline:before,.sysline:after{content:"";flex:1;height:1px;background:var(--line)}
-.alert{margin-top:10px;margin-bottom:10px;padding:10px 14px;border-radius:11px;font-size:13.5px;border:1px solid #5a2616;background:#1c1210;color:#ffc4b3}
-.alert.info{border-color:#1d4a50;background:#0f191b;color:#a8eef5}
+.alert{margin-top:10px;margin-bottom:10px;padding:10px 14px;border-radius:11px;font-size:13.5px;border:1px solid var(--bad-line);background:var(--bad-bg);color:var(--bad)}
+.alert.info{border-color:var(--info-line);background:var(--info-bg);color:var(--info)}
 .shot{margin-top:10px;margin-bottom:10px}.shot img{display:block;max-width:100%;max-height:520px;border-radius:10px;border:1px solid var(--line2);cursor:zoom-in;background:#fff}
 .shot figcaption{font-size:12px;color:var(--muted);margin-top:5px}
 .working{display:flex;align-items:center;gap:10px;color:var(--muted);font-size:13.5px;margin-top:12px;margin-bottom:12px}
@@ -323,7 +337,7 @@ body.studio-open #pvToggle{background:var(--raise)}
 .ctx{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:6px}
 .ctx select{width:auto;max-width:100%;border-radius:99px;padding:5px 10px;font-size:12.5px;background:var(--raise);border-color:var(--line)}
 #agOther{margin-bottom:6px;display:none}
-#agSend{width:34px;height:34px;border-radius:50%;padding:0;background:var(--accent);color:#111;display:inline-flex;align-items:center;justify-content:center;flex:none}
+#agSend{width:34px;height:34px;border-radius:50%;padding:0;background:var(--accent);color:var(--accent-ink);display:inline-flex;align-items:center;justify-content:center;flex:none}
 #agSend.stop{background:var(--text)}
 #agTools{position:relative;flex:none}#agTools summary{list-style:none;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;width:34px;height:34px;padding:0;border:1px solid var(--line2);border-radius:50%;color:var(--soft)}#agTools summary::-webkit-details-marker{display:none}#agTools summary:hover{background:var(--raise)}#agTools summary:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
 #agToolsPanel{position:absolute;bottom:calc(100% + 8px);left:0;z-index:16;width:min(320px,calc(100vw - 56px));max-height:55vh;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:10px 12px;box-shadow:0 12px 32px rgba(0,0,0,.5)}
@@ -338,7 +352,7 @@ body.studio-open #pvToggle{background:var(--raise)}
 #taskList button{display:flex;align-items:center;gap:8px;background:transparent;border:0;color:var(--soft);text-align:left;padding:7px 10px;border-radius:8px;font:inherit;font-size:13.5px;cursor:pointer;flex:none;font-weight:400}
 #taskList button span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 #taskList button i{width:7px;height:7px;border-radius:50%;flex:none;background:var(--line2)}
-#taskList button i.ok{background:var(--accent)}#taskList button i.warn{background:#ffd76a}#taskList button i.bad{background:#ff9d8a}#taskList button i.run{background:var(--cyan);animation:pulse 1.2s infinite}
+#taskList button i.ok{background:var(--good)}#taskList button i.warn{background:var(--warn)}#taskList button i.bad{background:var(--bad)}#taskList button i.run{background:var(--cyan);animation:pulse 1.2s infinite}
 #taskList button:hover{background:var(--raise)}#taskList button.on{background:var(--raise);color:var(--text)}
 body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList{display:flex}
 /* mobile */
@@ -346,7 +360,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
 @media(min-width:861px) and (max-width:1180px){#studio{width:50%;min-width:300px}#side{width:210px}}
 @media(max-width:860px){
   body{display:block}
-  #topbar{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20;background:rgba(13,13,15,.92);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top))}
+  #topbar{display:flex;align-items:center;gap:10px;position:sticky;top:0;z-index:20;background:var(--glass);backdrop-filter:blur(10px);border-bottom:1px solid var(--line);padding:8px 12px;padding-top:max(8px,env(safe-area-inset-top))}
   body:not(.is-admin) #topbar{display:none}
   #topbar b{font-weight:600;flex:1}
   #side{position:fixed;z-index:40;left:0;top:0;transform:translateX(-105%);transition:transform .22s ease;width:84vw;max-width:320px;box-shadow:20px 0 60px rgba(0,0,0,.5)}
@@ -366,23 +380,132 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   input,select,textarea{font-size:16px}button{min-height:40px}#tabs button{padding:11px 10px;font-size:15px}
   table{font-size:12.5px}.card{padding:14px}
 }
+
+/* ── PEARL shell: sidebar, workspace, composer, context panel ─────────────────────────────── */
+body{letter-spacing:-.003em}
+.card,.hcard,.tool,.hacts button,.hrec .pc{box-shadow:var(--shadow)}
+.card{border-radius:var(--r)}
+#side{background:var(--side);border-right:1px solid var(--line);padding:22px 16px 16px}
+@media(min-width:861px){#side{width:296px}}
+@media(min-width:861px) and (max-width:1180px){#side{width:232px}}
+.logo{gap:14px;padding:12px 10px 34px;font-size:21px;font-weight:500;letter-spacing:.14em;line-height:1}
+.logo .mark{width:42px;height:42px;flex:none;fill:var(--soft)}
+.logo small{color:var(--muted);font:500 11.5px/1 var(--sans);letter-spacing:.34em;margin-top:8px}
+#tabs{gap:6px}
+#tabs button,.navbtn{gap:18px;padding:13px 16px;border-radius:12px;font-size:14px;color:var(--soft);font-weight:500}
+#tabs button svg.ic{width:21px;height:21px;stroke-width:1.5}
+#tabs button:hover,.navbtn:hover{background:var(--hover);color:var(--text)}
+#tabs button.on{background:linear-gradient(90deg,var(--raise) 40%,var(--accent-line) 160%);color:var(--text);box-shadow:inset 0 0 0 1px var(--line2)}
+#tabs button.on:before{display:none}#tabs button.on svg{color:var(--text)}
+.sidehead{margin-top:18px;padding:18px 10px 10px;border-top:1px solid var(--line);font:500 11px/1 var(--sans);letter-spacing:.2em}
+#convList button,#taskList button{padding:9px 12px;border-radius:10px;font-size:13.5px}
+#convList button:hover,#taskList button:hover{background:var(--hover)}#convList button.on,#taskList button.on{background:var(--raise);box-shadow:inset 0 0 0 1px var(--line)}
+#me{position:relative;display:flex;align-items:center;gap:13px;padding:14px 8px 4px;margin-top:8px;border-top:1px solid var(--line)}
+#me .who{flex:1;min-width:0}#me .who b{display:block;font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}#me .who small{color:var(--muted);font-size:12.5px}
+#meMenu{position:absolute;left:0;right:0;bottom:calc(100% + 8px);z-index:45;background:var(--raise);border:1px solid var(--line2);border-radius:14px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.35)}
+#meMenu .label{display:block;margin-bottom:8px}#meMenu .seg{display:flex}#meMenu .seg button{flex:1}
+#meMenu input{font-size:13px;padding:7px 10px}
+.pearl{display:inline-block;width:42px;height:42px;border-radius:50%;flex:none;box-shadow:0 6px 18px var(--pearl-shadow)}.pearl svg{display:block;width:100%;height:100%;border-radius:50%}
+.iconbtn.plain{border-color:transparent;width:38px;height:38px}.iconbtn.plain:hover{background:var(--hover)}.iconbtn.plain:disabled{opacity:.3;cursor:default;background:transparent}
+.iconbtn.plain svg.ic{width:21px;height:21px;stroke-width:1.6}
+.seg button.on{background:var(--raise);color:var(--text);box-shadow:inset 0 0 0 1px var(--line2)}
+#loginForm button{white-space:nowrap;flex:none}
+/* workspace */
+body.is-admin[data-view="home"] main{padding:0;overflow:hidden;display:flex;flex-direction:column}
+body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{display:contents}
+#homeCard{display:grid;grid-template-columns:minmax(0,1fr) 384px;grid-template-rows:auto minmax(0,1fr);flex:1;min-height:0;position:relative;overflow:hidden}
+#homeCard>.hdr{grid-column:1/-1;padding:22px 22px 0 44px;position:relative;z-index:2}
+#homeMain{min-width:0;overflow:auto;padding:0 26px 44px 44px;position:relative;z-index:1}
+.ribbon{position:absolute;top:0;right:0;width:100%;height:560px;pointer-events:none}
+.hdr{display:flex;align-items:center;gap:6px;min-height:46px}.hdr .sp{flex:1}
+.modelpill{width:auto;min-width:190px;border-radius:99px;padding:11px 38px 11px 18px;font-size:14px;font-weight:500;background-color:var(--panel);border-color:var(--line2);margin-left:10px}
+.hhero{display:flex;align-items:center;gap:28px;margin:44px 0 46px}
+.hhero .pearl{width:100px;height:100px;box-shadow:0 14px 40px var(--pearl-shadow)}
+.hhero h1{font-size:44px;line-height:1.1;font-weight:300;letter-spacing:-.025em;margin:0 0 10px}.hhero h1 b{font-weight:600}
+.hhero p{margin:0;font-size:26px;font-weight:300;color:var(--muted);letter-spacing:-.015em}
+.hcomp{display:flex;align-items:center;gap:12px;min-height:88px;padding:14px 20px;border-radius:44px;background:var(--glass);border:1px solid var(--line2);box-shadow:var(--shadow);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
+.hcomp:focus-within{border-color:var(--line3)}
+.hcomp.drag{border-color:var(--accent)}
+.hbtn{width:46px;height:46px;border-radius:50%;padding:0;flex:none;background:var(--raise);color:var(--text);border:1px solid var(--line2);display:inline-flex;align-items:center;justify-content:center}
+.hbtn:hover{background:var(--hover);opacity:1}.hbtn svg.ic{width:20px;height:20px;stroke-width:1.6}
+.hmode{width:auto;flex:none;border-radius:99px;padding:11px 36px 11px 18px;font-size:15px;font-weight:500;background-color:var(--raise);border-color:var(--line2)}
+#homeIn{flex:1;min-width:0;border:0;background:transparent;resize:none;font:16.5px/1.5 var(--sans);padding:6px 8px;max-height:160px;outline:0;border-left:1px solid var(--line2);padding-left:20px;margin-left:4px;border-radius:0}
+#homeIn:focus{outline:0;border-color:var(--line2)}
+#homeSend{width:48px;height:48px;border-radius:50%;padding:0;flex:none;background:var(--send);color:var(--send-ink);display:inline-flex;align-items:center;justify-content:center}
+#homeSend svg.ic{width:21px;height:21px;stroke-width:2}
+.hnote{min-height:20px;margin:8px 22px 0;font-size:12.5px;color:var(--muted)}
+.hacts{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:22px;margin-top:14px}
+.hacts button{display:flex;flex-direction:column;align-items:flex-start;justify-content:flex-start;gap:0;text-align:left;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:22px;padding:22px 24px;font-weight:400;min-height:134px}
+.hacts button:hover,.hacts button.on{border-color:var(--line3);background:var(--raise);opacity:1}.hacts button.on{box-shadow:inset 0 0 0 1px var(--accent-line),var(--shadow)}
+.hacts svg.ic{width:30px;height:30px;stroke-width:1.4;margin-bottom:16px}.hacts b{font-size:17px;font-weight:500;margin-bottom:4px}.hacts span{font-size:13px;color:var(--muted);line-height:1.4}
+.hrh{display:flex;align-items:center;justify-content:space-between;margin:42px 0 18px}.hrh h2{font-size:19px;font-weight:500;margin:0}
+.linkbtn{background:transparent;color:var(--soft);padding:6px 4px;font-size:15px;font-weight:400}.linkbtn:hover{color:var(--text);opacity:1}
+.hrec{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
+.hrec .pc{position:relative;display:block;text-align:left;padding:0;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:22px;overflow:hidden;font-weight:400;min-height:0}
+.hrec .pc:hover{border-color:var(--line3);opacity:1}
+.pc .cover{display:block;height:116px;background-color:var(--raise)}
+.pc .cover.c0{background-image:radial-gradient(120% 140% at 85% -30%,transparent 46%,var(--pearl-b) 47%,transparent 62%),radial-gradient(90% 120% at 110% 120%,var(--pearl-c),transparent 60%)}
+.pc .cover.c1{background-image:linear-gradient(180deg,transparent 30%,var(--pearl-b)),repeating-linear-gradient(90deg,transparent 0 9px,var(--accent-dim) 9px 11px)}
+.pc .cover.c2{background-image:linear-gradient(118deg,transparent 52%,var(--pearl-b) 53%,transparent 78%),linear-gradient(160deg,var(--accent-dim),transparent 60%)}
+.pc .meta{display:flex;align-items:flex-start;gap:12px;padding:16px 20px 18px}.pc .meta svg.ic{width:20px;height:20px;margin-top:2px;stroke-width:1.5}
+.pc .meta div{min-width:0;flex:1}.pc .meta b{display:block;font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc .meta small{display:block;color:var(--muted);font-size:13px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hempty{grid-column:1/-1;color:var(--muted);font-size:14px;border:1px dashed var(--line2);border-radius:22px;padding:26px}
+#homeSide{overflow:auto;padding:30px 22px 30px 4px;display:flex;flex-direction:column;gap:14px;position:relative;z-index:1}
+.hcard{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px 26px}
+.hcard h3{font-size:16.5px;font-weight:500;margin:0 0 16px}
+.hstat{display:flex;align-items:center;gap:13px;font-size:16.5px;font-weight:500}.hstat .ring{width:15px;height:15px;border-radius:50%;border:3px solid var(--muted);flex:none}.hstat.live .ring{border-color:var(--good)}
+.hsub{display:flex;align-items:center;gap:10px;margin:12px 0 0 2px;color:var(--muted);font-size:13.5px}.hsub i{width:7px;height:7px;border-radius:50%;background:var(--muted);flex:none}.live+.hsub i{background:var(--good)}
+.htask b{display:block;font-size:15px;font-weight:500;margin-bottom:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.htask small{color:var(--muted);font-size:13px;display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.htask{cursor:pointer}.ind{height:6px;border-radius:99px;background:var(--line2);overflow:hidden;margin-top:18px;position:relative}
+.ind i{position:absolute;top:0;bottom:0;width:38%;border-radius:99px;background:linear-gradient(90deg,var(--bar),var(--accent));animation:ind 1.6s ease-in-out infinite}
+@keyframes ind{0%{left:-38%}100%{left:100%}}
+.hrow{display:flex;align-items:center;gap:14px;padding:9px 0;font-size:14px;background:transparent;border:0;color:var(--text);width:100%;text-align:left;font-weight:400;border-radius:0;min-height:0}
+.hrow:hover{opacity:.8}.hrow span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.hrow small{color:var(--muted);font-size:12.5px;flex:none}
+.hrow .st{width:20px;height:20px;border:1.6px solid var(--muted);border-radius:50%;flex:none;font-size:11px;display:grid;place-items:center;color:var(--muted)}
+.hrow .st.ok{border-color:var(--good);color:var(--good)}.hrow .st.bad{border-color:var(--bad);color:var(--bad)}.hrow .st.warn{border-color:var(--warn);color:var(--warn)}
+.hrow .st.run{border-color:var(--line2);border-top-color:var(--accent);animation:spin .9s linear infinite}.hrow .st.run:after{display:none}
+.umeter{display:grid;grid-template-columns:86px 1fr auto;align-items:center;gap:12px;padding:8px 0;font-size:14px}.umeter small{color:var(--muted);font-size:12.5px}
+.umeter .bar{margin:0;height:5px;background:var(--line2)}.umeter .bar i{background:linear-gradient(90deg,var(--bar),var(--accent))}
+.toolgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
+.tool{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:0;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:20px;padding:22px 24px;text-decoration:none;font-weight:400;font-size:14px}
+.tool:hover{border-color:var(--line3);background:var(--raise);opacity:1}.tool svg.ic{width:28px;height:28px;stroke-width:1.4;margin-bottom:18px}.tool b{font-size:16px;font-weight:500;margin-bottom:5px}.tool span{color:var(--muted);font-size:13.5px;line-height:1.5}
+#searchBox{position:fixed;inset:0;z-index:60;background:rgba(0,0,0,.45);display:flex;justify-content:center;align-items:flex-start;padding:14vh 16px 0}
+.sbox{width:min(620px,100%);background:var(--raise);border:1px solid var(--line2);border-radius:18px;overflow:hidden;box-shadow:0 30px 80px rgba(0,0,0,.45)}
+.sbox input{border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent;padding:18px 20px;font-size:16px}.sbox input:focus{outline:0;border-color:var(--line)}
+#searchRes{max-height:46vh;overflow:auto;padding:6px}#searchRes button{display:flex;gap:12px;align-items:center;width:100%;text-align:left;background:transparent;color:var(--text);border-radius:10px;padding:10px 14px;font-weight:400;font-size:14px}
+#searchRes button:hover,#searchRes button:focus-visible{background:var(--hover);opacity:1}#searchRes small{color:var(--muted);margin-left:auto;font-size:12px;flex:none}#searchRes .note{padding:14px}
+@media(max-width:1280px){#homeCard{display:block;overflow:auto}#homeCard>.hdr{padding:18px 28px 0}#homeMain{overflow:visible;padding:0 28px 10px}#homeSide{padding:14px 28px 40px;overflow:visible;display:grid;grid-template-columns:repeat(2,minmax(0,1fr))}.hhero{margin:30px 0 34px}}
+@media(max-width:860px){
+  body.is-admin[data-view="home"]{position:fixed;inset:0;display:flex;flex-direction:column}body.is-admin[data-view="home"] main{flex:1;min-height:0}
+  #homeCard>.hdr{padding:8px 14px 0}#homeMain{padding:0 14px 6px}#homeSide{padding:14px 14px 40px;grid-template-columns:minmax(0,1fr)}
+  .hdr #navBack,.hdr #navFwd{display:none}.modelpill{min-width:0;flex:1;margin-left:4px;padding:9px 34px 9px 14px}.hdr .sp{display:none}
+  .ribbon{height:300px;opacity:.7}.hhero{gap:16px;margin:22px 0 24px}.hhero .pearl{width:62px;height:62px}.hhero h1{font-size:27px;margin-bottom:6px}.hhero p{font-size:17px}
+  .hcomp{flex-wrap:wrap;border-radius:26px;padding:12px;gap:8px;min-height:0}#homeIn{order:-1;flex:1 0 100%;border-left:0;padding-left:8px;margin-left:0}.hmode{flex:1;min-width:0}.hbtn{width:42px;height:42px}#homeSend{width:44px;height:44px}
+  .hacts{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.hacts button{padding:16px;min-height:0;border-radius:18px}.hacts svg.ic{margin-bottom:12px;width:24px;height:24px}.hacts b{font-size:15px}.hacts span{font-size:12.5px}
+  .hrec{grid-template-columns:minmax(0,1fr);gap:10px}.hrh{margin:26px 0 12px}.pc .cover{height:84px}.hcard{padding:18px;border-radius:18px}
+  #me{padding-bottom:max(4px,env(safe-area-inset-bottom))}
+}
 </style>
 </head>
 <body>
 <aside id="side" class="admin-only">
-  <div class="logo"><i></i><div>AI Core<small>VELLUR</small></div></div>
+  <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div>VELLUR<small>AI CORE</small></div></div>
   <nav id="tabs">
-    <button data-view="chat"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>Agent</button>
-    <a class="navbtn" href="/autopilot/studio/" style="text-decoration:none"><svg class="ic" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>Precision Studio</a>
-    <a class="navbtn" id="nav3D" href="/autopilot/3d/" target="_blank" rel="noopener" style="text-decoration:none"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg>3D Studio<span class="ext">↗</span></a>
-    <div class="sep"></div>
-    <button data-view="models"><svg class="ic" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>Models</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>Costs</button><button data-view="gpu"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>GPU</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button>
+    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Workspace</button><button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Conversations</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Projects</button><button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button><button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Usage</button>
   </nav>
-  <div class="sidehead"><span id="sideLabel">Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:26px;height:26px"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button></div>
+  <div class="sidehead"><span id="sideLabel">Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button></div>
   <div id="convList"></div>
   <div id="taskList"></div>
-  <div id="sideBudget"></div>
-  <button class="navbtn" id="btnLogout" style="margin-top:6px;color:var(--muted)">Log out</button>
+  <div id="me">
+    <div id="meMenu" hidden>
+      <span class="label">Appearance</span>
+      <div class="seg" id="themeSeg"><button type="button" data-theme-set="">System</button><button type="button" data-theme-set="dark">Dark</button><button type="button" data-theme-set="light">Light</button></div>
+      <span class="label" style="margin-top:12px">Your name</span>
+      <div class="row" style="flex-wrap:nowrap"><input id="meNameIn" maxlength="40" placeholder="Shown in the greeting" autocomplete="off"><button class="ghost" type="button" id="meNameSave">Save</button></div>
+      <button class="navbtn" id="btnLogout" style="margin-top:10px">Log out</button>
+    </div>
+    <span class="pearl" id="mePearl"></span><div class="who"><b id="meName">Owner</b><small>Owner</small></div><button class="iconbtn plain" id="meMore" aria-label="Account and appearance" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button>
+  </div>
 </aside>
 <div id="scrim"></div>
 <main>
@@ -506,6 +629,48 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       <div class="note" id="profileNote"></div>
     </section>
 
+    <section class="admin-only" id="homeCard" data-tab="home">
+      <svg class="ribbon" viewBox="0 0 1400 560" preserveAspectRatio="xMaxYMin slice" aria-hidden="true"><defs>
+        <linearGradient id="rbA" x1=".25" y1=".1" x2=".95" y2=".75"><stop offset="0" stop-color="var(--pearl-b)" stop-opacity="0"/><stop offset=".42" stop-color="var(--pearl-b)"/><stop offset=".6" stop-color="var(--pearl-a)"/><stop offset=".72" stop-color="var(--pearl-c)"/><stop offset="1" stop-color="var(--pearl-b)" stop-opacity="0"/></linearGradient>
+        <linearGradient id="rbF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".5" stop-color="#fff" stop-opacity=".8"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
+        <mask id="rbM" maskUnits="userSpaceOnUse" x="-200" y="-100" width="1800" height="760"><rect x="-200" y="-100" width="1800" height="660" fill="url(#rbF)"/></mask>
+        <filter id="rbBlur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="34"/></filter><filter id="rbSoft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="7"/></filter></defs>
+        <g mask="url(#rbM)" transform="translate(150 0)"><path d="M620-40C640 150 560 320 60 470L60 520C700 430 960 240 990-40Z" fill="url(#rbA)" filter="url(#rbBlur)" opacity=".3"/>
+        <path d="M690-40C700 130 640 300 120 452 660 372 900 200 930-40Z" fill="url(#rbA)" filter="url(#rbSoft)" opacity=".75"/>
+        <path d="M770-40C772 110 720 250 330 400 700 318 868 180 880-40Z" fill="url(#rbA)" filter="url(#rbSoft)" opacity=".5"/></g></svg>
+      <div class="hdr"><button class="iconbtn plain" id="navBack" aria-label="Back" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg></button><button class="iconbtn plain" id="navFwd" aria-label="Forward" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg></button><span class="sp"></span>
+        <button class="iconbtn plain" id="btnSearch" title="Search conversations and projects (Ctrl+K)" aria-label="Search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></button><button class="iconbtn plain" id="btnTheme" title="Switch between dark and light" aria-label="Switch theme"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg></button>
+        <select id="homeModel" class="modelpill" aria-label="Model"></select></div>
+     <div id="homeMain">
+      <div class="hhero"><span class="pearl" id="heroPearl"></span><div><h1 id="greet">Welcome.</h1><p>What shall we create today?</p></div></div>
+      <div class="hcomp" id="homeComposer">
+        <button class="hbtn" type="button" id="homeAttach" title="Attach files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button><button class="hbtn" type="button" id="homeSettings" title="Models and routing" aria-label="Models and routing"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg></button>
+        <select id="homeMode" class="hmode" aria-label="What to do"><option value="chat">Chat</option><option value="agent">Agent</option><option value="image">Image</option></select>
+        <textarea id="homeIn" rows="1" placeholder="Describe, build, or execute…" aria-label="Message"></textarea>
+        <button type="button" id="homeSend" aria-label="Send"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
+      </div>
+      <div class="hnote" id="homeNote" role="status"></div>
+      <div class="hacts">
+        <button type="button" data-act="build"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/></svg><b>Build</b><span>Apps, features, systems</span></button><button type="button" data-act="automate"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg><b>Automate</b><span>Flows, tasks, processes</span></button><button type="button" data-act="create"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 3.5 3 3-2.5 5 4"/></svg><b>Create</b><span>Visuals, media, content</span></button><button type="button" data-act="explore"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3.5 12.8 9l5.7 1.9-5.7 1.9L11 18.5l-1.8-5.7L3.5 10.9 9.2 9z"/><path d="M18.5 3v3M17 4.5h3"/></svg><b>Explore</b><span>Ideas, strategies, solutions</span></button>
+      </div>
+      <div class="hrh"><h2 id="recTitle">Recent Projects</h2><button type="button" class="linkbtn" id="recAll">View All →</button></div>
+      <div class="hrec" id="recGrid"></div>
+     </div>
+     <aside id="homeSide" aria-label="Agent and usage">
+      <div class="hcard" id="hAgent"></div><div class="hcard" id="hTask" hidden></div>
+      <div class="hcard"><h3>Activity</h3><div id="hActivity"></div></div>
+      <div class="hcard"><h3>Usage</h3><div id="hUsage"></div></div>
+     </aside>
+    </section>
+    <div id="searchBox" hidden><div class="sbox" role="dialog" aria-label="Search"><input id="searchIn" placeholder="Search conversations and projects…" autocomplete="off"><div id="searchRes"></div></div></div>
+
+    <section class="c12 admin-only pagehead" data-tab="tools"><div><span class="label">VELLUR · Tools</span><h1>Tools</h1><p>Creative studios and the system behind the workspace.</p></div></section>
+    <section class="c12 admin-only" data-tab="tools"><div class="toolgrid">
+      <a class="tool" href="/autopilot/studio/"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg><b>Precision Studio</b><span>Trace an image into an editable vector outline and export SVG.</span></a>
+      <a class="tool" id="nav3D" href="/autopilot/3d/" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg><b>3D Studio</b><span>View GLB, glTF, OBJ and STL models from a project or from this device.</span></a>
+      <button class="tool" type="button" data-go="gpu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg><b>GPU</b><span>Optional private GPU, budget and limits.</span></button>
+      <button class="tool" type="button" data-go="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><b>Activity</b><span>Installed version of VELLUR and the event log.</span></button>
+    </div></section>
     <section class="admin-only" id="chatCard" data-tab="chat">
       <div class="chathead">
         <select id="convSel"></select><span id="chatTitle">New conversation</span>
@@ -669,6 +834,15 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
 <script>
 (() => {
   const $ = (id) => document.getElementById(id);
+  // ── theme: dark, light or the system's choice; remembered in a cookie (no secrets, readable before login) ──
+  const themeChoice = () => (document.cookie.match(/(?:^|; )vellur_theme=(dark|light)/) || [])[1] || "";
+  function setTheme(t, save) {
+    if (t) document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+    if (save) document.cookie = "vellur_theme=" + t + "; path=/autopilot; max-age=" + (t ? 31536000 : 0) + "; SameSite=Lax";
+    document.querySelectorAll("[data-theme-set]").forEach(b => b.classList.toggle("on", b.dataset.themeSet === t));
+  }
+  const themeNow = () => themeChoice() || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
+  setTheme(themeChoice());
   const STEPS = ["searching","attaching","provisioning","starting","loading_model","ready"];
   const LABEL = {offline:"Offline",searching:"Searching",attaching:"Connecting",provisioning:"Provisioning",starting:"Starting",
     loading_model:"Loading model",ready:"Ready",processing:"Processing",idle:"Idle",stopping:"Stopping",stopped:"Stopped",failed:"Failed"};
@@ -683,7 +857,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     return j;
   }
   function render(s) {
-    S = s; sideBudget(s);
+    S = s; sideBudget(s); homeUsage(s); identity(s);
     const ph = s.phase, ses = s.session || {};
     const el = $("phase"); el.className = "phase " + (["ready","processing","idle"].includes(ph) ? "ok" : ["failed"].includes(ph) ? "bad" : STEPS.includes(ph) || ph === "stopping" ? "busy" : "");
     $("phaseText").textContent = STEPS.slice(0,5).includes(ph) ? "Starting your AI environment… (" + LABEL[ph] + ")" : (LABEL[ph] || ph);
@@ -871,14 +1045,160 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       fillModels($("chatModel")); fillModels($("tModel"), null, "agent"); } catch (e) {}
   }
   let VIEW = "chat";
-  function setView(v) {
+  const VIEW_NAMES = { home: "Workspace", chat: "Conversations", agent: "Projects", models: "Models", tools: "Tools", costs: "Usage", gpu: "GPU", activity: "Activity" };
+  const HIST = []; let HPOS = -1;
+  function setView(v, fromHistory) {
+    if (!VIEW_NAMES[v]) v = "home";
     if (VIEW === "agent" && v !== "agent") closeStream();
-    VIEW = v; document.body.dataset.view = v; if ($("sideLabel")) $("sideLabel").textContent = v === "agent" ? "Agent tasks" : "Conversations"; document.body.classList.remove("nav-open"); $("topTitle").textContent = v[0].toUpperCase() + v.slice(1); $("topNew").style.visibility = ["chat", "agent"].includes(v) ? "" : "hidden"; try { sessionStorage.setItem("vellurView", v); } catch (e) {}
-    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v));
+    if (!fromHistory && HIST[HPOS] !== v) { HIST.splice(HPOS + 1); HIST.push(v); HPOS = HIST.length - 1; }
+    $("navBack").disabled = HPOS <= 0; $("navFwd").disabled = HPOS >= HIST.length - 1;
+    VIEW = v; document.body.dataset.view = v; if ($("sideLabel")) $("sideLabel").textContent = v === "agent" ? "Agent tasks" : "Conversations"; document.body.classList.remove("nav-open"); $("topTitle").textContent = VIEW_NAMES[v]; $("topNew").style.visibility = ["chat", "agent", "home"].includes(v) ? "" : "hidden"; try { sessionStorage.setItem("vellurView", v); } catch (e) {}
+    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v || (b.dataset.view === "tools" && ["gpu", "activity"].includes(v))));
     document.querySelectorAll("section[data-tab]").forEach(sec => { sec.hidden = !sec.dataset.tab.split(" ").includes(v); });
-    ({ chat: loadConvs, agent: loadAgent, models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {} })[v]();
+    return ({ home: loadHome, chat: loadConvs, agent: loadAgent, models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {}, tools: () => {} })[v]();
   }
+  $("navBack").onclick = () => { if (HPOS > 0) setView(HIST[--HPOS], true); };
+  $("navFwd").onclick = () => { if (HPOS < HIST.length - 1) setView(HIST[++HPOS], true); };
+  document.querySelectorAll("[data-go]").forEach(b => b.onclick = () => setView(b.dataset.go));
   document.querySelectorAll("#tabs button").forEach(b => b.onclick = () => setView(b.dataset.view));
+
+  // ── pearl: the owner's identity. Drawn from one stored seed, so it is the same on every device and visit. ──
+  let PEARL_N = 0;
+  function pearlSVG(seed) {
+    const f = (n) => { const x = Math.sin((seed % 100003) * 12.9898 + n * 78.233) * 43758.5453; return x - Math.floor(x); };
+    const id = "pl" + (++PEARL_N), hue = Math.round(f(1) * 44 - 22), rot = Math.round(f(2) * 360);
+    const tint = (h, sat, l, a) => `hsla(${(h + hue + 360) % 360},${sat}%,${l}%,${a})`;
+    const bands = [[322, 62, 88], [262, 72, 82], [226, 72, 86], [292, 48, 90], [250, 30, 97]].map((c, i) =>
+      `<ellipse cx="${30 + f(3 + i) * 40}" cy="${28 + f(9 + i) * 44}" rx="${30 + f(15 + i) * 22}" ry="${7 + f(21 + i) * 9}" transform="rotate(${rot + i * 37 + f(27 + i) * 30} 50 50)" fill="none" stroke="${tint(c[0], c[1], c[2], .9)}" stroke-width="${5 + f(33 + i) * 6}"/>`).join("");
+    return `<svg viewBox="0 0 100 100" role="img" aria-label="Your pearl"><defs>
+      <radialGradient id="${id}b" cx="36%" cy="28%" r="80%"><stop offset="0" stop-color="#fff"/><stop offset=".2" stop-color="${tint(266, 75, 93, 1)}"/><stop offset=".52" stop-color="${tint(258, 48, 76, 1)}"/><stop offset=".84" stop-color="${tint(252, 34, 42, 1)}"/><stop offset="1" stop-color="${tint(246, 40, 20, 1)}"/></radialGradient>
+      <radialGradient id="${id}s" cx="72%" cy="80%" r="62%"><stop offset="0" stop-color="rgba(22,12,44,.62)"/><stop offset="1" stop-color="rgba(22,12,44,0)"/></radialGradient>
+      <radialGradient id="${id}h" cx="31%" cy="23%" r="26%"><stop offset="0" stop-color="rgba(255,255,255,.98)"/><stop offset=".5" stop-color="rgba(255,255,255,.45)"/><stop offset="1" stop-color="rgba(255,255,255,0)"/></radialGradient>
+      <radialGradient id="${id}r"><stop offset=".84" stop-color="rgba(255,255,255,0)"/><stop offset=".965" stop-color="rgba(255,236,250,.5)"/><stop offset="1" stop-color="rgba(255,255,255,.05)"/></radialGradient>
+      <filter id="${id}n" x="-20%" y="-20%" width="140%" height="140%"><feTurbulence type="fractalNoise" baseFrequency="${(.014 + f(40) * .01).toFixed(4)}" numOctaves="2" seed="${seed % 9973}"/><feDisplacementMap in="SourceGraphic" scale="58" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation="1.3"/></filter>
+      <clipPath id="${id}c"><circle cx="50" cy="50" r="49"/></clipPath></defs>
+      <g clip-path="url(#${id}c)"><circle cx="50" cy="50" r="49" fill="url(#${id}b)"/><g filter="url(#${id}n)" opacity=".62" style="mix-blend-mode:soft-light">${bands}</g>
+      <g filter="url(#${id}n)" opacity=".26">${bands}</g><path d="M17 43C21 24 37 13 56 13" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2.2" stroke-linecap="round" filter="url(#${id}n)"/><circle cx="50" cy="50" r="49" fill="url(#${id}s)"/><circle cx="50" cy="50" r="49" fill="url(#${id}h)"/><circle cx="50" cy="50" r="49" fill="url(#${id}r)"/></g></svg>`;
+  }
+  let IDENT = "";
+  function identity(s) {
+    const st = (s && s.settings) || null; if (!st) return;
+    let seed = Number(st.pearl_seed) || 0;
+    if (!seed) { seed = 1 + Math.floor(Math.random() * 2147483000); st.pearl_seed = seed; send("settings", "PUT", { pearl_seed: seed }).catch(() => {}); }   // chosen once, then kept on the server
+    const name = String(st.owner_name || "").trim(), key = seed + "|" + name;
+    if (key === IDENT) return; IDENT = key;
+    $("mePearl").innerHTML = pearlSVG(seed); $("heroPearl").innerHTML = pearlSVG(seed);
+    $("meName").textContent = name || "Owner"; if (document.activeElement !== $("meNameIn")) $("meNameIn").value = name;
+    greet(name);
+  }
+  function greet(name) {
+    const h = new Date().getHours(), part = h < 5 ? "Good evening" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
+    $("greet").innerHTML = name ? esc(part) + ", <b>" + esc(name) + ".</b>" : esc(part) + ".";
+  }
+  $("meMore").onclick = (e) => { e.stopPropagation(); const m = $("meMenu"); m.hidden = !m.hidden; $("meMore").setAttribute("aria-expanded", String(!m.hidden)); setTheme(themeChoice()); };
+  document.addEventListener("click", (e) => { if (!$("me").contains(e.target)) $("meMenu").hidden = true; });
+  document.querySelectorAll("[data-theme-set]").forEach(b => b.onclick = () => setTheme(b.dataset.themeSet, true));
+  $("btnTheme").onclick = () => setTheme(themeNow() === "dark" ? "light" : "dark", true);
+  $("meNameSave").onclick = async () => { try { const st = await send("settings", "PUT", { owner_name: $("meNameIn").value.trim() }); if (S && S.settings) { S.settings.owner_name = st.owner_name; identity(S); } $("meMenu").hidden = true; } catch (e) { alert(e.message); } };
+  $("meNameIn").addEventListener("keydown", (e) => { if (e.key === "Enter") $("meNameSave").click(); });
+
+  // ── workspace: one place to start a conversation, an agent task or an image ─────────────────
+  const agoShort = (t) => { const d = Date.now() / 1000 - (t || 0); return d < 90 ? "just now" : d < 3600 ? Math.round(d / 60) + " min ago" : d < 86400 ? Math.round(d / 3600) + " h ago" : Math.round(d / 86400) + " d ago"; };
+  const HOME_MODELS = [["vellur-chat", "VELLUR Chat"], ["vellur-max", "VELLUR Max"], ["vellur-coder", "VELLUR Coder"]];
+  const HOME_ACTS = { build: ["agent", "Describe the app or feature to build…"], automate: ["agent", "Describe the task to run from start to finish…"],
+    create: ["image", "Describe the image to create…"], explore: ["chat", "Ask a question or explore an idea…"] };
+  let HOME = { convs: [], loaded: false };
+  function homeMode(mode, placeholder) {
+    $("homeMode").value = mode; $("homeIn").placeholder = placeholder || { chat: "Ask, write or analyse…", agent: "Describe, build, or execute…", image: "Describe the image to create…" }[mode];
+    try { sessionStorage.setItem("vellurMode", mode); } catch (e) {}
+    document.querySelectorAll(".hacts button").forEach(b => b.classList.toggle("on", !!placeholder && HOME_ACTS[b.dataset.act][1] === placeholder));
+    $("homeNote").textContent = mode === "agent" ? (AGENT.available === false ? "The agent is not available: " + (AGENT.why || "") : "Agent: works in an isolated copy of a repository. You choose the repository before it starts.")
+      : mode === "image" ? "Image: you confirm the price before anything is generated." : "";
+  }
+  $("homeMode").onchange = () => homeMode($("homeMode").value);
+  document.querySelectorAll(".hacts button").forEach(b => b.onclick = () => { const a = HOME_ACTS[b.dataset.act]; homeMode(a[0], a[1]); $("homeIn").focus(); });
+  const homeGrow = () => { const t = $("homeIn"); t.style.height = "auto"; t.style.height = Math.min(160, t.scrollHeight) + "px"; };
+  $("homeIn").addEventListener("input", homeGrow);
+  $("homeIn").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && !matchMedia("(pointer:coarse)").matches) { e.preventDefault(); homeSend(); } });
+  $("homeSettings").onclick = () => setView("models");
+  $("recAll").onclick = () => setView(TASKS.length ? "agent" : "chat");
+  async function startChat(text, model, pickFile) {
+    const c = await send("conversations", "POST", { model: model === "vellur-image" ? "vellur-chat" : model });
+    CONV = c.id; await setView("chat");
+    $("chatModel").value = model; $("chatModel").dispatchEvent(new Event("change")); $("chatIn").value = text; grow();
+    if (pickFile) { $("chatIn").focus(); $("chatFile").click(); } else if (text) $("btnSend").click(); else $("chatIn").focus();
+  }
+  async function homeSend() {
+    const text = $("homeIn").value.trim(), mode = $("homeMode").value, model = $("homeModel").value; if (!text) { $("homeIn").focus(); return; }
+    $("homeSend").disabled = true;
+    try {
+      if (mode === "agent") {
+        TASK = null; try { sessionStorage.setItem("vellurTask", ""); } catch (e) {}
+        await setView("agent"); newTask(); $("tModel").value = model; $("agIn").value = text; agGrow(); $("agIn").focus();
+        $("agNote").textContent = AGENT.available === false ? "" : "Choose the repository, then press send.";
+      } else await startChat(text, mode === "image" ? "vellur-image" : model);
+      $("homeIn").value = ""; homeGrow();
+    } catch (e) { $("homeNote").textContent = e.message; } finally { $("homeSend").disabled = false; }
+  }
+  $("homeSend").onclick = homeSend;
+  $("homeAttach").onclick = () => startChat($("homeIn").value.trim(), $("homeModel").value, true).then(() => { $("homeIn").value = ""; }).catch(e => { $("homeNote").textContent = e.message; });
+  function openProject(id) { TASK = id; try { sessionStorage.setItem("vellurTask", String(id)); } catch (e) {} setView("agent"); }
+  function openChat(id) { CONV = id; setView("chat"); }
+  function renderHome() {
+    const tasks = TASKS.slice(0, 3), convs = HOME.convs.slice(0, 3), folder = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
+    const outcome = (t) => !FINAL_STATES.includes(t.state) ? "Working" : (OUTCOME[t.outcome] || [t.state])[0];
+    $("recTitle").textContent = tasks.length ? "Recent Projects" : "Recent Conversations";
+    $("recGrid").innerHTML = tasks.length ? tasks.map(t => `<button type="button" class="pc" data-task="${t.id}"><span class="cover c${t.id % 3}"></span><span class="meta">${folder}<div><b>${esc(t.title)}</b><small>${esc((t.repo || "Empty workspace").split("/").pop())} · ${esc(outcome(t))}</small></div></span></button>`).join("")
+      : convs.length ? convs.map(c => `<button type="button" class="pc" data-conv="${c.id}"><span class="cover c${c.id % 3}"></span><span class="meta">${folder}<div><b>${esc(c.title)}</b><small>Conversation · ${esc(agoShort(c.updated))}</small></div></span></button>`).join("")
+      : HOME.loaded ? '<div class="hempty">Nothing here yet. Your projects and conversations appear here once you start one above.</div>' : "";
+    $("recGrid").querySelectorAll("[data-task]").forEach(b => b.onclick = () => openProject(Number(b.dataset.task)));
+    $("recGrid").querySelectorAll("[data-conv]").forEach(b => b.onclick = () => openChat(Number(b.dataset.conv)));
+    // context panel: only what the server reports. No percentages: the agent does not report one.
+    const running = TASKS.filter(t => !FINAL_STATES.includes(t.state)), cur = running[0], last = TASKS[0];
+    $("hAgent").innerHTML = AGENT.available === false ? `<div class="hstat"><span class="ring"></span>Agent — Unavailable</div><div class="hsub"><i></i>${esc(AGENT.why || "Not configured")}</div>`
+      : cur ? `<div class="hstat live"><span class="ring"></span>Agent — Live</div><div class="hsub"><i></i>${running.length === 1 ? "Executing a task" : "Executing " + running.length + " tasks"}</div>`
+      : `<div class="hstat"><span class="ring"></span>Agent — Idle</div><div class="hsub"><i></i>No task running</div>`;
+    const show = cur || last; $("hTask").hidden = !show;
+    if (show) { $("hTask").innerHTML = `<h3>${cur ? "Current task" : "Last task"}</h3><div class="htask" role="button" tabindex="0"><b>${esc(show.title)}</b><small>${esc(cur ? "State: " + show.state + " · updated " + agoShort(show.updated) : outcome(show) + " · " + money4(show.cost_usd) + " · " + agoShort(show.updated))}</small>${cur ? '<div class="ind" role="progressbar" aria-label="Working"><i></i></div>' : ""}</div>`;
+      $("hTask").querySelector(".htask").onclick = () => openProject(show.id); }
+    const rows = TASKS.slice(0, 5).map(t => { const d = dotFor(t); return `<button type="button" class="hrow" data-task="${t.id}"><i class="st ${d}">${d === "ok" ? "✓" : d === "bad" ? "✕" : d === "warn" ? "!" : ""}</i><span>${esc(t.title)}</span><small>${esc(d === "run" ? "In progress" : agoShort(t.updated))}</small></button>`; }).join("");
+    $("hActivity").innerHTML = rows || '<div class="note" style="margin:0">No agent activity yet.</div>';
+    $("hActivity").querySelectorAll("[data-task]").forEach(b => b.onclick = () => openProject(Number(b.dataset.task)));
+  }
+  function homeUsage(s) {
+    if (!s || !s.budget || !$("hUsage")) return; const b = s.budget, pct = Math.min(100, b.percent || 0);
+    $("hUsage").innerHTML = `<div class="umeter"><span>Spend</span><div class="bar"><i style="width:${pct}%"></i></div><small>${money(b.total_usd)} of ${money(b.budget_usd)}</small></div>`
+      + `<div class="umeter"><span>GPU</span><div class="bar"><i style="width:${["ready", "processing", "idle"].includes(s.phase) ? 100 : 0}%"></i></div><small>${esc(LABEL[s.phase] || s.phase || "—")}</small></div>`
+      + `<div class="umeter"><span>Requests</span><div class="bar"><i style="width:${Math.min(100, (s.inflight || 0) * 25)}%"></i></div><small>${s.inflight || 0} active</small></div>`;
+  }
+  async function loadHome() {
+    greet(String((S && S.settings && S.settings.owner_name) || "").trim());
+    if (!$("homeModel").options.length) { HOME_MODELS.forEach(([v, l]) => $("homeModel").add(new Option(l, v))); let m = "vellur-chat", mode = "chat";
+      try { m = sessionStorage.getItem("vellurModel") || m; mode = sessionStorage.getItem("vellurMode") || mode; } catch (e) {}
+      $("homeModel").value = m; if (!$("homeModel").value) $("homeModel").value = "vellur-chat"; homeMode(HOME_ACTS[mode] ? "chat" : mode); }
+    renderHome();
+    const [a, c] = await Promise.all([send("agent", "GET").catch(e => ({ available: false, why: e.message, tasks: [] })), send("conversations", "GET").catch(() => ({ conversations: [] }))]);
+    AGENT = a; TASKS = a.tasks || []; HOME.convs = c.conversations || []; HOME.loaded = true;
+    if (!$("convSel").options.length) HOME.convs.forEach(x => $("convSel").add(new Option(x.title, x.id)));
+    renderTasks(); renderHome();
+  }
+  $("homeModel").onchange = () => { try { sessionStorage.setItem("vellurModel", $("homeModel").value); } catch (e) {} };
+  // ── search: conversations and projects by title ─────────────────────────────────────────────
+  async function openSearch() {
+    $("searchBox").hidden = false; $("searchIn").value = ""; $("searchIn").focus();
+    try { HOME.convs = (await send("conversations", "GET")).conversations || []; if (!TASKS.length) TASKS = ((await send("agent", "GET")).tasks) || []; } catch (e) {}
+    searchRender();
+  }
+  function searchRender() {
+    const q = $("searchIn").value.trim().toLowerCase();
+    const items = [...TASKS.map(t => ({ k: "Project", t: t.title, go: () => openProject(t.id) })), ...HOME.convs.map(c => ({ k: "Conversation", t: c.title, go: () => openChat(c.id) }))].filter(x => !q || String(x.t).toLowerCase().includes(q)).slice(0, 30);
+    $("searchRes").innerHTML = items.map((x, i) => `<button type="button" data-i="${i}"><span>${esc(x.t)}</span><small>${x.k}</small></button>`).join("") || '<div class="note">Nothing found.</div>';
+    $("searchRes").querySelectorAll("button").forEach(b => b.onclick = () => { $("searchBox").hidden = true; items[Number(b.dataset.i)].go(); });
+  }
+  $("btnSearch").onclick = openSearch; $("searchIn").addEventListener("input", searchRender);
+  $("searchIn").addEventListener("keydown", (e) => { if (e.key === "Enter") { const b = $("searchRes").querySelector("button"); if (b) b.click(); } });
+  $("searchBox").addEventListener("click", (e) => { if (e.target === $("searchBox")) $("searchBox").hidden = true; });
+  document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && document.body.classList.contains("is-admin")) { e.preventDefault(); openSearch(); } else if (e.key === "Escape") { $("searchBox").hidden = true; $("meMenu").hidden = true; } });
 
   // chat
   let CONV = null, chatAtts = [];
@@ -1254,7 +1574,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     box().innerHTML = `<div class="agempty"><h3>What should we build?</h3><p>Pick a repository, describe the task in your own words and watch the agent work. Publishing depends on your preferences and server support.</p><div class="chips">${ex.map(x => `<button class="chip">${esc(x)}</button>`).join("")}</div>${AGENT.available === false ? `<div class="alert" style="margin-top:18px;text-align:left">${esc(AGENT.why || "The agent is not available.")}</div>` : ""}</div>`;
     box().querySelectorAll(".agempty .chip").forEach(c => c.onclick = () => { $("agIn").value = c.textContent; $("agIn").focus(); agGrow(); });
     if (AGENT.self_repo && [...$("tRepoSel").options].some(o => o.value === AGENT.self_repo)) {     // VELLUR can work on VELLUR
-      const c = document.createElement("button"); c.className = "chip"; c.style.borderColor = "#3d4d12"; c.textContent = "Improve VELLUR itself";
+      const c = document.createElement("button"); c.className = "chip"; c.style.borderColor = "var(--accent-line)"; c.textContent = "Improve VELLUR itself";
       c.onclick = async () => { $("tRepoSel").value = AGENT.self_repo; await repoChanged(); $("agIn").value = "In the VELLUR dashboard, "; $("agIn").focus(); agGrow(); };
       box().querySelector(".agempty .chips").prepend(c); }
     header(); composer(); renderTasks(); loadPreview();
@@ -1771,9 +2091,9 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     }
     connect();
     if (ADMIN) {
-      let v = "chat"; try { v = sessionStorage.getItem("vellurView") || "chat"; } catch (e) {}
+      let v = "home"; try { v = sessionStorage.getItem("vellurView") || "home"; } catch (e) {}
       $("memory").value = (S && S.settings && S.settings.memory) || "";
-      setView(v); loadRouteHints(); setInterval(() => { if (VIEW === "activity") loadHistory(); }, 15000);
+      setView(v); loadRouteHints(); setInterval(() => { if (VIEW === "activity") loadHistory(); else if (VIEW === "home" && !document.hidden) loadHome(); }, 15000);
     }
   })();
 })();

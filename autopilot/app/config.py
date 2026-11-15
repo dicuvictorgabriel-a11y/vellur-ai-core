@@ -87,6 +87,8 @@ DEFAULT_SETTINGS: dict = {
     # Shown in the cost report. in_budget=False: visible, but not counted against the monthly budget.
     "fixed_costs": [{"name": "VPS ro-prod-01", "usd": 0.0, "in_budget": False},
                     {"name": "HyperAI Pro (already purchased)", "usd": 4.99, "in_budget": False}],
+    "owner_name": "",                # shown in the greeting; not a login name
+    "pearl_seed": 0,                 # the owner's pearl (avatar) identity; chosen once by the dashboard, then kept
     "memory": "",                    # project notes added as a system message to dashboard chats and agent tasks
     "agent_max_minutes": 30,
     "agent_max_usd": 2.0,

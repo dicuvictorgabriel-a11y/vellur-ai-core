@@ -46,6 +46,22 @@ The UI now explains it and always asks before such a request; the provider-repor
 - **Image format** in Chat (1:1, 2:3, 9:16, 3:2, 16:9), sent as `image_config.aspect_ratio`.
 - **Spend per day** (Costs): one bar per day of the month with hover/focus details and a table view.
 
+## Round 3: Pearl shell (reference-driven, 2026-11-15)
+
+The owner approved two visual references (dark and light). Implemented so far:
+- One token set with a Dark and a Light theme (system by default, switch in the header and in the account menu,
+  remembered in the `vellur_theme` cookie). Lavender accent; green/amber/red only for state.
+- New shell: sidebar (Workspace, Conversations, Projects, Models, Tools, Usage), account block with the pearl.
+- **Workspace** home: greeting, composer with three modes (Chat, Agent, Image), Build/Automate/Create/Explore,
+  recent projects, and a context panel built only from server data (agent state, last/current task, activity,
+  spend, GPU). No invented percentages: a running task shows an indeterminate bar.
+- **Pearl**: drawn as an SVG from one stored seed (`pearl_seed` setting), so it is the same on every device and
+  visit. It is procedural but simple; it is not a photoreal render.
+- Search (Ctrl+K) over conversations and projects; Back/Forward between screens.
+- Precision Studio follows the same palette and theme; 3D Studio uses the same accent (dark only).
+Not done yet: Chat and Agent are still two screens (the Workspace composer hands over to them); the Agent screen
+does not yet use the new context panel; the sidebar has no "Spaces"; no notifications.
+
 ## Still open (priority order)
 
 1. One real, owner-approved image test with a known price (e.g. a manual price for the chosen model) to confirm the

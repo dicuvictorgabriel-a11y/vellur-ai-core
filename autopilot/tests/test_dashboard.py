@@ -224,3 +224,22 @@ def test_interface_is_english_only():
     for f in files:
         for n, line in enumerate(open(f, encoding="utf-8"), 1):
             assert not re.search(r"[ăâîșțşţĂÂÎȘȚŞŢ]", line), f"{os.path.relpath(f, static)}:{n} is not English: {line.strip()[:80]}"
+
+
+def test_pearl_shell_is_wired():
+    html = open(PAGE).read()
+    # two themes from one token set; the choice is kept in a cookie (never localStorage)
+    assert ':root[data-theme="light"]{' in html and "@media (prefers-color-scheme:light){:root:not([data-theme=\"dark\"]){" in html
+    assert "vellur_theme=" in html and "localStorage" not in html
+    # workspace: greeting, composer with three modes, four actions, real context panel
+    for part in ('id="homeCard"', 'id="greet"', 'id="homeIn"', 'id="homeMode"', 'id="heroPearl"', 'id="mePearl"',
+                 'data-act="build"', 'data-act="automate"', 'data-act="create"', 'data-act="explore"',
+                 'id="hAgent"', 'id="hActivity"', 'id="hUsage"', 'id="searchBox"'):
+        assert part in html, part
+    assert 'data-view="home"' in html and 'data-view="tools"' in html
+    # the agent reports no percentage: the panel must not invent one
+    panel = html[html.index("function renderHome()"):html.index("function homeUsage(")]
+    import re
+    assert not re.search(r"\}%|\d%|\.percent", panel) and 'role="progressbar" aria-label="Working"' in panel
+    # the pearl comes from one stored seed
+    assert "pearl_seed" in html and "function pearlSVG(seed)" in html

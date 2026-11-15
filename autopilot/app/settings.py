@@ -153,6 +153,10 @@ class Settings:
             raise SettingsError("unknown profile")
         if "vast_idle_action" in clean and clean["vast_idle_action"] not in ("destroy", "stop"):
             raise SettingsError("vast_idle_action must be destroy or stop")
+        if "owner_name" in clean and (len(clean["owner_name"]) > 40 or any(c in clean["owner_name"] for c in "<>\n\r")):
+            raise SettingsError("the name is limited to 40 plain characters")
+        if "pearl_seed" in clean and not 0 <= clean["pearl_seed"] < 2 ** 31:
+            raise SettingsError("invalid pearl seed")
         if "memory" in clean and len(clean["memory"]) > 8000:
             raise SettingsError("project memory is limited to 8000 characters")
         if "hyperai_ssh_host" in clean and not all(c.isalnum() or c in ".-" for c in clean["hyperai_ssh_host"]):

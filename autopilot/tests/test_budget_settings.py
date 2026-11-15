@@ -115,3 +115,14 @@ def test_main_repo_preference_rejects_invalid_values(parts, value):
     with pytest.raises(SettingsError):
         settings.update({"agent_auto_publish_main_repo": value})
     assert settings.get()["agent_auto_publish_main_repo"] == ""
+
+
+def test_owner_name_and_pearl_seed_settings(rig):
+    import pytest
+    from app.settings import SettingsError
+    ctrl = rig()
+    st = ctrl.settings.update({"owner_name": "  Victor ", "pearl_seed": 20261115})
+    assert st["owner_name"] == "Victor" and st["pearl_seed"] == 20261115
+    for bad in ({"owner_name": "x" * 41}, {"owner_name": "<b>x</b>"}, {"pearl_seed": -1}, {"pearl_seed": 2 ** 31}):
+        with pytest.raises(SettingsError):
+            ctrl.settings.update(bad)
