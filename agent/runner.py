@@ -34,7 +34,7 @@ MAX_FILE = 5 * 1024 * 1024
 MAX_FILES_TOTAL = 30 * 1024 * 1024
 MAX_FILES = 2000
 PASS_ENV = ("PATH", "LANG", "HTTPS_PROXY", "HTTP_PROXY", "NO_PROXY", "https_proxy", "http_proxy", "no_proxy",
-            "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE")
+            "NODE_EXTRA_CA_CERTS", "SSL_CERT_FILE", "PIP_CERT", "PIP_INDEX_URL", "REQUESTS_CA_BUNDLE", "CURL_CA_BUNDLE")
 GIT_ID = {"GIT_AUTHOR_NAME": "VELLUR Agent", "GIT_AUTHOR_EMAIL": "agent@vellur.invalid",
           "GIT_COMMITTER_NAME": "VELLUR Agent", "GIT_COMMITTER_EMAIL": "agent@vellur.invalid"}
 
@@ -88,6 +88,8 @@ def safe_extract(data, dest):
 
 def opencode_config(meta):
     model = {"tool_call": True, "limit": {"context": 131072, "output": 16384}}
+    if meta.get("vision"):      # the owner said this model accepts images: the agent can open its screenshots
+        model.update({"attachment": True, "modalities": {"input": ["text", "image"], "output": ["text"]}})
     return {
         "$schema": "https://opencode.ai/config.json",
         "provider": {"vellur": {"npm": "@ai-sdk/openai-compatible", "name": "VELLUR AI Core",
@@ -97,6 +99,47 @@ def opencode_config(meta):
         "permission": {"edit": "allow", "bash": "allow", "webfetch": "allow"},
         "autoupdate": False, "share": "disabled",
     }
+
+
+BASE = "vellur-base"      # tag: the state the workspace started from (or was last published as); changes are measured against it
+
+
+def base(repo):
+    if git(repo, "rev-parse", "-q", "--verify", f"refs/tags/{BASE}", check=False).strip() == b"":
+        git(repo, "tag", BASE, "HEAD", check=False)          # workspaces created before checkpoints existed
+    return BASE
+
+
+def checkpoint(repo, label):
+    """Save the current files as a recoverable checkpoint (a commit inside the workspace). Returns its id."""
+    base(repo)
+    git(repo, "add", "-A", check=False)
+    if git(repo, "status", "--porcelain", check=False).strip():
+        git(repo, "commit", "-q", "-m", (label or "Checkpoint")[:120].replace("\n", " "))
+    return git(repo, "rev-parse", "HEAD").decode().strip()
+
+
+def checkpoints(repo):
+    base(repo)
+    out = []
+    raw = git(repo, "log", "--format=%H%x09%ct%x09%s", f"{BASE}..HEAD", check=False).decode(errors="replace")
+    for line in raw.splitlines():
+        sha, ts, label = (line.split("\t", 2) + ["", ""])[:3]
+        out.append({"id": sha, "ts": int(ts or 0), "label": label})
+    b = git(repo, "log", "-1", "--format=%H%x09%ct", BASE, check=False).decode().strip().split("\t")
+    out.append({"id": b[0], "ts": int(b[1]) if len(b) > 1 else 0, "label": "Original version (before the agent's changes)", "base": True})
+    return out[:100]
+
+
+def restore(repo, sha):
+    """Bring the files back to a checkpoint. The current state is saved first, so a restore can itself be undone."""
+    known = {c["id"]: c for c in checkpoints(repo)}
+    if sha not in known:
+        raise ValueError("unknown checkpoint")
+    checkpoint(repo, "Before restoring an earlier version")
+    git(repo, "restore", f"--source={sha}", "--staged", "--worktree", "--", ".")
+    git(repo, "clean", "-fdq", check=False)
+    return checkpoint(repo, "Restored: " + known[sha]["label"][:80])
 
 
 def clip(v):
@@ -170,6 +213,7 @@ def run_task(tid):
                         ".next/\n.turbo/\n.cache/\n.DS_Store\n")
             git(repo, "add", "-A")
             git(repo, "commit", "-q", "--allow-empty", "-m", "baseline")
+            git(repo, "tag", BASE)
         cfg = os.path.join(home, "opencode.json")
         with open(cfg, "w") as f:
             json.dump(opencode_config(t["meta"]), f)
@@ -208,11 +252,13 @@ def run_task(tid):
         p.wait()
         reader.join(timeout=10)
         t["exit"] = p.returncode
+        with contextlib.suppress(Exception):
+            checkpoint(repo, f"After run {t['run']}")          # every run ends with a recoverable checkpoint
         if t["state"] == "running":
             with contextlib.suppress(Exception):
                 auto_shots(tid, t)
         git(repo, "add", "-A", check=False)
-        names = git(repo, "diff", "--cached", "--no-renames", "--name-status", "-z", "HEAD", check=False).decode(errors="replace")
+        names = git(repo, "diff", "--cached", "--no-renames", "--name-status", "-z", base(repo), check=False).decode(errors="replace")
         t["changed"] = len([x for x in names.split("\0") if x]) // 2
         if t["state"] == "running":
             t["state"] = "done" if p.returncode == 0 else "failed"
@@ -261,11 +307,11 @@ def activity(t):
 def file_summary(repo):
     """[{path, status, added, removed}] of the changes against the baseline (binary files: added/removed = None)."""
     git(repo, "add", "-A", check=False)
-    st = git(repo, "diff", "--cached", "--no-renames", "--name-status", "-z", "HEAD", check=False).decode(errors="replace")
+    st = git(repo, "diff", "--cached", "--no-renames", "--name-status", "-z", base(repo), check=False).decode(errors="replace")
     parts = [x for x in st.split("\0") if x]
     status = dict(zip(parts[1::2], parts[0::2]))
     nums = {}
-    for line in git(repo, "diff", "--cached", "--no-renames", "--numstat", "HEAD", check=False).decode(errors="replace").splitlines():
+    for line in git(repo, "diff", "--cached", "--no-renames", "--numstat", base(repo), check=False).decode(errors="replace").splitlines():
         a, r, path = (line.split("\t", 2) + ["", ""])[:3]
         nums[path] = (None if a == "-" else int(a or 0), None if r == "-" else int(r or 0))
     return [{"path": p, "status": status[p][:1], "added": nums.get(p, (None, None))[0],
@@ -273,7 +319,7 @@ def file_summary(repo):
 
 
 def changed_files(repo):
-    raw = git(repo, "diff", "--cached", "--no-renames", "--name-status", "-z", "HEAD", check=False).decode(errors="replace")
+    raw = git(repo, "diff", "--cached", "--no-renames", "--name-status", "-z", base(repo), check=False).decode(errors="replace")
     parts = [x for x in raw.split("\0") if x]
     files, total = [], 0
     if len(parts) // 2 > MAX_FILES:
@@ -553,7 +599,7 @@ class H(BaseHTTPRequestHandler):
                     return self.send(409, {"error": "busy"})
                 if not t.get("session"):
                     return self.send(410, {"error": "this task has no agent session to continue"})
-                t["meta"].update({k: body[k] for k in ("prompt", "proxy_token", "proxy_url", "model", "max_minutes") if k in body})
+                t["meta"].update({k: body[k] for k in ("prompt", "proxy_token", "proxy_url", "model", "max_minutes", "vision") if k in body})
                 t.update(state="running", started=time.time(), ended=None, exit=None, error="", cancel=False,
                          run=int(t.get("run") or 1) + 1)
             threading.Thread(target=run_task, args=(tid,), daemon=True).start()
@@ -582,6 +628,19 @@ class H(BaseHTTPRequestHandler):
                 return self.send(404, {"error": "no such screenshot"})
             with open(os.path.join(sd, name), "rb") as f:
                 return self.send(200, raw=f.read(), ctype="image/png")
+        if method == "GET" and action == "checkpoints":
+            return self.send(200, {"checkpoints": checkpoints(repo)})
+        if method == "POST" and action in ("checkpoints", "restore"):
+            if t["state"] in ("created", "running"):
+                return self.send(409, {"error": "running"})
+            body = json.loads(self.body(100_000) or b"{}")
+            try:
+                sha = checkpoint(repo, str(body.get("label") or "Checkpoint")) if action == "checkpoints" else restore(repo, str(body.get("id", "")))
+            except ValueError as e:
+                return self.send(404, {"error": str(e)})
+            t["changed"] = len(file_summary(repo))
+            save_state(t)
+            return self.send(200, {"id": sha, "changed": t["changed"], "checkpoints": checkpoints(repo)})
         if method == "GET" and action == "preview-info":
             return self.send(200, preview_info(tid, t))
         if method == "POST" and action == "rebaseline":
@@ -589,7 +648,8 @@ class H(BaseHTTPRequestHandler):
             if t["state"] in ("created", "running"):
                 return self.send(409, {"error": "running"})
             git(repo, "add", "-A", check=False)
-            git(repo, "commit", "-q", "--allow-empty", "-m", "published", check=False)
+            git(repo, "commit", "-q", "--allow-empty", "-m", "Published", check=False)
+            git(repo, "tag", "-f", BASE, "HEAD", check=False)
             t["changed"] = 0
             save_state(t)
             return self.send(200, {"ok": True})
@@ -615,8 +675,8 @@ class H(BaseHTTPRequestHandler):
         if method == "GET" and action == "diff":
             if t["state"] in ("created", "running"):
                 git(repo, "add", "-A", check=False)
-            stat = git(repo, "diff", "--cached", "--stat", "HEAD", check=False, cap=20000)
-            diff = git(repo, "diff", "--cached", "HEAD", check=False, cap=MAX_DIFF)
+            stat = git(repo, "diff", "--cached", "--stat", base(repo), check=False, cap=20000)
+            diff = git(repo, "diff", "--cached", base(repo), check=False, cap=MAX_DIFF)
             return self.send(200, {"stat": stat.decode(errors="replace"), "diff": diff.decode(errors="replace")})
         if method == "GET" and action == "files":
             return self.send(200, {"files": changed_files(repo)})

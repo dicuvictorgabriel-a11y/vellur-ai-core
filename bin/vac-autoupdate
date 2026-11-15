@@ -1,20 +1,23 @@
 #!/usr/bin/env bash
-# vac-autoupdate — keep this server on the latest commit of the project's main branch, without anyone
-# running the installer by hand.   Used through:  sudo vac autoupdate on | off | status | run
+# vac-autoupdate — install APPROVED releases of VELLUR AI Core on this server, with checks and rollback.
+# Used through:  sudo vac autoupdate on | off | status | run | install <commit|latest> [--force] | rollback
 #
-#   on      install the latest version now, then check GitHub every 5 minutes (systemd timer)
-#   off     stop checking (nothing else changes)
-#   status  what is installed, what GitHub has, the last result
-#   run     one check now (what the timer calls)
+# Nothing is ever installed just because it was pushed to GitHub. A release is installed only when the owner
+# approved that exact commit: in the dashboard (Activity → VELLUR version → "Install this version") or here on
+# the server with `vac autoupdate install`. The agent cannot install anything: it has no access to this script.
 #
-# How an update is applied (the same installer a manual deploy runs, nothing new):
-#   1. read the newest commit id of the branch from GitHub (public read, no token);
-#   2. stop if it is already installed, if that exact commit failed before, or if an agent task is running
-#      (an update restarts the agent container and would interrupt the task);
-#   3. download that commit, run its install.sh, then `vac verify`;
-#   4. on failure: re-run the installer of the previous release (kept on disk) and remember the failed
-#      commit, so the same broken version is not retried every 5 minutes.
-# Only the configured repository and branch are ever installed. Everything is logged.
+#   on        check every 2 minutes whether the owner approved a release in the dashboard (systemd timer)
+#   off       stop checking (nothing else changes)
+#   status    installed version, previous version, last result
+#   run       one check now (what the timer calls)
+#   install   install a commit of the configured repository now (approval = you typing this command)
+#   rollback  re-install the previous release kept on disk — works even when the dashboard is broken
+#
+# How a release is installed (the same installer a manual deploy runs):
+#   1. the commit's automated tests on GitHub (CI) must have passed (skip only with --force);
+#   2. wait while an agent task is running (installing restarts the agent container);
+#   3. download exactly that commit, run its install.sh, then `vac verify`;
+#   4. if the installer or the checks fail: re-install the previous release and never retry that commit.
 set -uo pipefail
 
 DEST="${VAC_HOME:-/opt/vellur-ai-core}"
@@ -26,93 +29,156 @@ API="${AUTOUPDATE_API:-https://api.github.com}"
 CODELOAD="${AUTOUPDATE_CODELOAD:-https://codeload.github.com}"
 LOG="${AUTOUPDATE_LOG:-/var/log/vellur-autoupdate.log}"
 REL="$DEST/releases"
-UNIT=/etc/systemd/system/vellur-autoupdate
+UNIT="${AUTOUPDATE_UNIT_DIR:-/etc/systemd/system}/vellur-autoupdate"
 VAC="${AUTOUPDATE_VAC:-/usr/local/bin/vac}"
+LOCAL="${AUTOUPDATE_LOCAL_API:-}"      # tests only: base URL of the controller's admin API
 
 say()  { echo "$(date -u +%FT%TZ) $*" | tee -a "$LOG" >&2; }
-note() { printf '%s\n' "$*" > "$DEST/.autoupdate-last"; }
 [[ $REPO =~ ^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9._-]+$ && $BRANCH =~ ^[A-Za-z0-9._/-]+$ ]] || { echo "invalid AUTOUPDATE_REPO / AUTOUPDATE_BRANCH" >&2; exit 2; }
+cur_sha()  { cat "$DEST/.release-sha" 2>/dev/null || true; }
+cur_dir()  { cat "$DEST/.release-current" 2>/dev/null || true; }
+prev_dir() { cat "$DEST/.release-prev" 2>/dev/null || true; }
 
-remote_sha() {
-	local sha
-	sha=$(curl -fsS -m 30 -H 'Accept: application/vnd.github.sha' "$API/repos/$REPO/commits/$BRANCH" 2>/dev/null) || return 1
-	[[ $sha =~ ^[0-9a-f]{40}$ ]] || return 1
-	echo "$sha"
+local_api() {   # local_api METHOD path [json]  → body on stdout, non-zero when the dashboard is unreachable
+	local base=$LOCAL secret
+	secret=$(envval AUTOPILOT_ADMIN_SECRET)
+	[ -n "$base" ] || { local port; port=$(envval AUTOPILOT_PORT); [ -n "$port" ] || return 1; base="http://127.0.0.1:$port"; }
+	curl -fsS -m 15 -X "$1" -H "X-Vellur-Admin: $secret" -H "X-Vellur-Request: 1" -H 'content-type: application/json' \
+		${3:+-d "$3"} "$base/autopilot/api/$2" 2>/dev/null
+}
+note() {        # remember the last result and tell the dashboard
+	printf '%s\n' "$1" > "$DEST/.autoupdate-last"
+	local body
+	body=$(INSTALLED=$(cur_sha) PREV=$(basename "$(prev_dir)" 2>/dev/null) LAST=$1 CLEAR=${2:-} python3 -c 'import json,os
+print(json.dumps({"installed": os.environ["INSTALLED"], "previous": os.environ["PREV"], "last": os.environ["LAST"], "clear": os.environ["CLEAR"]}))')
+	local_api POST release/report "$body" >/dev/null || true
 }
 
+resolve_sha() {   # resolve_sha <commit|latest> → full 40-character id of a commit that exists in the repository
+	local ref=$1 sha
+	[ "$ref" = latest ] && ref=$BRANCH
+	sha=$(curl -fsS -m 30 -H 'Accept: application/vnd.github.sha' "$API/repos/$REPO/commits/$ref" 2>/dev/null) || return 1
+	[[ $sha =~ ^[0-9a-f]{40}$ ]] && echo "$sha"
+}
+ci_state() {      # passed | failed | pending | none
+	curl -fsS -m 30 -H 'Accept: application/vnd.github+json' "$API/repos/$REPO/commits/$1/check-runs?per_page=100" 2>/dev/null | python3 -c 'import json,sys
+try: runs = json.load(sys.stdin).get("check_runs", [])
+except Exception: runs = None
+if runs is None: print("none")
+elif not runs: print("none")
+elif any(r.get("status") != "completed" for r in runs): print("pending")
+elif all(r.get("conclusion") in ("success", "skipped", "neutral") for r in runs): print("passed")
+else: print("failed")' 2>/dev/null || echo none
+}
 agent_busy() {   # 0 = a task is running right now
-	local port secret
-	port=$(envval AUTOPILOT_PORT); secret=$(envval AUTOPILOT_ADMIN_SECRET)
-	[ -n "$port" ] && [ -n "$secret" ] || return 1
-	curl -fsS -m 10 -H "X-Vellur-Admin: $secret" "http://127.0.0.1:$port/autopilot/api/agent" 2>/dev/null |
-		python3 -c 'import json,sys
+	local_api GET agent | python3 -c 'import json,sys
 final = {"done", "failed", "cancelled", "timeout", "over_budget"}
 sys.exit(0 if any(t.get("state") not in final for t in json.load(sys.stdin).get("tasks", [])) else 1)' 2>/dev/null
 }
-
-install_release() {   # install_release <dir>  → 0 when the installer and the checks pass
+install_dir() {  # install_dir <dir> → 0 when the installer and the checks pass
 	( cd "$1" && bash ./install.sh ) >> "$LOG" 2>&1 < /dev/null || return 1
 	"$VAC" verify >> "$LOG" 2>&1 < /dev/null
 }
+locked() { mkdir -p "$REL"; exec 9> "$DEST/.autoupdate.lock"; flock -n 9 || { echo "another update is in progress"; exit 0; }; }
 
-run() {
-	mkdir -p "$REL"
-	exec 9> "$DEST/.autoupdate.lock"
-	flock -n 9 || { echo "another update is in progress"; return 0; }
-	local sha cur failed tmp prev
-	sha=$(remote_sha) || { note "could not read $REPO@$BRANCH from GitHub (is the repository public?)"; say "cannot read the latest commit of $REPO@$BRANCH"; return 1; }
-	cur=$(cat "$DEST/.release-sha" 2>/dev/null || true); failed=$(cat "$DEST/.release-failed" 2>/dev/null || true)
-	if [ "$sha" = "$cur" ]; then note "up to date (${sha:0:7})"; return 0; fi
-	if [ "$sha" = "$failed" ]; then note "version ${sha:0:7} failed to install earlier; waiting for a newer commit (running: ${cur:0:7})"; return 0; fi
-	if [ "${1:-}" != --force ] && agent_busy; then note "update to ${sha:0:7} waits: an agent task is running"; say "update postponed: agent task running"; return 0; fi
-	say "updating ${cur:0:7} -> ${sha:0:7}"
-	tmp="$REL/$sha.tmp"; rm -rf -- "$tmp" "$REL/$sha"; mkdir -p "$tmp"
+do_rollback() {
+	local prev cur
+	prev=$(prev_dir); cur=$(cur_dir)
+	[ -n "$prev" ] && [ -f "$prev/install.sh" ] || { note "nothing to roll back to: no previous release is kept on this server" rollback; say "rollback: no previous release"; return 1; }
+	say "rolling back to $(basename "$prev")"
+	if install_dir "$prev"; then
+		echo "$prev" > "$DEST/.release-current"; [ -n "$cur" ] && echo "$cur" > "$DEST/.release-prev"
+		basename "$prev" | grep -Eq '^[0-9a-f]{40}$' && basename "$prev" > "$DEST/.release-sha" || : > "$DEST/.release-sha"
+		note "rolled back to $(basename "$prev" | cut -c1-12) on $(date -u +'%F %H:%M UTC')" rollback; say "rolled back"; return 0
+	fi
+	note "rollback to $(basename "$prev" | cut -c1-12) FAILED: run the installer by hand (see $LOG)" rollback; say "ROLLBACK FAILED"; return 1
+}
+
+do_install() {   # do_install <sha> [--force]
+	local sha=$1 force=${2:-} cur failed ci tmp old
+	cur=$(cur_sha); failed=$(cat "$DEST/.release-failed" 2>/dev/null || true)
+	[ "$sha" = "$cur" ] && { note "version ${sha:0:7} is already installed" approved; return 0; }
+	if [ "$sha" = "$failed" ] && [ "$force" != --force ]; then note "version ${sha:0:7} failed to install earlier and was not retried" approved; return 0; fi
+	if [ "$force" != --force ]; then
+		ci=$(ci_state "$sha")
+		case $ci in
+			passed) ;;
+			pending) note "version ${sha:0:7} waits: its automated tests are still running on GitHub"; return 0 ;;
+			failed) note "version ${sha:0:7} was NOT installed: its automated tests failed on GitHub" approved; say "refused ${sha:0:7}: CI failed"; return 1 ;;
+			*) note "version ${sha:0:7} was NOT installed: no automated test result was found for it on GitHub" approved; say "refused ${sha:0:7}: no CI result"; return 1 ;;
+		esac
+		if agent_busy; then note "version ${sha:0:7} waits: an agent task is running"; return 0; fi
+	fi
+	say "installing ${sha:0:7} (current: ${cur:0:7})"
+	tmp="$REL/$sha.tmp"; rm -rf -- "$tmp" "${REL:?}/$sha"; mkdir -p "$tmp"
 	if ! curl -fsSL -m 300 "$CODELOAD/$REPO/tar.gz/$sha" | tar -xz -C "$tmp" --strip-components=1 || [ ! -f "$tmp/install.sh" ]; then
-		rm -rf -- "$tmp"; note "download of ${sha:0:7} failed"; say "download failed"; return 1
+		rm -rf -- "$tmp"; note "download of ${sha:0:7} failed; will try again"; say "download failed"; return 1
 	fi
 	mv "$tmp" "$REL/$sha"
-	if install_release "$REL/$sha"; then
+	old=$(cur_dir)
+	if install_dir "$REL/$sha"; then
 		echo "$sha" > "$DEST/.release-sha"; rm -f "$DEST/.release-failed"
-		note "installed ${sha:0:7} on $(date -u +'%F %H:%M UTC')"; say "installed ${sha:0:7}"
-		for prev in $(ls -1t "$REL" | grep -E '^[0-9a-f]{40}$' | tail -n +3); do rm -rf -- "${REL:?}/$prev"; done   # keep current + previous
-		return 0
+		[ -n "$old" ] && [ "$old" != "$REL/$sha" ] && echo "$old" > "$DEST/.release-prev"
+		echo "$REL/$sha" > "$DEST/.release-current"
+		for d in "$REL"/*; do     # keep only the current and the previous release
+			[ -d "$d" ] && [ "$d" != "$(cur_dir)" ] && [ "$d" != "$(prev_dir)" ] && rm -rf -- "$d"
+		done
+		note "installed ${sha:0:7} on $(date -u +'%F %H:%M UTC')" approved; say "installed ${sha:0:7}"; return 0
 	fi
-	echo "$sha" > "$DEST/.release-failed"
-	say "install of ${sha:0:7} FAILED"
-	if [ -n "$cur" ] && [ -f "$REL/$cur/install.sh" ]; then
-		say "restoring ${cur:0:7}"
-		if install_release "$REL/$cur"; then note "version ${sha:0:7} failed its checks; restored ${cur:0:7}"; say "restored ${cur:0:7}"
-		else note "version ${sha:0:7} failed and restoring ${cur:0:7} also failed: run the installer by hand"; say "RESTORE FAILED"; fi
-	else
-		note "version ${sha:0:7} failed its checks (no earlier release on disk to restore); see $LOG"
-	fi
+	echo "$sha" > "$DEST/.release-failed"; say "install of ${sha:0:7} FAILED"
 	rm -rf -- "${REL:?}/$sha"
+	if [ -n "$old" ] && [ -f "$old/install.sh" ]; then
+		say "restoring $(basename "$old")"
+		if install_dir "$old"; then note "version ${sha:0:7} failed its checks; the previous version was restored" approved; say "restored"
+		else note "version ${sha:0:7} failed and restoring the previous version also failed: run the installer by hand" approved; say "RESTORE FAILED"; fi
+	else
+		note "version ${sha:0:7} failed its checks and no earlier release is kept on disk; see $LOG" approved
+	fi
 	return 1
 }
 
+run() {
+	locked
+	local pend approved request
+	pend=$(local_api GET release/pending) || { say "dashboard not reachable; nothing to do (use: vac autoupdate install|rollback)"; return 0; }
+	approved=$(printf '%s' "$pend" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("approved") or "")' 2>/dev/null)
+	request=$(printf '%s' "$pend" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("request") or "")' 2>/dev/null)
+	if [ "$request" = rollback ]; then do_rollback; return; fi
+	if [[ $approved =~ ^[0-9a-f]{40}$ ]] && [ "$approved" != "$(cur_sha)" ]; then
+		local sha; sha=$(resolve_sha "$approved") || { note "approved version ${approved:0:7} was not found in $REPO" approved; return 1; }
+		do_install "$sha"; return
+	fi
+	note "$(cat "$DEST/.autoupdate-last" 2>/dev/null || echo "waiting for an approved release")"
+}
+
 status() {
-	local cur
-	cur=$(cat "$DEST/.release-sha" 2>/dev/null || true)
 	echo "repository: $REPO ($BRANCH)"
-	echo "installed:  ${cur:-unknown (installed by hand)}"
-	echo "GitHub:     $(remote_sha || echo 'unreachable')"
-	echo "automatic:  $(systemctl is-active vellur-autoupdate.timer 2>/dev/null || echo off)"
+	echo "installed:  $(cur_sha | grep . || echo 'installed by hand (version id unknown)')"
+	echo "previous:   $(basename "$(prev_dir)" 2>/dev/null | grep . || echo none kept)"
+	echo "approvals:  $(systemctl is-active vellur-autoupdate.timer 2>/dev/null | sed 's/^active$/checked every 2 minutes/' || true)"
 	echo "last:       $(cat "$DEST/.autoupdate-last" 2>/dev/null || echo never ran)"
 }
 
+need_root() { [ "$(id -u)" = 0 ] || [ -n "${AUTOUPDATE_NO_ROOT:-}" ] || { echo "run with sudo" >&2; exit 2; }; }
 case "${1:-status}" in
-	run) shift; run "$@" ;;
+	run) run ;;
 	status) status ;;
+	install)
+		need_root; locked
+		sha=$(resolve_sha "${2:?usage: vac autoupdate install <commit|latest> [--force]}") || { echo "commit not found in $REPO" >&2; exit 1; }
+		do_install "$sha" "${3:-}"; rc=$?; cat "$DEST/.autoupdate-last"; exit $rc ;;
+	rollback) need_root; locked; do_rollback; rc=$?; cat "$DEST/.autoupdate-last"; exit $rc ;;
 	on)
-		[ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 2; }
-		printf '[Unit]\nDescription=VELLUR AI Core automatic update\nAfter=network-online.target docker.service\n\n[Service]\nType=oneshot\nExecStart=%s run\nTimeoutStartSec=3600\n' "$DEST/bin/vac-autoupdate" > "$UNIT.service"
-		printf '[Unit]\nDescription=Check for a new VELLUR AI Core version\n\n[Timer]\nOnBootSec=3min\nOnUnitActiveSec=5min\nRandomizedDelaySec=30\n\n[Install]\nWantedBy=timers.target\n' > "$UNIT.timer"
+		need_root
+		printf '[Unit]\nDescription=VELLUR AI Core: install approved releases\nAfter=network-online.target docker.service\n\n[Service]\nType=oneshot\nExecStart=%s run\nTimeoutStartSec=3600\n' "$DEST/bin/vac-autoupdate" > "$UNIT.service"
+		printf '[Unit]\nDescription=Check for an approved VELLUR AI Core release\n\n[Timer]\nOnBootSec=3min\nOnUnitActiveSec=2min\nRandomizedDelaySec=15\n\n[Install]\nWantedBy=timers.target\n' > "$UNIT.timer"
 		systemctl daemon-reload && systemctl enable --now vellur-autoupdate.timer
-		echo "Automatic updates are ON: this server follows $REPO ($BRANCH), checked every 5 minutes."
-		echo "Installing the latest version now…"; run --force; status ;;
+		echo "Release installation is ON. Nothing is installed until you approve a version in the dashboard"
+		echo "(Activity → VELLUR version) or run: sudo vac autoupdate install latest"
+		run; status ;;
 	off)
-		[ "$(id -u)" = 0 ] || { echo "run with sudo" >&2; exit 2; }
+		need_root
 		systemctl disable --now vellur-autoupdate.timer 2>/dev/null; rm -f "$UNIT.service" "$UNIT.timer"; systemctl daemon-reload
-		echo "Automatic updates are OFF. Nothing else changed." ;;
-	*) sed -n '2,8p' "$0" | sed 's/^# \{0,1\}//' ;;
+		echo "Release installation is OFF. Nothing else changed." ;;
+	*) sed -n '2,15p' "$0" | sed 's/^# \{0,1\}//' ;;
 esac

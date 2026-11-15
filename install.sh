@@ -158,6 +158,23 @@ fi
 step "6/6 Checks"
 vac verify || true
 
+# Keep a copy of what was just installed, so `sudo vac autoupdate rollback` can always return to it.
+# (Releases installed by vac-autoupdate are already kept under releases/ and are tracked by that script.)
+case "$SRC" in
+	"$DEST"/releases/*) ;;
+	*)
+		rid="manual-$(date -u +%Y%m%d-%H%M%S)"
+		mkdir -p "$DEST/releases/$rid"
+		if tar -C "$SRC" --exclude=.git --exclude=.venv --exclude=node_modules -cf - . | tar -C "$DEST/releases/$rid" -xf -; then
+			old_rel=$(cat "$DEST/.release-current" 2>/dev/null || true)
+			[ -n "$old_rel" ] && [ -d "$old_rel" ] && echo "$old_rel" > "$DEST/.release-prev"
+			echo "$DEST/releases/$rid" > "$DEST/.release-current"; : > "$DEST/.release-sha"
+			for d in "$DEST"/releases/*; do
+				[ -d "$d" ] && [ "$d" != "$(cat "$DEST/.release-current")" ] && [ "$d" != "$(cat "$DEST/.release-prev" 2>/dev/null)" ] && rm -rf -- "$d"
+			done
+		fi ;;
+esac
+
 echo
 echo "${c_b}Done.${c_off}"
 [ $EXPOSED = 1 ] && echo "  Status page and gateway: https://$(sed -n 's/^AI_DOMAIN=//p' "$DEST/.env")  (gateway: …/v1)"

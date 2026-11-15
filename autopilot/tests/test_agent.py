@@ -69,6 +69,14 @@ class FakeRunner:
             return httpx.Response(200, json={"files": [
                 {"path": "app.py", "mode": "100644", "content_b64": base64.b64encode(b"print('x')\n").decode()},
                 {"path": "old.txt", "deleted": True}]})
+        elif p.endswith("/checkpoints") or p.endswith("/restore"):
+            cps = getattr(self, "cps", [{"id": "b" * 40, "ts": 1, "label": "Original version (before the agent's changes)", "base": True}])
+            if req.method == "POST":
+                body = json.loads(req.content)
+                label = body.get("label") or "Restored: " + next(c["label"] for c in cps if c["id"] == body["id"])
+                cps = [{"id": f"{len(cps):040x}", "ts": 2, "label": label}] + cps
+                self.cps = cps
+            return httpx.Response(200, json={"id": cps[0]["id"], "changed": 1, "checkpoints": cps})
         elif p.endswith("/preview-info"):
             return httpx.Response(200, json={"mode": "static", "root": "dist", "why": "", "running": False})
         elif "/preview/" in p:
@@ -386,3 +394,31 @@ async def test_publish_directly_only_as_fast_forward(agents):
     assert patch == {"sha": "commit1", "force": False} and runner.rebaselined is True
     assert [e["kind"] for e in mgr.events(tid)][-1] == "published"
     assert not any(p.endswith("/pulls") for _, p, _ in gh.calls)       # no pull request involved
+
+
+async def test_checkpoints_save_and_restore(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    tid = (await mgr.create("Change the dashboard title", "vellur-coder"))["id"]
+    await wait_final(mgr, tid)
+    await asyncio.sleep(0.05)
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/checkpoints", headers=WRITE, json={"label": "Good  version"})
+    assert r.status_code == 200 and r.json()["checkpoints"][0]["label"] == "Good version"
+    cps = (await admin.get(f"/autopilot/api/agent/tasks/{tid}/checkpoints", headers=ADMIN)).json()["checkpoints"]
+    assert [c["label"] for c in cps] == ["Good version", "Original version (before the agent's changes)"]
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/restore", headers=WRITE, json={"id": "b" * 40})
+    assert r.status_code == 200 and r.json()["task"]["files_changed"] == 1
+    kinds = [e["kind"] for e in mgr.events(tid)]
+    assert kinds[-2:] == ["checkpoint", "restored"]
+    assert (await admin.post(f"/autopilot/api/agent/tasks/{tid}/restore", headers=WRITE, json={"id": "zz"})).status_code == 400
+    assert (await admin.post(f"/autopilot/api/agent/tasks/{tid}/checkpoints", json={"label": "x"})).status_code in (401, 403)
+
+
+async def test_self_repository_and_vision_reach_the_agent(agents):
+    ctrl, router, mgr, runner, gh, admin = agents(self_repo="o/r")
+    await admin.put("/autopilot/api/agent/github", headers=WRITE, json={"token": "github_pat_" + "a" * 30})
+    ctrl.settings.update({"agent_vision": True})
+    tid = (await mgr.create("Improve the dashboard", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    assert runner.meta["vision"] is True and "VELLUR AI Core itself" in runner.meta["prompt"] and "You can see images" in runner.meta["prompt"]
+    a = (await admin.get("/autopilot/api/agent", headers=ADMIN)).json()
+    assert a["self_repo"] == "o/r" and a["vision"] is True

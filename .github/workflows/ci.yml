@@ -1,0 +1,28 @@
+# Automated checks for every commit. A release can be installed on the server only when this workflow passed
+# for that exact commit (bin/vac-autoupdate checks it).
+name: tests
+on:
+  push:
+  pull_request:
+permissions:
+  contents: read
+jobs:
+  tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+      - name: Install test dependencies
+        run: pip install -q -r autopilot/requirements-dev.txt
+      - name: Controller, agent and dashboard tests
+        run: cd autopilot && python -m pytest -q
+      - name: Shell and runner syntax
+        run: |
+          bash -n install.sh bin/vac bin/vac-autoupdate dev/preview.sh dev/test.sh
+          python -m py_compile agent/runner.py agent/vellur-screenshot dev/preview_server.py

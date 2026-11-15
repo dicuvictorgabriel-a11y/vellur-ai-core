@@ -49,6 +49,7 @@ class Env:
     # Agent runner (isolated container). Empty URL/secret = agent tasks unavailable.
     agent_runner_url: str = field(default_factory=lambda: os.environ.get("AGENT_RUNNER_URL", ""))
     agent_runner_secret: str = field(default_factory=lambda: os.environ.get("AGENT_RUNNER_SECRET", ""))
+    self_repo: str = field(default_factory=lambda: os.environ.get("VELLUR_SELF_REPO", "dicuvictorgabriel-a11y/vellur-ai-core"))
     agent_proxy_url: str = field(default_factory=lambda: os.environ.get("AGENT_PROXY_URL", "http://autopilot:8000/v1"))
 
 
@@ -82,6 +83,7 @@ DEFAULT_SETTINGS: dict = {
     "memory": "",                    # project notes added as a system message to dashboard chats and agent tasks
     "agent_max_minutes": 30,
     "agent_max_usd": 2.0,
+    "agent_vision": False,           # the model behind the agent accepts images: it may open screenshots to inspect them
 }
 
 ROLES: dict = {

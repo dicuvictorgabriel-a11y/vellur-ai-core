@@ -130,6 +130,14 @@ body.studio-open #studio{display:flex}
 #studio.phone #pvStage{padding:16px;background:#060607}#studio.phone #pvFrame{width:390px;max-width:100%;flex:0 1 844px;border-radius:18px;border:1px solid var(--line2)}
 #pvEmpty{margin:auto;max-width:340px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6;padding:24px}
 #pvEmpty b{display:block;color:var(--text);font-size:15px;margin-bottom:6px}
+#agMain{position:relative}
+#cpToggle{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;font-size:12.5px;flex:none}
+#cpPanel{position:absolute;z-index:15;top:60px;right:12px;width:min(420px,calc(100% - 24px));max-height:70%;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
+#cpPanel .cphead{display:flex;align-items:center;gap:8px;margin-bottom:10px}#cpPanel .cphead b{flex:1;font-size:14px}
+.cp{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}
+.cp div{flex:1;min-width:0}.cp div b{display:block;font-size:13.5px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.cp div small{color:var(--muted);font-size:12px}
+.cp button{padding:5px 10px;font-size:12.5px;min-height:0}.cp.cur div b{color:var(--accent)}
+.rel{display:grid;grid-template-columns:auto 1fr;gap:6px 16px;font-size:13.5px;color:var(--soft)}.rel span:nth-child(odd){color:var(--muted)}
 #pvToggle{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;font-size:12.5px;flex:none}
 body.studio-open #pvToggle{background:var(--raise)}
 #agHead{display:flex;align-items:center;gap:10px;padding:12px 20px;border-bottom:1px solid var(--line);min-height:56px}
@@ -213,7 +221,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   body.is-admin[data-view="chat"] main{flex:1;min-height:0}
   body.is-admin[data-view="agent"]{position:fixed;inset:0;display:flex;flex-direction:column}
   body.is-admin[data-view="agent"] main{flex:1;min-height:0}
-  #agHead{padding:8px 12px;min-height:0}#agHead .t b{font-size:14px}#pvToggle span{display:none}
+  #agHead{padding:8px 12px;min-height:0}#agHead .t b{font-size:14px}#pvToggle span,#cpToggle span{display:none}#cpPanel{top:52px}
   body.studio-open #agMain{display:none}#studio{width:100%;max-width:none;min-width:0;border-left:0}#pvBar{min-height:0;padding:8px 10px}
   .report{padding:14px}.act summary{padding:9px 10px}
   #agFoot{width:calc(100% - 16px);margin-bottom:max(8px,env(safe-area-inset-bottom))}
@@ -382,8 +390,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       <div id="agHead">
         <div class="t"><b id="agTitle">New task</b><small id="agMeta">Describe what you want; the agent works in an isolated copy and shows you everything it does.</small></div>
         <span id="agPill"></span>
+        <button class="ghost" id="cpToggle" title="Checkpoints: saved versions of this project you can return to" style="display:none"><svg class="ic" viewBox="0 0 24 24"><path d="M3 12a9 9 0 1 0 3-6.7"/><path d="M3 4v5h5"/><path d="M12 7v5l3 2"/></svg><span>Versions</span></button>
         <button class="ghost" id="pvToggle" title="Show or hide the live preview"><svg class="ic" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3"/></svg><span>Preview</span></button>
       </div>
+      <div id="cpPanel" hidden><div class="cphead"><b>Saved versions</b><button class="ghost" id="cpSave">Save checkpoint now</button><button class="iconbtn" id="cpClose" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button></div><div id="cpList"></div><p class="note">A checkpoint is saved automatically after every run. Restoring keeps the current state as a checkpoint too, so you can always go back.</p></div>
       <div class="msgs" id="agMsgs"></div>
       <div class="composer" id="agComposer">
         <div class="ctx" id="agCtx">
@@ -399,6 +409,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
         </div>
       </div>
       <div id="agFoot"><details id="ghBox"><summary id="ghNote">GitHub connection</summary>
+        <label style="display:flex;gap:8px;align-items:center;margin:4px 0 10px;font-size:13px;color:var(--soft)"><input type="checkbox" id="agVision" style="width:auto"> The agent's model can see images (it will open and inspect its own screenshots)</label>
         <div class="row"><input id="ghToken" type="password" autocomplete="off" placeholder="GitHub fine-grained token (stored on the server, never shown again)" style="max-width:460px"><button class="ghost" id="ghSave">Save token</button></div>
         <p class="note">github.com → Settings → Developer settings → Fine-grained tokens. Repository access: the repositories you choose; permissions: Contents and Pull requests (read and write), Metadata (read). Limits per run: <span id="tLimits"></span></p>
       </details></div>
@@ -449,6 +460,12 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       <dl class="kv" style="margin-top:12px;max-width:460px"><dt>Variable + in-budget fixed</dt><dd id="cTotal">—</dd><dt>Other fixed (outside budget)</dt><dd id="cFixedOut">—</dd><dt>All-in monthly total</dt><dd id="cAll">—</dd></dl>
     </section>
 
+    <section class="card c12 admin-only" data-tab="activity">
+      <h2>VELLUR version</h2>
+      <p class="sub2">New versions of VELLUR are never installed by themselves. You approve an exact version here; the server installs it only after its automated tests passed, and returns to the previous version if the new one fails its checks.</p>
+      <div id="relBox" class="note">Loading…</div>
+      <div class="row" style="margin-top:10px"><button id="relInstall" style="display:none"></button><button class="ghost" id="relCancel" style="display:none">Cancel approval</button><button class="danger" id="relRollback" style="display:none">Return to the previous version</button><span class="note" id="relNote" style="margin:0"></span></div>
+    </section>
     <section class="card c12 admin-only" data-tab="activity">
       <h2>Activity</h2>
       <div style="overflow:auto;max-height:340px"><table><thead><tr><th>Time</th><th>Level</th><th>Kind</th><th>Message</th></tr></thead><tbody id="ev"></tbody></table></div>
@@ -649,6 +666,8 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     if (e.kind === "step" && d.reason === "length") return put(div("alert info", "The model's reply reached its output limit here."), end);
     if (e.kind === "shot") return put(div("shot", `<img src="${shotUrl(d.name)}" alt="Screenshot ${esc(d.name)}" loading="lazy"><figcaption>Screenshot taken by the agent: ${esc(d.name)}</figcaption>`), end);
     if (e.kind === "pr") return put(div("alert info", `Pull request ${d.updated ? "updated" : "opened"}: <a href="${esc(d.url)}" target="_blank" rel="noopener" style="color:var(--accent)">${esc(d.url)}</a>`), end);
+    if (e.kind === "checkpoint") return put(div("sysline", "Checkpoint saved: " + esc(d.label)), end);
+    if (e.kind === "restored") { pvRefreshSoon(); return put(div("alert info", "Restored the project to “" + esc(d.label) + "”. The state before restoring was saved as a checkpoint."), end); }
     if (e.kind === "published") return put(div("alert info", `Published ${d.files} file${d.files === 1 ? "" : "s"} to <b>${esc(d.branch)}</b>: <a href="${esc(d.url)}" target="_blank" rel="noopener" style="color:var(--accent)">view the commit ↗</a>`), end);
     if (e.kind === "report") return put(reportCard(d), end);
     if (e.kind !== "tool") return null;
@@ -717,10 +736,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   }
   function header() {
     const t = CUR;
-    if (!t) { $("agTitle").textContent = "New task"; $("agMeta").textContent = "Describe what you want; the agent works in an isolated copy and shows you everything it does."; $("agPill").innerHTML = ""; return; }
+    if (!t) { $("cpToggle").style.display = "none"; $("cpPanel").hidden = true; $("agTitle").textContent = "New task"; $("agMeta").textContent = "Describe what you want; the agent works in an isolated copy and shows you everything it does."; $("agPill").innerHTML = ""; return; }
     $("agTitle").textContent = t.title || t.prompt.split("\n")[0].slice(0, 90);
     $("agMeta").textContent = [(t.repo || "empty workspace") + (t.base ? " · " + t.base : ""), t.model, money4(t.cost_usd), t.runs > 1 ? t.runs + " runs" : ""].filter(Boolean).join(" · ");
-    $("agPill").innerHTML = pillFor(t);
+    $("agPill").innerHTML = pillFor(t); $("cpToggle").style.display = t.legacy ? "none" : "";
   }
   function composer() {
     const fresh = !CUR, busy = CUR && !FINAL_STATES.includes(CUR.state);
@@ -742,6 +761,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     TASKS = AGENT.tasks || []; renderTasks(); fillModels($("tModel"), $("tModel").value || "vellur-coder");
     $("ghNote").textContent = AGENT.github_token_set ? "GitHub connected ✓ · change token" : "Connect GitHub to work on your repositories ▸";
     if (!AGENT.github_token_set) $("ghBox").open = true;
+    $("agVision").checked = !!AGENT.vision;
     $("tLimits").textContent = AGENT.max_minutes + " min, $" + AGENT.max_usd + " (GPU tab → settings).";
     if (!REPOS_LOADED) loadRepos();
     let want = TASK; if (want == null) { try { want = Number(sessionStorage.getItem("vellurTask")) || null; } catch (e) {} }
@@ -752,6 +772,10 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     const ex = ["Explain how this repository is organised and suggest 3 improvements (no changes).", "Find one real bug, fix it and add a test.", "Improve the mobile layout of the main page and show me before/after screenshots."];
     box().innerHTML = `<div class="agempty"><h3>What should we build?</h3><p>Pick a repository, describe the task in your own words and watch the agent work. Nothing reaches GitHub until you approve it.</p><div class="chips">${ex.map(x => `<button class="chip">${esc(x)}</button>`).join("")}</div>${AGENT.available === false ? `<div class="alert" style="margin-top:18px;text-align:left">${esc(AGENT.why || "The agent is not available.")}</div>` : ""}</div>`;
     box().querySelectorAll(".agempty .chip").forEach(c => c.onclick = () => { $("agIn").value = c.textContent; $("agIn").focus(); agGrow(); });
+    if (AGENT.self_repo && [...$("tRepoSel").options].some(o => o.value === AGENT.self_repo)) {     // VELLUR can work on VELLUR
+      const c = document.createElement("button"); c.className = "chip"; c.style.borderColor = "#3d4d12"; c.textContent = "Improve VELLUR itself";
+      c.onclick = async () => { $("tRepoSel").value = AGENT.self_repo; await repoChanged(); $("agIn").value = "In the VELLUR dashboard, "; $("agIn").focus(); agGrow(); };
+      box().querySelector(".agempty .chips").prepend(c); }
     header(); composer(); renderTasks(); loadPreview();
   }
   async function openTask(id) {
@@ -798,6 +822,43 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   $("pvDesk").onclick = () => { $("studio").classList.remove("phone"); $("pvDesk").classList.add("on"); $("pvMob").classList.remove("on"); };
   $("pvMob").onclick = () => { $("studio").classList.add("phone"); $("pvMob").classList.add("on"); $("pvDesk").classList.remove("on"); };
   (() => { let v = null; try { v = sessionStorage.getItem("vellurStudio"); } catch (e) {} if (v === "1" || (v === null && innerWidth >= 1100)) document.body.classList.add("studio-open"); })();
+  // ── checkpoints: saved versions of the project ───────────────────────────────────────────────
+  async function loadCheckpoints() {
+    const l = $("cpList"); l.innerHTML = '<div class="note">Loading…</div>';
+    let r; try { r = await send("agent/tasks/" + TASK + "/checkpoints", "GET"); } catch (e) { l.innerHTML = `<div class="note">${esc(e.message)}</div>`; return; }
+    l.innerHTML = "";
+    r.checkpoints.forEach((c, i) => { const row = div("cp" + (i === 0 ? " cur" : ""), `<div><b>${esc(c.label)}</b><small>${i === 0 ? "current · " : ""}${new Date(c.ts * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</small></div>`);
+      if (i > 0) { const b = document.createElement("button"); b.className = "ghost"; b.textContent = "Restore"; b.onclick = async () => {
+          if (!confirm("Return the project to “" + c.label + "”?\n\nThe current state is saved as a checkpoint first, so you can come back to it.")) return;
+          b.disabled = true; b.textContent = "Restoring…";
+          try { await send("agent/tasks/" + TASK + "/restore", "POST", { id: c.id }); $("cpPanel").hidden = true; await openTask(TASK); } catch (e) { b.disabled = false; b.textContent = "Restore"; alert(e.message); } };
+        row.appendChild(b); }
+      l.appendChild(row); });
+  }
+  $("cpToggle").onclick = () => { const p = $("cpPanel"); p.hidden = !p.hidden; if (!p.hidden) loadCheckpoints(); };
+  $("cpClose").onclick = () => { $("cpPanel").hidden = true; };
+  $("cpSave").onclick = async () => { const label = prompt("Name this checkpoint:", "Good version"); if (label === null) return;
+    try { await send("agent/tasks/" + TASK + "/checkpoints", "POST", { label }); await loadCheckpoints(); const r = await send("agent/tasks/" + TASK + "/events?after=" + LAST_EV, "GET"); r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; }); } catch (e) { alert(e.message); } };
+  $("agVision").onchange = async () => { try { await send("settings", "PUT", { agent_vision: $("agVision").checked }); } catch (e) { alert(e.message); } };
+  // ── releases of VELLUR itself: the owner approves, the server installs ───────────────────────
+  async function loadRelease() {
+    let r; try { r = await send("release", "GET"); } catch (e) { $("relBox").textContent = e.message; return; }
+    const short = (x) => x ? x.slice(0, 7) : "", L = r.latest, CI = { passed: "<span class='good'>tests passed</span>", failed: "<span class='badc'>tests failed</span>", pending: "<span class='warnc'>tests running…</span>", none: "<span class='warnc'>no test result</span>", unknown: "tests: unknown" };
+    $("relBox").className = "rel";
+    $("relBox").innerHTML = `<span>Installed</span><span>${r.installed ? "<code>" + short(r.installed) + "</code>" : "installed by hand (version not recorded)"}</span>`
+      + `<span>Newest on GitHub</span><span>${L ? "<code>" + short(L.sha) + "</code> · " + esc(L.message) + " · " + (CI[L.ci] || "") : esc(r.error || "unknown")}</span>`
+      + (r.approved ? `<span>Approved</span><span><code>${short(r.approved)}</code> · waiting for the server to install it</span>` : "")
+      + `<span>Last result</span><span>${esc(r.last || "—")}</span>`
+      + `<span>Server installer</span><span>${r.installer_active ? "<span class='good'>active</span>" : "not active: run <code>sudo vac autoupdate on</code> once on the server"}</span>`;
+    const can = L && L.sha !== r.installed && L.sha !== r.approved;
+    $("relInstall").style.display = can ? "" : "none"; $("relInstall").textContent = L ? "Install version " + short(L.sha) : ""; $("relInstall").disabled = !(L && L.ci === "passed");
+    $("relNote").textContent = can && L.ci !== "passed" ? "Installing is possible only after the automated tests of that version passed." : "";
+    $("relCancel").style.display = r.approved ? "" : "none"; $("relRollback").style.display = r.previous ? "" : "none";
+    $("relInstall").onclick = async () => { if (!confirm("Install version " + short(L.sha) + " on the server?\n\n“" + L.message + "”\n\nThe dashboard restarts for about a minute. If the new version fails its checks, the previous one is restored automatically.")) return;
+      try { await send("release/approve", "POST", { sha: L.sha }); await loadRelease(); } catch (e) { $("relNote").textContent = e.message; } };
+    $("relCancel").onclick = async () => { await send("release/cancel", "POST", {}); await loadRelease(); };
+    $("relRollback").onclick = async () => { if (!confirm("Return the server to the previous version of VELLUR?")) return; await send("release/rollback", "POST", {}); $("relNote").textContent = "Requested: the server does it within two minutes."; };
+  }
   function closeStream() { if (ES) { ES.close(); ES = null; } working(false); }
   function live() {
     closeStream(); if (!RUN_T0) RUN_T0 = Date.now() / 1000;
@@ -840,11 +901,11 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     REPOS_LOADED = true; const sel = $("tRepoSel"); let list = [];
     try { list = (await send("agent/repos", "GET")).repos || []; } catch (e) { $("agNote").textContent = e.message; }
     const owner = list.length ? list[0].name.split("/")[0] : "";
-    sel.innerHTML = list.map(r => `<option value="${esc(r.name)}">${esc(r.name.startsWith(owner + "/") ? r.name.slice(owner.length + 1) : r.name)}${r.private ? " 🔒" : ""}</option>`).join("")
+    sel.innerHTML = list.map(r => `<option value="${esc(r.name)}">${esc(r.name.startsWith(owner + "/") ? r.name.slice(owner.length + 1) : r.name)}${r.name === AGENT.self_repo ? " — VELLUR itself" : ""}${r.private ? " 🔒" : ""}</option>`).join("")
       + '<option value="">Empty workspace (no repository)</option><option value="__other">Other (type owner/name)…</option>';
     const last = (TASKS.find(t => t.repo) || {}).repo || "";
     if (last && [...sel.options].some(o => o.value === last)) sel.value = last; else if (!list.length) sel.value = "";
-    await repoChanged();
+    await repoChanged(); if (!CUR && VIEW === "agent") newTask();
   }
   const repoValue = () => $("tRepoSel").value === "__other" ? $("agOther").value.trim() : $("tRepoSel").value;
   async function repoChanged() {
@@ -923,6 +984,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   const grow = () => { const t = $("chatIn"); t.style.height = "auto"; t.style.height = Math.min(200, t.scrollHeight) + "px"; };
   $("chatIn").addEventListener("input", grow); $("btnSend").addEventListener("click", () => setTimeout(grow, 50));
   async function loadHistory() {
+    loadRelease();
     try { const h = await api("history?limit=80", { method: "GET", headers: {} });
       $("ev").innerHTML = h.events.map(e => `<tr><td class="m">${new Date(e.ts * 1000).toLocaleString()}</td><td class="lv-${e.level}">${e.level}</td><td>${e.kind}</td><td></td></tr>`).join("");
       [...$("ev").rows].forEach((row, i) => row.cells[3].textContent = h.events[i].message);

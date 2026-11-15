@@ -102,3 +102,18 @@ Tests: `cd autopilot && pytest -q` (no network: guarded). Never let tests reach 
 4. Verify `gpu/autostart.sh` (`/hyperai/home/dependencies.sh`) on a workspace.
 5. Decide Open WebUI on the 4 GB VPS (`sudo vac ui enable` checks RAM) vs. a lighter chat UI.
 6. Add CI for this folder (shellcheck, `bash -n`, compose config, Caddy validate on 2.6/2.8/latest, stub e2e).
+
+## Working on VELLUR from inside VELLUR (self-development)
+
+- You work on a copy of this repository in an isolated workspace. The live server changes only when the owner
+  publishes to `main` and then approves that exact version in the dashboard (Activity → VELLUR version); the server
+  installs it only if the `tests` workflow passed for that commit, and restores the previous release on failure.
+  You cannot install anything and must not try to.
+- Live preview: `.vellur/preview.json` starts `dev/preview.sh`, which runs the real dashboard from your checkout with
+  an empty demo database (`dev/preview_server.py`, never installed on the server). Edit
+  `autopilot/app/static/dashboard.html` and the preview shows it after a reload. Python changes need the preview
+  process restarted (the owner's Reload button does not restart it; say so in your report).
+- Tests: `bash dev/test.sh` (the whole suite, the same as CI). Run it before reporting.
+- Frozen: `autopilot/app/auth.py`, the login and password-change markup and their script block in `dashboard.html`
+  (`tests/test_auth_frozen.py` fails if they change). Keep `localStorage` out of the dashboard (a test checks it).
+- The dashboard is one static file without a build step; keep it that way.

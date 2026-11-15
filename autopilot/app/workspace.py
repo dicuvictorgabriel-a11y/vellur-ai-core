@@ -17,6 +17,7 @@ from .agent import AgentError, AgentManager
 from .budget import month_key
 from .config import ROLES
 from .lifecycle import Controller
+from .release import Release, ReleaseError
 from .router import Router, RouterError
 from .settings import SettingsError
 
@@ -50,6 +51,22 @@ class FollowBody(BaseModel):
     model: Optional[str] = None
 
 
+class CheckpointBody(BaseModel):
+    label: str = ""
+    id: str = ""
+
+
+class ReleaseBody(BaseModel):
+    sha: str = ""
+
+
+class ReleaseReport(BaseModel):
+    installed: str = ""
+    previous: str = ""
+    last: str = ""
+    clear: str = ""
+
+
 class TokenBody(BaseModel):
     token: str = ""
 
@@ -62,6 +79,15 @@ PREVIEW_HEADERS = {
     "X-Robots-Tag": "noindex, nofollow", "X-Content-Type-Options": "nosniff",
 }
 ROOT_ATTR = re.compile(rb"""(\s(?:src|href|action|poster|data-src)\s*=\s*["'])/(?!/)""", re.I)
+
+
+# Scripts in a previewed page often call root-absolute URLs ("/api/items"). This shim keeps those calls inside the
+# preview instead of hitting the real site. It is added to previewed HTML only.
+PREVIEW_SHIM = (b"<script>(()=>{const B=%s;const f=u=>typeof u==='string'&&u[0]==='/'&&u[1]!=='/'&&!u.startsWith(B)?B+u.slice(1):u;"
+                b"const F=window.fetch;window.fetch=(u,o)=>F(u instanceof Request?u:f(u),o);"
+                b"const X=XMLHttpRequest.prototype.open;XMLHttpRequest.prototype.open=function(m,u,...r){return X.call(this,m,f(u),...r)};"
+                b"const E=window.EventSource;if(E){window.EventSource=function(u,c){return new E(f(u),c)};window.EventSource.prototype=E.prototype}"
+                b"})()</script>")
 
 
 def _brief(t: dict) -> dict:
@@ -257,6 +283,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         ok, why = agent.available()
         st = ctrl.settings.get()
         return {"available": ok, "why": why, "github_token_set": bool(agent.github_token()), "tasks": agent.list(),
+                "self_repo": ctrl.env.self_repo, "vision": bool(st.get("agent_vision")),
                 "max_minutes": st["agent_max_minutes"], "max_usd": st["agent_max_usd"]}
 
     @app.post("/autopilot/api/agent/tasks", dependencies=[Depends(admin_write)])
@@ -365,11 +392,35 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         prefix = f"/autopilot/preview/{token}/".encode()
         if ctype.startswith("text/html"):          # root-absolute links ("/assets/app.js") must stay inside the preview
             content = ROOT_ATTR.sub(lambda m: m.group(1) + prefix, content)
+            shim = PREVIEW_SHIM % json.dumps(prefix.decode()).encode()
+            head = re.search(rb"<head[^>]*>", content, re.I)
+            content = content[:head.end()] + shim + content[head.end():] if head else shim + content
         headers = dict(PREVIEW_HEADERS)
         if r.headers.get("location"):
             loc = r.headers["location"]
             headers["Location"] = prefix.decode() + loc.lstrip("/") if loc.startswith("/") and not loc.startswith("//") else loc
         return Response(content=content, status_code=r.status_code, media_type=ctype, headers=headers)
+
+    @app.get("/autopilot/api/agent/tasks/{tid}/checkpoints", dependencies=[Depends(admin)])
+    async def task_checkpoints(tid: int):
+        try:
+            return {"checkpoints": await agent.checkpoints(tid)}
+        except AgentError as e:
+            return err(e)
+
+    @app.post("/autopilot/api/agent/tasks/{tid}/checkpoints", dependencies=[Depends(admin_write)])
+    async def task_checkpoint_save(tid: int, body: CheckpointBody):
+        try:
+            return await agent.save_checkpoint(tid, body.label)
+        except AgentError as e:
+            return err(e)
+
+    @app.post("/autopilot/api/agent/tasks/{tid}/restore", dependencies=[Depends(admin_write)])
+    async def task_checkpoint_restore(tid: int, body: CheckpointBody):
+        try:
+            return await agent.restore_checkpoint(tid, body.id)
+        except AgentError as e:
+            return err(e)
 
     @app.post("/autopilot/api/agent/tasks/{tid}/publish-direct", dependencies=[Depends(admin_write)])
     async def publish_direct(tid: int):
@@ -405,6 +456,36 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
             return await agent.branches(repo)
         except AgentError as e:
             return err(e)
+
+    # ── releases of VELLUR itself (approval only; installing is done by vac-autoupdate on the host) ──
+    release = Release(ctrl.db, ctrl.env.self_repo, agent.github_token, agent.github_transport)
+
+    @app.get("/autopilot/api/release", dependencies=[Depends(admin)])
+    async def release_overview():
+        return await release.overview()
+
+    @app.post("/autopilot/api/release/approve", dependencies=[Depends(admin_write)])
+    async def release_approve(body: ReleaseBody):
+        try:
+            return await release.approve(body.sha)
+        except ReleaseError as e:
+            return JSONResponse({"error": e.code, "message": e.message}, status_code=e.status)
+
+    @app.post("/autopilot/api/release/cancel", dependencies=[Depends(admin_write)])
+    async def release_cancel():
+        return release.cancel()
+
+    @app.post("/autopilot/api/release/rollback", dependencies=[Depends(admin_write)])
+    async def release_rollback():
+        return release.request_rollback()
+
+    @app.get("/autopilot/api/release/pending", dependencies=[Depends(admin)])
+    async def release_pending():
+        return release.pending()
+
+    @app.post("/autopilot/api/release/report", dependencies=[Depends(admin_write)])
+    async def release_report(body: ReleaseReport):
+        return release.report(body.installed, body.previous, body.last, body.clear)
 
     @app.put("/autopilot/api/agent/github", dependencies=[Depends(admin_write)])
     async def github_token(body: TokenBody):

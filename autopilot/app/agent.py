@@ -398,10 +398,19 @@ class AgentManager:
         self._jobs[tid] = asyncio.create_task(self._drive(tid, text, first=False))
         return self.task(tid)
 
-    def _first_prompt(self, prompt: str) -> str:
-        memory = self.ctrl.settings.get()["memory"].strip()
+    def _first_prompt(self, prompt: str, repo: str = "") -> str:
+        st = self.ctrl.settings.get()
+        memory = st["memory"].strip()
         notes = f"Notes from the owner (always follow them):\n{memory}\n\n" if memory else ""
-        return f"{AGENT_GUIDE}\n\n{notes}Task from the owner:\n{prompt}"
+        extra = ""
+        if st.get("agent_vision"):
+            extra += ("\n- You can see images: after taking a screenshot, open it with the read tool "
+                      "($VELLUR_SHOTS/<name>.png), look at it and fix what looks wrong before you report.")
+        if repo and repo == self.env.self_repo:
+            extra += ("\n- This repository is VELLUR AI Core itself, the application you are running in. You work on a "
+                      "copy: the live server is not affected until the owner publishes and installs a release. Read "
+                      "AGENTS.md first; never change the frozen login files; run the tests it names before reporting.")
+        return f"{AGENT_GUIDE}{extra}\n\n{notes}Task from the owner:\n{prompt}"
 
     async def _drive(self, tid: int, prompt: str, first: bool) -> None:
         """One run (first task message or follow-up), plus automatic continuations when the reply was cut off."""
@@ -449,16 +458,17 @@ class AgentManager:
                     finally:
                         await gh.c.aclose()
                     self._set(tid, base=base, base_sha=sha)
-                await self._runner("POST", "/tasks", json={"id": tid, "prompt": self._first_prompt(prompt),
+                await self._runner("POST", "/tasks", json={"id": tid, "prompt": self._first_prompt(prompt, t["repo"]),
                                                            "model": t["model"], "proxy_url": self.env.agent_proxy_url,
-                                                           "proxy_token": token, "max_minutes": st["agent_max_minutes"]})
+                                                           "proxy_token": token, "max_minutes": st["agent_max_minutes"],
+                                                           "vision": bool(st.get("agent_vision"))})
                 if source is not None:
                     await self._runner("PUT", f"/tasks/{tid}/source", content=source)
                 await self._runner("POST", f"/tasks/{tid}/start")
             else:
                 await self._runner("POST", f"/tasks/{tid}/message", json={
                     "prompt": prompt + FOLLOWUP_SUFFIX, "model": self.task(tid)["model"], "proxy_url": self.env.agent_proxy_url,
-                    "proxy_token": token, "max_minutes": st["agent_max_minutes"]})
+                    "proxy_token": token, "max_minutes": st["agent_max_minutes"], "vision": bool(st.get("agent_vision"))})
             started = time.time()
             self._set(tid, state="running", started=t["started"] or started)
             self._ev(tid, run, "status", text="Agent started" if first else "Agent continues", state="running")
@@ -706,6 +716,43 @@ class AgentManager:
             return await self.runner.request(method, url, content=body or None, headers=headers)
         except httpx.HTTPError as e:
             raise AgentError("runner", f"agent workspace unreachable ({e.__class__.__name__})", 502)
+
+    # ── checkpoints ─────────────────────────────────────────────────────────────────────────────
+    async def checkpoints(self, tid: int) -> list:
+        if not self.task(tid):
+            raise AgentError("not_found", "unknown task", 404)
+        return (await self._runner("GET", f"/tasks/{tid}/checkpoints")).json()["checkpoints"]
+
+    async def _after_files_changed(self, tid: int, changed: int) -> None:
+        with contextlib.suppress(AgentError):
+            d = (await self._runner("GET", f"/tasks/{tid}/diff")).json()
+            self.db.kv_set(f"task_diff_{tid}", {"stat": d.get("stat", ""), "diff": d.get("diff", "")[:400000]})
+        self._set(tid, files_changed=int(changed))
+
+    async def save_checkpoint(self, tid: int, label: str) -> dict:
+        t = self.task(tid)
+        if not t:
+            raise AgentError("not_found", "unknown task", 404)
+        if t["state"] not in FINAL:
+            raise AgentError("busy", "the agent is working; a checkpoint is saved automatically when it finishes", 409)
+        label = " ".join((label or "").split())[:100] or "Checkpoint"
+        r = (await self._runner("POST", f"/tasks/{tid}/checkpoints", json={"label": label})).json()
+        self._ev(tid, int(t["runs"] or 1), "checkpoint", id=r["id"], label=label)
+        return {"id": r["id"], "checkpoints": r["checkpoints"]}
+
+    async def restore_checkpoint(self, tid: int, cid: str) -> dict:
+        t = self.task(tid)
+        if not t:
+            raise AgentError("not_found", "unknown task", 404)
+        if t["state"] not in FINAL:
+            raise AgentError("busy", "stop the agent before restoring an earlier version", 409)
+        if not re.fullmatch(r"[0-9a-f]{40}", cid or ""):
+            raise AgentError("invalid", "unknown checkpoint")
+        r = (await self._runner("POST", f"/tasks/{tid}/restore", json={"id": cid})).json()
+        label = next((c["label"] for c in r["checkpoints"] if c["id"] == cid), "earlier version")
+        await self._after_files_changed(tid, r.get("changed", 0))
+        self._ev(tid, int(t["runs"] or 1), "restored", id=cid, label=label, files=r.get("changed", 0))
+        return {"id": r["id"], "checkpoints": r["checkpoints"], "task": self.task(tid)}
 
     async def publish_direct(self, tid: int) -> dict:
         """Owner-initiated: commit the result straight onto the branch the workspace started from (no pull request)."""
