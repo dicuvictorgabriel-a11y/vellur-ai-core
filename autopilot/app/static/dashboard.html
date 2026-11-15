@@ -8,27 +8,27 @@
 <style>
 :root{
   /* VELLUR PEARL: graphite and nacre. One lavender accent; green/amber/red only for state. Dark is the default. */
-  --bg:#0b0b0e;--side:#0e0e12;--panel:#141419;--raise:#1c1c23;--sunk:#08080a;--hover:#18181f;--code:#1a1a21;--line:#1f1f27;--line2:#2b2b35;--line3:#3a3a46;
-  --text:#f1eff4;--soft:#c6c3cd;--muted:#8a8795;--faint:#5f5c6a;
-  --accent:#c3b4f3;--lime:#c3b4f3;--accent-ink:#15121d;--accent-dim:rgba(195,180,243,.11);--accent-line:rgba(195,180,243,.34);
+  --bg:#151719;--side:#101214;--panel:#1b1e20;--raise:#24282b;--sunk:#121416;--hover:#202426;--code:#1c2023;--line:#2a2e31;--line2:#3b4145;--line3:#555e64;
+  --text:#eeeae2;--soft:#c8cccd;--muted:#9ba5aa;--faint:#879297;
+  --accent:#c7d6cf;--lime:#c7d6cf;--accent-ink:#18231f;--accent-dim:rgba(160,190,174,.11);--accent-line:rgba(160,190,174,.34);
   --good:#86d7a0;--warn:#efcd6c;--warn-line:#5a4a16;--warn-bg:#1b180f;--bad:#ffad98;--bad-line:#5a2a1c;--bad-bg:#1a1110;--info:#a4e0e9;--info-line:#1d4a50;--info-bg:#0f191b;
-  --orange:#ff8a5c;--cyan:#8fd3e0;--bar:#8a79c9;--r:16px;--shadow:0 1px 0 rgba(255,255,255,.03) inset,0 18px 50px rgba(0,0,0,.35);--glass:rgba(28,28,35,.62);
+  --orange:#ff8a5c;--cyan:#8fd3e0;--bar:#92b2a4;--r:16px;--shadow:0 1px 0 rgba(255,255,255,.03) inset,0 18px 50px rgba(0,0,0,.35);--glass:rgba(28,28,35,.62);
   --pearl-a:rgba(255,255,255,.85);--pearl-b:rgba(180,160,245,.45);--pearl-c:rgba(255,190,170,.28);
   --mono:"JetBrains Mono","SF Mono","IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
   --sans:"Inter","SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-  --send:#eceaf2;--send-ink:#15121d;--pearl-shadow:rgba(10,6,24,.5);color-scheme:dark}
-@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#efedf1;--side:#eae7ed;--panel:#f7f6f9;--raise:#ffffff;--sunk:#e7e4eb;--hover:#e2deea;--code:#e9e6ee;--line:#e0dce6;--line2:#d0cbd9;--line3:#b9b3c6;
-  --text:#1c1a22;--soft:#3d3a47;--muted:#6c6878;--faint:#9591a1;
-  --accent:#7a64d4;--lime:#7a64d4;--accent-ink:#ffffff;--accent-dim:rgba(122,100,212,.10);--accent-line:rgba(122,100,212,.38);
+  --send:#eceaf2;--send-ink:#18231f;--pearl-shadow:rgba(10,6,24,.5);color-scheme:dark}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f5f3ed;--side:#eeece5;--panel:#fcfbf7;--raise:#ffffff;--sunk:#eeece5;--hover:#e7e6df;--code:#eeeee7;--line:#dedfd6;--line2:#c8cdc3;--line3:#a6b0a5;
+  --text:#232a28;--soft:#424c47;--muted:#626d66;--faint:#69756b;
+  --accent:#3c6555;--lime:#3c6555;--accent-ink:#ffffff;--accent-dim:rgba(60,101,85,.10);--accent-line:rgba(60,101,85,.38);
   --good:#1f7f49;--warn:#8a6406;--warn-line:#dcc98e;--warn-bg:#f7f0d9;--bad:#b0412a;--bad-line:#e5b9ac;--bad-bg:#f9e9e4;--info:#14707d;--info-line:#a9d3d9;--info-bg:#e3f1f3;
-  --orange:#c2532f;--cyan:#1b7f8e;--bar:#7a64d4;--shadow:0 1px 2px rgba(60,50,90,.05),0 12px 32px rgba(60,50,90,.07);--glass:rgba(255,255,255,.62);
-  --pearl-a:rgba(255,255,255,.95);--pearl-b:rgba(190,170,245,.55);--pearl-c:rgba(255,205,190,.35);--send:linear-gradient(160deg,#c9bbf7,#a893ec);--send-ink:#1c1a22;--pearl-shadow:rgba(90,70,150,.28);color-scheme:light}}
-:root[data-theme="light"]{--bg:#efedf1;--side:#eae7ed;--panel:#f7f6f9;--raise:#ffffff;--sunk:#e7e4eb;--hover:#e2deea;--code:#e9e6ee;--line:#e0dce6;--line2:#d0cbd9;--line3:#b9b3c6;
-  --text:#1c1a22;--soft:#3d3a47;--muted:#6c6878;--faint:#9591a1;
-  --accent:#7a64d4;--lime:#7a64d4;--accent-ink:#ffffff;--accent-dim:rgba(122,100,212,.10);--accent-line:rgba(122,100,212,.38);
+  --orange:#c2532f;--cyan:#1b7f8e;--bar:#3c6555;--shadow:0 1px 2px rgba(60,50,90,.05),0 12px 32px rgba(60,50,90,.07);--glass:rgba(255,255,255,.62);
+  --pearl-a:rgba(255,255,255,.95);--pearl-b:rgba(190,170,245,.55);--pearl-c:rgba(255,205,190,.35);--send:#232a28;--send-ink:#fcfbf7;--pearl-shadow:rgba(90,70,150,.28);color-scheme:light}}
+:root[data-theme="light"]{--bg:#f5f3ed;--side:#eeece5;--panel:#fcfbf7;--raise:#ffffff;--sunk:#eeece5;--hover:#e7e6df;--code:#eeeee7;--line:#dedfd6;--line2:#c8cdc3;--line3:#a6b0a5;
+  --text:#232a28;--soft:#424c47;--muted:#626d66;--faint:#69756b;
+  --accent:#3c6555;--lime:#3c6555;--accent-ink:#ffffff;--accent-dim:rgba(60,101,85,.10);--accent-line:rgba(60,101,85,.38);
   --good:#1f7f49;--warn:#8a6406;--warn-line:#dcc98e;--warn-bg:#f7f0d9;--bad:#b0412a;--bad-line:#e5b9ac;--bad-bg:#f9e9e4;--info:#14707d;--info-line:#a9d3d9;--info-bg:#e3f1f3;
-  --orange:#c2532f;--cyan:#1b7f8e;--bar:#7a64d4;--shadow:0 1px 2px rgba(60,50,90,.05),0 12px 32px rgba(60,50,90,.07);--glass:rgba(255,255,255,.62);
-  --pearl-a:rgba(255,255,255,.95);--pearl-b:rgba(190,170,245,.55);--pearl-c:rgba(255,205,190,.35);--send:linear-gradient(160deg,#c9bbf7,#a893ec);--send-ink:#1c1a22;--pearl-shadow:rgba(90,70,150,.28);color-scheme:light}
+  --orange:#c2532f;--cyan:#1b7f8e;--bar:#3c6555;--shadow:0 1px 2px rgba(60,50,90,.05),0 12px 32px rgba(60,50,90,.07);--glass:rgba(255,255,255,.62);
+  --pearl-a:rgba(255,255,255,.95);--pearl-b:rgba(190,170,245,.55);--pearl-c:rgba(255,205,190,.35);--send:#232a28;--send-ink:#fcfbf7;--pearl-shadow:rgba(90,70,150,.28);color-scheme:light}
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--text)}
 body{font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased;display:flex;min-height:100dvh;font-feature-settings:"cv11","ss01"}
 code,pre,.mono{font-family:var(--mono)}
@@ -483,6 +483,36 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
   .hrec{grid-template-columns:minmax(0,1fr);gap:10px}.hrh{margin:26px 0 12px}.pc .cover{height:84px}.hcard{padding:18px;border-radius:18px}
   #me{padding-bottom:max(4px,env(safe-area-inset-bottom))}
 }
+
+/* VELLUR Atelier. Calm surfaces, a reading-first canvas and tools revealed on demand. */
+:root{--r:12px;--reading:760px;--focus:var(--accent);--shadow:0 4px 18px rgba(0,0,0,.08)}
+body{letter-spacing:-.012em}button{min-height:36px}button.primary{background:var(--accent)}
+button:focus-visible,a:focus-visible,summary:focus-visible,select:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
+#side{width:224px;padding:28px 16px 16px;background:var(--side)}
+.logo{padding:0 12px 34px;gap:12px;font-size:18px;letter-spacing:.13em}.logo small{font-size:8px;letter-spacing:.24em;margin-top:7px}.logo .mark{width:23px;color:var(--soft)}
+#tabs{gap:5px}#tabs button{padding:11px 12px;font-size:13px;font-weight:450;border-radius:7px}#tabs button.on:before{left:-16px;top:12px;bottom:12px;background:var(--accent);width:2px}#tabs svg.ic{width:16px;height:16px;opacity:.8}
+.sidehead{padding:30px 12px 12px;font-size:9px;letter-spacing:.12em}#convList button{padding:10px 12px}#me{padding-top:16px;border-top:1px solid var(--line)}#me .pearl{width:34px;height:34px}
+main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;padding-bottom:24px}.pagehead h1{font-size:34px;font-weight:450;letter-spacing:-.04em}.pagehead .label{font-size:9px;letter-spacing:.17em}
+.card{border-radius:12px;box-shadow:none}.card h2{font-size:16px}.grid{gap:16px}.toolgrid{grid-template-columns:repeat(2,minmax(0,1fr))}.tool{border-radius:10px;padding:28px}.tool svg.ic{color:var(--muted);width:24px}.tool b{font-size:18px}
+#homeCard{display:block;overflow:auto;padding-bottom:32px}#homeCard>.hdr{padding:14px 32px;border-bottom:1px solid var(--line);height:64px}.modelpill{font-size:12px;min-width:150px;padding:8px 30px 8px 12px;border-radius:7px;background:transparent}
+#homeMain{max-width:940px;padding:0 44px;margin:64px auto 0;overflow:visible}.work-label{display:flex;justify-content:space-between;font:10px var(--mono);letter-spacing:.14em;color:var(--muted)}.work-label span{font-size:9px;color:var(--faint)}
+.hhero{gap:18px;margin:30px 0 38px}.hhero .pearl{width:46px;height:46px;box-shadow:none;align-self:flex-start;margin-top:9px}.hhero h1{font-size:48px;letter-spacing:-.05em;font-weight:400;margin:0 0 12px;line-height:1.1}.hhero h1 b{font-weight:500}.hhero p{font-size:20px;font-weight:400;letter-spacing:-.025em;color:var(--muted)}
+.hcomp{display:grid;grid-template-columns:36px 36px 1fr auto 40px;gap:8px;border-radius:16px;background:var(--panel);padding:18px;backdrop-filter:none;-webkit-backdrop-filter:none;box-shadow:var(--shadow);min-height:150px}
+#homeIn{grid-column:1/-1;grid-row:1;min-height:60px;margin:0;padding:4px 2px;border:0;font:17px/1.6 var(--sans)}.hbtn{width:36px;height:36px;border-radius:8px;background:transparent;border-color:transparent}.hmode{grid-column:4;padding:7px 30px 7px 12px;font-size:12px;border-radius:7px;background:transparent}#homeSend{grid-column:5;width:38px;height:38px;border-radius:9px;background:var(--send)}.hnote{margin:10px 2px 0;font-size:12px}
+.hacts{display:flex;gap:6px;margin:12px 0 0}.hacts button{min-height:38px;padding:8px 12px;flex-direction:row;align-items:center;gap:8px;border:1px solid transparent;border-radius:6px;background:transparent}.hacts button.on{box-shadow:none;border-color:var(--line2)}.hacts svg.ic{width:15px;height:15px;margin:0;color:var(--muted)}.hacts b{font-size:12px;margin:0;font-weight:450}.hacts span{display:none}
+.hrh{margin:44px 0 10px}.hrh h2{font-size:12px;font-weight:500;color:var(--muted)}.linkbtn{font-size:12px}.hrec{display:block;border-top:1px solid var(--line)}.hrec .pc{width:100%;border:0;border-bottom:1px solid var(--line);border-radius:0;background:transparent}.pc .meta{padding:17px 4px;align-items:center}.pc .meta svg.ic{width:16px;height:16px;margin:0;color:var(--muted)}.pc .meta div{display:flex;justify-content:space-between;gap:16px;align-items:center}.pc .meta b{font-size:13px;font-weight:450}.pc .meta small{font:10px var(--mono);margin:0;max-width:45%}.hempty{border:0;padding:20px 0;border-radius:0;font-size:13px}
+.workspace-context{max-width:852px;margin:28px auto 0;border-top:1px solid var(--line);font-size:12px}.workspace-context>summary{padding:16px 0;cursor:pointer;color:var(--muted);list-style:none;display:flex;justify-content:space-between}.workspace-context>summary:after{content:'+';margin-left:12px}.workspace-context[open]>summary:after{content:'−'}.workspace-context>summary span{margin-left:auto;font-size:11px;color:var(--faint)}#homeSide{display:grid;grid-template-columns:1fr 1fr;padding:0;gap:12px;overflow:visible}.hcard{padding:18px;border-radius:10px}.hcard h3,.hstat{font-size:13px}.hrow{font-size:12px}.hrow small{font-size:10px}
+.chathead,#agHead{min-height:64px;padding:14px 28px}.msgs{padding:36px 24px 24px}.msgs>*{max-width:var(--reading)}.m .txt{font-size:16px;line-height:1.75}.m.user .txt{background:var(--panel);border:1px solid var(--line);border-radius:12px 12px 3px 12px}.m.assistant .mmeta{opacity:1}.mmeta{color:var(--muted)}
+.composer{max-width:800px;padding:14px;border-radius:14px;box-shadow:var(--shadow);margin-bottom:8px}.composer textarea{font-family:var(--sans);min-height:54px}.cbar{gap:8px}.modelpick{border-radius:6px;background:transparent;font-size:12px}#btnSend,#agSend{border-radius:8px;background:var(--send);color:var(--send-ink);width:38px;height:38px}.chatfoot{max-width:800px;width:calc(100% - 32px);margin:0 auto 14px}
+#agMsgs .act,#agMsgs .report{border-radius:9px}.report{border-color:var(--line2)}.report .top{padding-bottom:12px;border-bottom:1px solid var(--line)}.report .foot{color:var(--muted)}#studio{width:48%;min-width:320px}.agimgs{padding:8px 28px}#agFoot{max-width:800px;margin:0 auto;width:calc(100% - 32px)}
+#workContext{display:flex;gap:8px;padding:0 2px 12px;flex-wrap:wrap}#workContext label{margin:0;flex:1;min-width:120px;font-size:11px}#workContext input{margin-top:4px;font-size:12px;padding:7px 10px}#chatMode{width:auto;max-width:110px;font-size:12px;border:0;background:transparent;padding:7px 20px 7px 4px}.workcard{display:block;margin:24px auto 0;border:1px solid var(--line2);border-radius:12px;background:var(--panel);padding:20px}.workcard header{display:flex;align-items:center;gap:12px}.workcard header small{margin-left:auto;color:var(--muted);font:11px var(--mono)}.workcard h3{margin:0;font-size:15px;font-weight:500}.workcard p{overflow-wrap:anywhere;color:var(--muted);font-size:13px}.workcard details{border-top:1px solid var(--line);margin-top:14px;padding-top:12px}.workcard summary{cursor:pointer;font-size:12px;color:var(--soft)}.workstep{padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}.workstep small{display:block;color:var(--muted);font:11px/1.6 var(--mono);overflow-wrap:anywhere}.workcard pre{white-space:pre-wrap;overflow-wrap:anywhere;font-size:12px}.workcard .row{margin-top:14px}.workcard img{max-width:100%;max-height:280px;object-fit:contain;border-radius:6px}.workcard .oc{font-size:11px}#workContext.linked label{display:none}#workContext.linked{padding-bottom:4px}#workContext.linked #workHint{font-size:11px;margin:0}.work-status{font:12px var(--mono);color:var(--muted)}
+@media(max-width:1100px){#homeMain{margin-top:42px;padding:0 32px}.workspace-context{margin-left:32px;margin-right:32px}.hhero h1{font-size:40px}.pc .meta div{display:block}.pc .meta small{max-width:100%;margin-top:6px}main{padding:28px}.toolgrid{gap:12px}}
+@media(max-width:860px){#side{width:250px}#topbar{height:54px;padding:8px 14px;border-bottom:1px solid var(--line)}#topbar b{font-size:12px;font-weight:500}.iconbtn{min-width:40px;min-height:40px}main{padding:20px 16px}.pagehead h1{font-size:28px}#homeCard>.hdr{padding:8px 14px;height:54px}.hdr .sp{display:block}.modelpill{flex:none;margin-left:auto;font-size:11px;min-width:0;max-width:150px}#homeMain{margin:32px auto 0;padding:0 20px}.work-label{font-size:9px}.work-label span{display:none}.hhero{margin:24px 0 26px;gap:12px}.hhero .pearl{width:32px;height:32px;margin-top:5px}.hhero h1{font-size:32px}.hhero p{font-size:16px;line-height:1.5}.hcomp{padding:14px;grid-template-columns:36px 36px 1fr auto 40px;border-radius:13px}#homeIn{order:0;font-size:16px;padding:2px;min-height:70px}.hmode{font-size:12px;min-width:0;max-width:100px}.hacts{gap:0;justify-content:space-between}.hacts button{padding:8px;gap:5px}.hacts b{font-size:11px}.hacts svg.ic{width:13px;height:13px}.hrh{margin-top:30px}.workspace-context{margin:22px 20px 0}#homeSide{grid-template-columns:1fr}.msgs{padding:22px 16px}.m .txt{font-size:15px}.composer{width:calc(100% - 24px);padding:10px}.composer textarea{font-size:16px}.chathead,#agHead{padding:10px 14px;min-height:54px}.chathead #chatTarget{display:none}.chathead #convNew{font-size:11px;padding:6px 10px}.cbar{gap:4px}.modelpick{max-width:46%;font-size:11px;padding-left:5px}#chatMode{max-width:86px;font-size:11px}.chatfoot{margin-bottom:max(10px,env(safe-area-inset-bottom));font-size:11px}.toolgrid{grid-template-columns:1fr}.tool{padding:22px}.workcard{padding:14px}.workcard header{flex-wrap:wrap}.workcard header small{margin-left:0}.workcard .row button{flex:1}#studio{width:100%;min-width:0}#agFoot{padding:0}.pagehead p{font-size:13px}}
+.workcard.working header .oc:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;background:var(--accent);animation:workpulse 1.8s ease-in-out infinite}@keyframes workpulse{50%{opacity:.35}}
+@media(prefers-reduced-motion:reduce){*,*:before,*:after{animation:none!important;transition:none!important;scroll-behavior:auto!important}}
+
+#tabs button{color:var(--muted)}#tabs button.on{background:var(--hover);color:var(--text);box-shadow:none}#tabs button.on:before{display:block}#convList button.on,#taskList button.on{background:var(--hover);color:var(--text);box-shadow:none}.hacts button,.hrec .pc{box-shadow:none}.hrec .pc{border-bottom-color:var(--line)}.hacts button:hover{background:var(--hover)}
+@media(max-width:860px){#side{transform:translateX(-100%);box-shadow:none}body.nav-open #side{transform:translateX(0);box-shadow:20px 0 60px rgba(0,0,0,.2)}}
 </style>
 </head>
 <body>
@@ -628,21 +658,11 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
     </section>
 
     <section class="admin-only" id="homeCard" data-tab="home">
-      <svg class="ribbon" viewBox="0 0 1400 560" preserveAspectRatio="xMaxYMin slice" aria-hidden="true"><defs>
-        <linearGradient id="rbA" gradientUnits="userSpaceOnUse" x1="830" y1="-40" x2="230" y2="460"><stop offset="0" stop-color="var(--pearl-b)" stop-opacity=".25"/><stop offset=".28" stop-color="var(--pearl-a)"/><stop offset=".5" stop-color="var(--pearl-c)"/><stop offset=".7" stop-color="var(--pearl-b)"/><stop offset="1" stop-color="var(--pearl-b)" stop-opacity="0"/></linearGradient>
-        <filter id="rbW" filterUnits="userSpaceOnUse" x="-200" y="-300" width="1800" height="1100"><feGaussianBlur stdDeviation="30"/></filter>
-        <filter id="rbM" filterUnits="userSpaceOnUse" x="-200" y="-300" width="1800" height="1100"><feGaussianBlur stdDeviation="9"/></filter>
-        <filter id="rbC" filterUnits="userSpaceOnUse" x="-200" y="-300" width="1800" height="1100"><feGaussianBlur stdDeviation="1.2"/></filter>
-        <filter id="rbN" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="1" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .045 0"/></filter></defs>
-        <g fill="none" stroke="url(#rbA)" stroke-linecap="round">
-          <path d="M755-60C765 120 690 290 210 452" stroke-width="170" opacity=".28" filter="url(#rbW)"/><path d="M755-60C765 120 690 290 210 452" stroke-width="46" opacity=".42" filter="url(#rbM)"/><path d="M755-60C765 120 690 290 210 452" stroke-width="7" opacity=".7" filter="url(#rbC)"/><path d="M755-60C765 120 690 290 210 452" stroke-width="1.3" opacity=".9"/>
-          <path d="M860-60C860 110 810 250 490 380" stroke-width="70" opacity=".16" filter="url(#rbW)"/><path d="M860-60C860 110 810 250 490 380" stroke-width="3" opacity=".35" filter="url(#rbC)"/></g>
-        <rect width="1400" height="560" filter="url(#rbN)"/></svg>
       <div class="hdr"><button class="iconbtn plain" id="navBack" aria-label="Back" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg></button><button class="iconbtn plain" id="navFwd" aria-label="Forward" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg></button><span class="sp"></span>
         <button class="iconbtn plain" id="btnSearch" title="Search conversations and projects (Ctrl+K)" aria-label="Search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></button><button class="iconbtn plain" id="btnTheme" title="Switch between dark and light" aria-label="Switch theme"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg></button>
         <select id="homeModel" class="modelpill" aria-label="Model"></select></div>
      <div id="homeMain">
-      <div class="hhero"><span class="pearl" id="heroPearl"></span><div><h1 id="greet">Welcome.</h1><p>What shall we create today?</p></div></div>
+      <div class="work-label">PERSONAL WORKSPACE <span>VELLUR / AI CORE</span></div><div class="hhero"><span class="pearl" id="heroPearl"></span><div><h1 id="greet">Welcome.</h1><p>A little thought. A new possibility.</p></div></div>
       <div class="hcomp" id="homeComposer">
         <button class="hbtn" type="button" id="homeAttach" title="Attach files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button><button class="hbtn" type="button" id="homeSettings" title="Models and routing" aria-label="Models and routing"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg></button>
         <select id="homeMode" class="hmode" aria-label="What to do"><option value="chat">Chat</option><option value="agent">Agent</option><option value="image">Image</option></select>
@@ -653,14 +673,14 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
       <div class="hacts">
         <button type="button" data-act="build"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/></svg><b>Build</b><span>Apps, features, systems</span></button><button type="button" data-act="automate"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg><b>Automate</b><span>Flows, tasks, processes</span></button><button type="button" data-act="create"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 3.5 3 3-2.5 5 4"/></svg><b>Create</b><span>Visuals, media, content</span></button><button type="button" data-act="explore"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3.5 12.8 9l5.7 1.9-5.7 1.9L11 18.5l-1.8-5.7L3.5 10.9 9.2 9z"/><path d="M18.5 3v3M17 4.5h3"/></svg><b>Explore</b><span>Ideas, strategies, solutions</span></button>
       </div>
-      <div class="hrh"><h2 id="recTitle">Recent Projects</h2><button type="button" class="linkbtn" id="recAll">View All →</button></div>
+      <div class="hrh"><h2 id="recTitle">Recent Projects</h2><button type="button" class="linkbtn" id="recAll">View all ↗</button></div>
       <div class="hrec" id="recGrid"></div>
      </div>
-     <aside id="homeSide" aria-label="Agent and usage">
+     <details class="workspace-context"><summary>Workspace status <span>Activity &amp; usage</span></summary><aside id="homeSide" aria-label="Agent and usage">
       <div class="hcard" id="hAgent"></div><div class="hcard" id="hTask" hidden></div>
       <div class="hcard"><h3>Activity</h3><div id="hActivity"></div></div>
       <div class="hcard"><h3>Usage</h3><div id="hUsage"></div></div>
-     </aside>
+     </aside></details>
     </section>
     <div id="searchBox" hidden><div class="sbox" role="dialog" aria-label="Search"><input id="searchIn" placeholder="Search conversations and projects…" autocomplete="off"><div id="searchRes"></div></div></div>
 
@@ -679,11 +699,12 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
       </div>
       <div class="msgs" id="msgs"></div>
       <div class="composer">
+        <div id="workContext" hidden><label>Repository <input id="workRepo" list="workRepos" placeholder="owner / repository" aria-label="Work repository" autocapitalize="none" spellcheck="false"><datalist id="workRepos"></datalist></label><label>Branch <input id="workBranch" placeholder="Default branch" aria-label="Work branch" autocapitalize="none" spellcheck="false"></label><p class="note" id="workHint">Choose a repository, or leave blank for an empty workspace. Sending starts agent work.</p></div>
         <div class="atts" id="chatAtts" aria-live="polite"></div>
         <textarea id="chatIn" rows="1" placeholder="Message VELLUR AI…"></textarea>
         <div class="cbar">
           <label class="iconbtn" for="chatFile" title="Attach images, PDFs, documents, code or 3D files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></label><input type="file" id="chatFile" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.json,.xml,.yaml,.yml,.toml,.py,.js,.ts,.tsx,.jsx,.css,.html,.sh,.sql,.zip,.glb,.gltf,.obj,.stl,.blend">
-          <select id="chatModel" class="modelpick" aria-label="Model"></select><select id="imgSize" class="modelpick" aria-label="Image format" hidden><option value="1024x1024" title="Square">1:1</option><option value="832x1248" title="Portrait">2:3</option><option value="768x1344" title="Tall">9:16</option><option value="1248x832" title="Landscape">3:2</option><option value="1344x768" title="Wide">16:9</option></select>
+          <select id="chatMode" aria-label="Conversation mode"><option value="chat">Discuss</option><option value="work">Build</option></select><select id="chatModel" class="modelpick" aria-label="Model"></select><select id="imgSize" class="modelpick" aria-label="Image format" hidden><option value="1024x1024" title="Square">1:1</option><option value="832x1248" title="Portrait">2:3</option><option value="768x1344" title="Tall">9:16</option><option value="1248x832" title="Landscape">3:2</option><option value="1344x768" title="Wide">16:9</option></select>
           <span class="grow" id="chatFileNote"></span>
           <button id="btnSend" aria-label="Send"><svg class="ic" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
         </div>
@@ -1050,6 +1071,7 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
   function setView(v, fromHistory) {
     if (!VIEW_NAMES[v]) v = "home";
     if (VIEW === "agent" && v !== "agent") closeStream();
+    clearTimeout(WORK_TIMER);
     if (!fromHistory && HIST[HPOS] !== v) { HIST.splice(HPOS + 1); HIST.push(v); HPOS = HIST.length - 1; }
     $("navBack").disabled = HPOS <= 0; $("navFwd").disabled = HPOS >= HIST.length - 1;
     VIEW = v; document.body.dataset.view = v; if ($("sideLabel")) $("sideLabel").textContent = v === "agent" ? "Agent tasks" : "Conversations"; document.body.classList.remove("nav-open"); $("topTitle").textContent = VIEW_NAMES[v]; $("topNew").style.visibility = ["chat", "agent", "home"].includes(v) ? "" : "hidden"; try { sessionStorage.setItem("vellurView", v); } catch (e) {}
@@ -1150,8 +1172,7 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
     try {
       if (mode === "agent") {
         TASK = null; try { sessionStorage.setItem("vellurTask", ""); } catch (e) {}
-        await setView("agent"); newTask(); $("tModel").value = model; $("agIn").value = text; agGrow(); $("agIn").focus();
-        $("agNote").textContent = AGENT.available === false ? "" : "Choose the repository, then press send.";
+        await startChat("", model); setWorkMode("work"); $("chatIn").value = text; grow(); $("workRepo").focus();
       } else await startChat(text, mode === "image" ? "vellur-image" : model);
       $("homeIn").value = ""; homeGrow();
     } catch (e) { $("homeNote").textContent = e.message; } finally { $("homeSend").disabled = false; }
@@ -1164,8 +1185,8 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
     const tasks = TASKS.slice(0, 3), convs = HOME.convs.slice(0, 3), folder = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
     const outcome = (t) => !FINAL_STATES.includes(t.state) ? "Working" : (OUTCOME[t.outcome] || [t.state])[0];
     $("recTitle").textContent = tasks.length ? "Recent Projects" : "Recent Conversations";
-    $("recGrid").innerHTML = tasks.length ? tasks.map(t => `<button type="button" class="pc" data-task="${t.id}"><span class="cover">${coverSVG(t.id)}</span><span class="meta">${folder}<div><b>${esc(t.title)}</b><small>${esc((t.repo || "Empty workspace").split("/").pop())} · ${esc(outcome(t))}</small></div></span></button>`).join("")
-      : convs.length ? convs.map(c => `<button type="button" class="pc" data-conv="${c.id}"><span class="cover">${coverSVG(c.id + 7919)}</span><span class="meta">${folder}<div><b>${esc(c.title)}</b><small>Conversation · ${esc(agoShort(c.updated))}</small></div></span></button>`).join("")
+    $("recGrid").innerHTML = tasks.length ? tasks.map(t => `<button type="button" class="pc" data-task="${t.id}"><span class="meta">${folder}<div><b>${esc(t.title)}</b><small>${esc((t.repo || "Empty workspace").split("/").pop())} · ${esc(outcome(t))}</small></div></span></button>`).join("")
+      : convs.length ? convs.map(c => `<button type="button" class="pc" data-conv="${c.id}"><span class="meta">${folder}<div><b>${esc(c.title)}</b><small>Conversation · ${esc(agoShort(c.updated))}</small></div></span></button>`).join("")
       : HOME.loaded ? '<div class="hempty">Nothing here yet. Your projects and conversations appear here once you start one above.</div>' : "";
     $("recGrid").querySelectorAll("[data-task]").forEach(b => b.onclick = () => openProject(Number(b.dataset.task)));
     $("recGrid").querySelectorAll("[data-conv]").forEach(b => b.onclick = () => openChat(Number(b.dataset.conv)));
@@ -1217,7 +1238,9 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
   document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && document.body.classList.contains("is-admin")) { e.preventDefault(); openSearch(); } else if (e.key === "Escape") { $("searchBox").hidden = true; $("meMenu").hidden = true; } });
 
   // chat
-  let CONV = null, chatAtts = [];
+  let CONV = null, chatAtts = [], CONV_LOAD = 0;
+  try { CONV = Number(sessionStorage.getItem("vellurConversation")) || null; } catch(e) {}
+  try { CONV = Number(sessionStorage.getItem("vellurConversation")) || null; } catch(e) {}
   const renderChatAtts = () => renderAtts($("chatAtts"), chatAtts, renderChatAtts);
   const clearChatAtts = () => { chatAtts.length = 0; $("chatFile").value = ""; renderChatAtts(); $("chatFileNote").textContent = ""; };
   wireComposer($("chatCard").querySelector(".composer"), $("chatFile"), chatAtts, renderChatAtts,
@@ -1307,19 +1330,30 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
     clearChatAtts();
     const list = (await send("conversations", "GET")).conversations; const sel = $("convSel"); sel.innerHTML = "";
     list.forEach(c => sel.add(new Option(c.title, c.id)));
-    if (!list.length) { CONV = null; $("chatTitle").textContent = "New conversation"; chatEmpty(); fillModels($("chatModel"), "vellur-chat"); return; }
-    await openConv(selectId || CONV || list[0].id);
+    if (!list.length) { CONV = null; WORK_TASK = null; clearTimeout(WORK_TIMER); setWorkMode("chat"); try { sessionStorage.removeItem("vellurConversation"); } catch(e) {} $("chatTitle").textContent = "New conversation"; chatEmpty(); fillModels($("chatModel"), "vellur-chat"); return; }
+    await openConv(selectId || (list.some(c => c.id === CONV) ? CONV : list[0].id));
   }
   async function openConv(id) {
     clearChatAtts();
-    const c = await send("conversations/" + id, "GET"); CONV = c.id; $("convSel").value = c.id; fillModels($("chatModel"), c.model); $("chatTitle").textContent = c.title;
+    clearTimeout(WORK_TIMER); WORK_TASK = null;
+    const load = ++CONV_LOAD;
+    const c = await send("conversations/" + id, "GET"); if (load !== CONV_LOAD) return;
+    $("workRepo").value = ""; $("workBranch").value = "";
+    CONV = c.id; try { sessionStorage.setItem("vellurConversation", String(c.id)); } catch(e) {} $("convSel").value = c.id; fillModels($("chatModel"), c.model); $("chatTitle").textContent = c.title;
     $("msgs").innerHTML = ""; c.messages.forEach(m => { const meta = m.meta || {}; addMsg(m.role, m.content, meta.attachments || [], meta.images || [], m.role === "assistant" ? meta : null); });
     if (!c.messages.length) chatEmpty();
+    WORK_TASK = c.task_id || null; setWorkMode(WORK_TASK ? "work" : "chat");
+    if (WORK_TASK) await refreshWork();
   }
   $("convSel").onchange = () => openConv($("convSel").value);
   // A new conversation never starts in image mode: images are a deliberate choice, not a leftover from the last chat.
   const textModel = () => $("chatModel").value === "vellur-image" ? "vellur-chat" : $("chatModel").value;
-  $("convNew").onclick = async () => { const c = await send("conversations", "POST", { model: textModel() }); await loadConvs(c.id); $("chatIn").focus(); };
+  $("convNew").onclick = async () => {
+    $("convNew").disabled = $("btnSend").disabled = $("chatMode").disabled = true;
+    try { const c = await send("conversations", "POST", { model: textModel() }); await loadConvs(c.id); $("chatIn").value = ""; grow(); $("chatIn").focus(); }
+    catch(e) { $("chatFileNote").textContent = e.message; }
+    finally { $("convNew").disabled = $("btnSend").disabled = $("chatMode").disabled = false; }
+  };
   $("convDel").onclick = async () => { if (CONV && confirm("Delete this conversation?")) { await send("conversations/" + CONV, "DELETE"); CONV = null; await loadConvs(); } };
   const syncImgSize = () => { $("imgSize").hidden = $("chatModel").value !== "vellur-image"; };
   $("chatModel").addEventListener("change", syncImgSize);
@@ -1328,6 +1362,7 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
   function chatBusy(on) { const b = $("btnSend"); b.classList.toggle("stop", on); b.innerHTML = on ? STOP_ICON : SEND_ICON; b.setAttribute("aria-label", on ? "Stop the answer" : "Send"); b.title = on ? "Stop" : "Send"; }
   $("btnSend").onclick = async () => {
     if (CHAT_ABORT) { CHAT_ABORT.abort(); return; }
+    if ($("chatMode").value === "work") { await sendWork(); return; }
     const text = $("chatIn").value.trim(); if (!text && !chatAtts.length) return;
     if (!attsReady(chatAtts)) { $("chatFileNote").textContent = "Wait for the attachments to finish uploading."; return; }
     const ids = chatAtts.map(a => a.id), shown = chatAtts.slice(), model = $("chatModel").value;
@@ -1370,6 +1405,74 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
   async function loadConvsQuiet() { const list = (await send("conversations", "GET")).conversations; const sel = $("convSel"); sel.innerHTML = ""; list.forEach(c => sel.add(new Option(c.title, c.id))); sel.value = CONV; const c = list.find(x => String(x.id) === String(CONV)); if (c) $("chatTitle").textContent = c.title; }
   $("chatIn").addEventListener("keydown", (e) => { if (e.key === "Enter" && !e.shiftKey && !e.isComposing && !matchMedia("(pointer:coarse)").matches) { e.preventDefault(); if (!CHAT_ABORT) $("btnSend").click(); } });
   $("memSave").onclick = async () => { try { await send("settings", "PUT", { memory: $("memory").value }); $("memNote").textContent = "saved"; } catch (e) { $("memNote").textContent = e.message; } };
+
+  // Conversation work: server-persisted task link; existing agent events are the source of truth.
+  let WORK_TASK = null, WORK_TIMER = null, WORK_SENDING = false;
+  function setWorkMode(mode) {
+    $("chatMode").value = mode; $("workContext").hidden = mode !== "work";
+    $("chatIn").placeholder = mode === "work" ? (WORK_TASK ? "Continue working on this project…" : "Describe what you want built or changed…") : "Message VELLUR AI…";
+    $("workContext").classList.toggle("linked", !!WORK_TASK);
+    $("workRepo").disabled = $("workBranch").disabled = !!WORK_TASK;
+    $("workHint").textContent = WORK_TASK ? "Connected to this conversation's workspace. Follow-ups continue the same task." : "Choose a repository, or leave blank for an empty workspace. Sending starts agent work.";
+    if (mode === "work" && $("chatModel").value === "vellur-image") $("chatModel").value = "vellur-coder";
+    syncImgSize();
+  }
+  $("chatMode").onchange = () => setWorkMode($("chatMode").value);
+  $("workRepo").addEventListener("focus", async () => { try { const r = await send("agent/repos", "GET"); $("workRepos").replaceChildren(...(r.repos || []).map(x => { const o = document.createElement("option"); o.value = x.name; return o; })); } catch(e) { $("workHint").textContent = "Repository suggestions unavailable. Enter owner/repository manually."; } });
+  $("chatModel").addEventListener("change", () => { if ($("chatModel").value === "vellur-image") setWorkMode("chat"); });
+  async function sendWork() {
+    if (WORK_SENDING) return;
+    const text = $("chatIn").value.trim(); if (!text) return;
+    if (!attsReady(chatAtts)) { $("chatFileNote").textContent = "Wait for uploads to finish."; return; }
+    WORK_SENDING = true; $("btnSend").disabled = true;
+    try {
+      if (!CONV) { const c = await send("conversations", "POST", { model: $("chatModel").value }); CONV = c.id; }
+      const cid = CONV;
+      await send("conversations/" + cid + "/work", "POST", { prompt: text, model: $("chatModel").value,
+        repo: $("workRepo").value.trim(), base: $("workBranch").value.trim(), attachments: chatAtts.map(a => a.id) });
+      if (cid !== CONV || VIEW !== "chat") return;
+      $("chatIn").value = ""; clearChatAtts(); grow(); await openConv(cid); await loadConvsQuiet();
+    } catch (e) { $("chatFileNote").textContent = e.message; }
+    finally { WORK_SENDING = false; $("btnSend").disabled = false; }
+  }
+  async function refreshWork() {
+    clearTimeout(WORK_TIMER);
+    const cid = CONV, tid = WORK_TASK; if (!tid || VIEW !== "chat") return;
+    try {
+      const [task, data] = await Promise.all([send("agent/tasks/" + tid, "GET"), send("agent/tasks/" + tid + "/events?limit=5000", "GET")]);
+      if (cid !== CONV || tid !== WORK_TASK || VIEW !== "chat") return;
+      $("workRepo").value = task.repo || ""; $("workBranch").value = task.base || "";
+      const active = !FINAL_STATES.includes(task.state), events = data.events || [], run = task.runs || 1;
+      let card = $("conversationWork");
+      if (!card) { card = document.createElement("article"); card.id = "conversationWork"; card.className = "workcard"; $("msgs").appendChild(card); }
+      const signature = JSON.stringify([task.state, task.outcome, task.cost_usd, task.report, task.pr_url, task.can_publish, task.runs, events]);
+      if (card.dataset.signature === signature) { if (active) WORK_TIMER = setTimeout(refreshWork, 3000); return; }
+      card.dataset.signature = signature; $("chatFileNote").textContent = "";
+      const opened = new Set([...card.querySelectorAll("details[open]")].map(d => d.dataset.section));
+      card.classList.toggle("working", active);
+      const report = task.report || {}, outcome = active ? ["Working", ""] : (OUTCOME[task.outcome] || ["Result not verified", ""]);
+      const meaningful = events.filter(e => ["tool", "status", "error", "notice", "text", "shot", "pr", "report", "publication"].includes(e.kind));
+      const last = [...meaningful].reverse().find(e => e.kind === "tool" || e.kind === "status");
+      const state = active ? (last ? (last.kind === "tool" ? toolView(last.data).verb : last.data.text) : "Waiting for the agent") : report.why || task.error || "Review the recorded result below.";
+      card.innerHTML = `<header><span class="oc ${outcome[1]}">${esc(outcome[0])}</span><h3>Project work</h3><small>${task.cost_usd == null ? "Cost unavailable" : money4(task.cost_usd)} · Run ${run}</small></header><p class="work-status" role="status">${esc(state)}</p>`
+        + `<details data-section="activity"><summary>Activity · ${meaningful.length} recorded events${data.has_more ? " (more in workspace)" : ""}</summary><div>${meaningful.map(e => {
+          const d = e.data || {};
+          if (e.kind === "tool") { const v = toolView(d); return `<div class="workstep">${esc(v.verb)}<small>${esc(v.obj)}</small></div>`; }
+          if (e.kind === "shot") return `<figure><img src="/autopilot/api/agent/tasks/${tid}/shots/${encodeURIComponent(d.name)}" alt="Agent screenshot: ${esc(d.name)}" loading="lazy"><figcaption>${esc(d.name)}</figcaption></figure>`;
+          if (e.kind === "report") return `<div class="workstep">Run ${e.run}: ${esc((OUTCOME[d.outcome] || ["Unverified"])[0])}<small>${esc(d.why || "")}</small></div>`;
+          return `<div class="workstep">${esc(d.text || d.message || d.reason || (e.kind === "pr" ? "Pull request recorded" : e.kind))}</div>`;
+        }).join("")}</div></details>`
+        + `<details data-section="evidence"><summary>Files & checks</summary><div class="workstep">${(report.files || []).map(f => esc(f.path)).join("<br>") || "No changed files reported."}</div><div class="workstep">${(report.tests || []).map(t => `${t.exit === 0 ? "Passed" : Number.isInteger(t.exit) ? "Failed" : "Unverified"}: ${esc(t.command)}`).join("<br>") || "No checks reported."}</div>${report.sections?.not_done ? `<p>${esc(report.sections.not_done)}</p>` : ""}</details>`
+        + `<div class="row"><button class="ghost" data-open-work>Open workspace & preview ↗</button>${active ? '<button class="danger" data-stop-work>Stop task</button>' : ''}${task.can_publish ? '<button class="ghost" data-review-work>Create / update draft PR</button>' : ''}</div>`;
+      card.querySelectorAll("details").forEach(d => d.open = opened.has(d.dataset.section));
+      card.querySelector("[data-open-work]").onclick = () => openProject(tid);
+      const stop = card.querySelector("[data-stop-work]"); if (stop) stop.onclick = async () => { if (!confirm("Stop this agent task?")) return; try { await send("agent/tasks/" + tid + "/cancel", "POST", {}); await refreshWork(); } catch(e) { $("chatFileNote").textContent = e.message; } };
+      const review = card.querySelector("[data-review-work]"); if (review) review.onclick = async () => { if (!confirm("Create or update the draft pull request with this task's changes?")) return; review.disabled = true; try { await send("agent/tasks/" + tid + "/publish", "POST", {}); await refreshWork(); } catch(e) { $("chatFileNote").textContent = e.message; review.disabled = false; } };
+      if (task.pr_url && /^https:\/\/github\.com\//.test(task.pr_url)) { const a = document.createElement("a"); a.href = task.pr_url; a.textContent = "View pull request ↗"; a.target = "_blank"; a.rel = "noopener"; card.querySelector(".row").appendChild(a); }
+      if (active) WORK_TIMER = setTimeout(refreshWork, 3000);
+    } catch(e) { if (cid === CONV && VIEW === "chat") { $("chatFileNote").textContent = "Activity unavailable. Retrying… " + e.message; WORK_TIMER = setTimeout(refreshWork, 5000); } }
+  }
+  document.addEventListener("visibilitychange", () => { if (!document.hidden && VIEW === "chat" && WORK_TASK) refreshWork(); });
 
   // agent
   // ── agent: one conversation per task, live timeline from the server's event log ─────────────
@@ -1511,7 +1614,7 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
       const warn = CUR.outcome !== "completed" ? "\n\nNote: the agent did not confirm the task as complete." : "";
       if (!confirm("Publish these changes directly to “" + CUR.base + "” in " + CUR.repo + "?\n\nIf this project deploys from that branch, the changes go live." + warn)) return;
       ev.target.disabled = true; ev.target.textContent = "Publishing…";
-      try { await send("agent/tasks/" + TASK + "/publish-direct", "POST", {}); await openTask(TASK); } catch (e) { ev.target.disabled = false; ev.target.textContent = "Publish to " + CUR.base; alert(e.message); } });
+      try { await send("agent/tasks/" + TASK + "/publish-direct", "POST", {}); await openTask(TASK); } catch (e) { if (e.message && e.message.includes("changed on GitHub since")) { ev.target.textContent = "Creating pull request…"; try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e2) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; alert(e2.message); } } else { ev.target.disabled = false; ev.target.textContent = "Publish to " + CUR.base; alert(e.message); } } });
     if (CUR.can_publish) add(CUR.pr_url ? "Update pull request" : "Pull request instead", "ghost", async (ev) => {
       if (!confirm(CUR.pr_url ? "Push these changes to the existing pull request branch?" : "Create a branch and a draft pull request on GitHub with these changes?")) return;
       ev.target.disabled = true; ev.target.textContent = "Publishing…";
@@ -1749,7 +1852,7 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
     ta.focus(); agGrow(); ta.setSelectionRange(ta.value.length, ta.value.length);
     try { $("agComposer").scrollIntoView({ block: "nearest" }); } catch (err) {}
   });
-  (() => { let v = null; try { v = sessionStorage.getItem("vellurStudio"); } catch (e) {} if (v === "1" || (v === null && innerWidth >= 1100)) document.body.classList.add("studio-open"); })();
+  (() => { let v = null; try { v = sessionStorage.getItem("vellurStudio"); } catch (e) {} if (v === "1") document.body.classList.add("studio-open"); })();
   // ── checkpoints: saved versions of the project ───────────────────────────────────────────────
   async function loadCheckpoints() {
     const l = $("cpList"); l.innerHTML = '<div class="note">Loading…</div>';
@@ -2046,13 +2149,23 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
     $("sideBudget").innerHTML = "<span class='label'>Spend · " + esc(b.month || "this month") + "</span><b>" + money(b.total_usd) + "</b> of " + money(b.budget_usd) + "<div class='bar" + (b.percent >= 90 ? " hot" : b.percent >= 75 ? " warn" : "") + "'><i style='width:" + Math.min(100, b.percent) + "%'></i></div>"; }
   function syncConvList() { const box = $("convList"); box.innerHTML = "";
     [...$("convSel").options].forEach(o => { const b = document.createElement("button"); b.textContent = o.text; b.className = String(o.value) === String($("convSel").value) ? "on" : "";
-      b.onclick = () => { if (VIEW !== "chat") setView("chat"); openConv(o.value).then(syncConvList); document.body.classList.remove("nav-open"); }; box.appendChild(b); }); }
+      b.onclick = async () => { CONV = Number(o.value); if (VIEW !== "chat") await setView("chat"); else await openConv(o.value); syncConvList(); document.body.classList.remove("nav-open"); }; box.appendChild(b); }); }
   new MutationObserver(syncConvList).observe($("convSel"), { childList: true });
   $("convSel").addEventListener("change", () => setTimeout(syncConvList, 300));
-  const newChat = () => { if (VIEW === "agent") { newTask(); document.body.classList.remove("nav-open"); $("agIn").focus(); return; }
-    if (VIEW !== "chat") setView("chat"); $("convNew").click(); document.body.classList.remove("nav-open"); };
+  const newChat = async () => { if (VIEW === "agent") { newTask(); document.body.classList.remove("nav-open"); $("agIn").focus(); return; }
+    if (VIEW !== "chat") await setView("chat"); $("convNew").click(); document.body.classList.remove("nav-open"); };
   $("sideNew").onclick = newChat; $("topNew").onclick = newChat;
   $("navOpen").onclick = () => document.body.classList.add("nav-open"); $("scrim").onclick = () => document.body.classList.remove("nav-open");
+  document.addEventListener("keydown", e => {
+    if (e.key === "Escape" && document.body.classList.contains("nav-open")) { document.body.classList.remove("nav-open"); $("navOpen").focus(); }
+    if (e.key === "Tab" && document.body.classList.contains("nav-open")) {
+      const items = [...$("side").querySelectorAll("button:not(:disabled),input,a[href]")].filter(x => x.getClientRects().length);
+      const first = items[0], last = items[items.length - 1];
+      if (e.shiftKey && document.activeElement === first) { e.preventDefault(); last.focus(); }
+      else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
+    }
+  });
+  $("navOpen").addEventListener("click", () => $("tabs").querySelector("button").focus());
   const copyPre = (e) => { const pre = e.target.closest(".m pre"); if (!pre || !navigator.clipboard) return;
     navigator.clipboard.writeText(pre.textContent).then(() => { pre.classList.add("copied"); setTimeout(() => pre.classList.remove("copied"), 1400); }); };
   $("msgs").addEventListener("click", copyPre); $("agMsgs").addEventListener("click", copyPre);
