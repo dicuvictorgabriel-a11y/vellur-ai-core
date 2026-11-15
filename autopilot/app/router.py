@@ -115,6 +115,17 @@ class _Sniffer:
         return self.found
 
 
+def provider_usd(value) -> Optional[float]:
+    """A cost reported by the provider, which may arrive as a number or as a string ("0.042")."""
+    if isinstance(value, bool) or value is None:
+        return None
+    try:
+        v = float(value)
+    except (TypeError, ValueError):
+        return None
+    return v if v >= 0 and v == v and v != float("inf") else None
+
+
 class Router:
     def __init__(self, ctrl: Controller, transport: Optional[httpx.AsyncBaseTransport] = None):
         self.ctrl, self.db, self.env, self.settings = ctrl, ctrl.db, ctrl.env, ctrl.settings
@@ -422,10 +433,14 @@ class Router:
             return 0.0, "plan"
         if usage is None:
             return 0.0, "unknown"
-        if isinstance(usage.get("cost"), (int, float)):
-            return float(usage["cost"]), "provider"
-        if int(usage.get("images") or 0) and self.image_price(target) is not None:
-            return int(usage["images"]) * float(self.image_price(target)), "estimate"
+        provider_cost = provider_usd(usage.get("cost"))
+        if provider_cost is not None:
+            return provider_cost, "provider"
+        if int(usage.get("images") or 0):
+            # an image is never priced with the token rate: either a known image price or "unpriced"
+            if self.image_price(target) is not None:
+                return int(usage["images"]) * float(self.image_price(target)), "estimate"
+            return 0.0, "unpriced"
         pr = self.price(target)
         if pr:
             return (int(usage.get("prompt_tokens") or 0) * pr[0] + int(usage.get("completion_tokens") or 0) * pr[1]) / 1e6, "estimate"
