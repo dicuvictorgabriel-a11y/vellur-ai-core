@@ -909,15 +909,16 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   }
   const repoValue = () => $("tRepoSel").value === "__other" ? $("agOther").value.trim() : $("tRepoSel").value;
   async function repoChanged() {
-    const v = $("tRepoSel").value, b = $("tBase");
+    let v = $("tRepoSel").value; const b = $("tBase");
     $("agOther").style.display = v === "__other" && !CUR ? "block" : "none";
     b.innerHTML = '<option value="">default branch</option>';
-    if (!v || v === "__other") return;
+    if (v === "__other") v = /^[\w.-]+\/[\w.-]+$/.test($("agOther").value.trim()) ? $("agOther").value.trim() : "";
+    if (!v) return;
     try { const r = await send("agent/branches?repo=" + encodeURIComponent(v), "GET");
       b.innerHTML = r.branches.map(n => `<option value="${esc(n)}">${esc(n)}${n === r.default ? " (default)" : ""}</option>`).join(""); b.value = r.default; }
     catch (e) { /* keep "default branch" */ }
   }
-  $("tRepoSel").onchange = repoChanged;
+  $("tRepoSel").onchange = repoChanged; $("agOther").onchange = repoChanged;
   $("ghSave").onclick = async () => { try { await send("agent/github", "PUT", { token: $("ghToken").value }); $("ghToken").value = ""; $("ghBox").open = false; REPOS_LOADED = false; await loadAgent(); } catch (e) { $("ghNote").textContent = e.message; $("ghBox").open = true; } };
 
   // models
