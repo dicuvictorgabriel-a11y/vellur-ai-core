@@ -313,11 +313,13 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
             return err(e)
 
     @app.get("/autopilot/api/agent/tasks/{tid}/events", dependencies=[Depends(admin)])
-    async def task_events(tid: int, after: int = 0):
+    async def task_events(tid: int, after: int = 0, limit: int = 500):
         t = agent.task(tid)
         if not t:
             return JSONResponse({"error": "not_found", "message": "unknown task"}, status_code=404)
-        return {"events": agent.events(tid, after), "task": _brief(t)}
+        limit = max(1, min(limit, 5000))
+        evs = agent.events(tid, after, limit)
+        return {"events": evs, "task": _brief(t), "has_more": len(evs) == limit}
 
     @app.get("/autopilot/api/agent/tasks/{tid}/stream", dependencies=[Depends(admin)])
     async def task_stream(tid: int, request: Request, after: int = 0):

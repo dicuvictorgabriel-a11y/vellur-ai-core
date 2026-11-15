@@ -485,8 +485,16 @@ class AgentManager:
                     try:
                         base = base or await gh.default_branch(t["repo"])
                         sha = ""
-                        with contextlib.suppress(AgentError, KeyError):
-                            sha = await gh.head_sha(t["repo"], base)
+                        for attempt in range(3):          # never start unpublishable work from a silent failure
+                            try:
+                                sha = await gh.head_sha(t["repo"], base)
+                                break
+                            except (AgentError, KeyError) as e:
+                                if attempt == 2:
+                                    raise AgentError(getattr(e, "code", "github"),
+                                                     "could not read the branch from GitHub before starting: " +
+                                                     getattr(e, "message", str(e)), getattr(e, "status", 502))
+                                await asyncio.sleep(1 + attempt)
                         source = await gh.tarball(t["repo"], sha or base)
                     finally:
                         await gh.c.aclose()
@@ -648,7 +656,7 @@ class AgentManager:
         requests = [e["data"]["text"] for e in evs if e["kind"] == "user"]
         steps = [e["data"] for e in run_evs if e["kind"] == "step"]
         stop_reason = steps[-1].get("reason", "") if steps else ""
-        commands, last_test = [], {}
+        commands, last_test, last_check = [], {}, None
         for e in run_evs:
             d = e["data"]
             if e["kind"] == "tool" and d.get("tool") == "bash":
@@ -657,8 +665,10 @@ class AgentManager:
                 commands.append(c)
                 if c["test"]:
                     last_test[cmd] = c
+                    last_check = c
         tests = list(last_test.values())
-        tests_failed = [c for c in tests if c["status"] == "error" or (c["exit"] not in (None, 0))]
+        # Judge the check the agent ran LAST, not any earlier invocation that was fixed and re-checked meanwhile.
+        last_failed = bool(last_check) and (last_check["status"] == "error" or last_check["exit"] not in (None, 0))
         errors = [e["data"].get("message", "") for e in run_evs if e["kind"] == "error"]
         if error and not (errors and error.startswith("the agent process exited")):
             errors.append(error)          # the generic exit-code line adds nothing when the real error is known
@@ -682,8 +692,8 @@ class AgentManager:
                                           "middle of the work. Send a follow-up such as “continue” to resume.")
         elif errors:
             outcome, why = "failed", "The model provider returned an error: " + errors[-1]
-        elif tests_failed:
-            outcome, why = "needs_attention", f"{len(tests_failed)} of {len(tests)} checks failed in their last run."
+        elif last_failed:
+            outcome, why = "needs_attention", f"The last check the agent ran failed: {last_check['command'][:200]}"
         elif claim == "COMPLETE":
             outcome, why = "completed", ("The agent reports the task as complete" +
                                          (" and the checks it ran passed." if tests else "; it ran no tests."))
@@ -741,6 +751,13 @@ class AgentManager:
         """Owner-initiated: push the result as a branch and open (or update) a draft pull request."""
         if tid in self._jobs:
             raise AgentError("busy", "the task is still finishing", 409)
+        self._jobs[tid] = asyncio.current_task()
+        try:
+            return await self._publish_locked(tid)
+        finally:
+            self._jobs.pop(tid, None)
+
+    async def _publish_locked(self, tid: int) -> dict:
         t = self.task(tid)
         if not t:
             raise AgentError("not_found", "unknown task", 404)

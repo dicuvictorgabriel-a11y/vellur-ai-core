@@ -130,6 +130,7 @@ class FakeRunner:
 class FakeGitHub:
     def __init__(self):
         self.calls, self.auth, self.head = [], set(), "base1"
+        self.head_failures = 0
 
     def handler(self, req: httpx.Request):
         self.auth.add(req.headers.get("authorization"))
@@ -155,6 +156,9 @@ class FakeGitHub:
         if p in ("/repos/o/r/tarball/main", "/repos/o/r/tarball/" + self.head):
             return httpx.Response(200, content=b"TARBALL")
         if p == "/repos/o/r/git/ref/heads/main":
+            if self.head_failures:
+                self.head_failures -= 1
+                return httpx.Response(503, json={"message": "temporarily unavailable"})
             return httpx.Response(200, json={"object": {"sha": self.head}})
         if p == "/repos/o/r/git/commits/" + self.head:
             return httpx.Response(200, json={"tree": {"sha": "tree0"}})
@@ -347,6 +351,62 @@ async def test_outcome_is_judged_not_assumed(agents):
     await wait_final(mgr, tid3)
     await asyncio.sleep(0.05)
     assert mgr.task(tid3)["outcome"] == "failed" and "rate limited" in mgr.task(tid3)["report"]["why"]
+
+
+async def test_outcome_uses_the_last_check_not_a_stale_earlier_one(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    runner.runs = [[tool("python -m pytest -q", 1), tool("bash dev/test.sh", 0),
+                    oc("text", text="## Summary\nFixed\nSTATUS: COMPLETE"), oc("step_finish", reason="stop")]]
+    tid = (await mgr.create("Fix the failing checks", "vellur-coder"))["id"]
+    await wait_final(mgr, tid)
+    await asyncio.sleep(0.05)
+    t = mgr.task(tid)
+    assert t["outcome"] == "completed" and [c["exit"] for c in t["report"]["tests"]] == [1, 0]
+    runner.runs = [[tool("bash dev/test.sh", 0), tool("npx tsc --noEmit", 2),
+                    oc("text", text="## Summary\nDone\nSTATUS: COMPLETE"), oc("step_finish", reason="stop")]]
+    runner.events, runner.run = [], 0
+    tid2 = (await mgr.create("Fix the type error", "vellur-coder"))["id"]
+    await wait_final(mgr, tid2)
+    await asyncio.sleep(0.05)
+    t2 = mgr.task(tid2)
+    assert t2["outcome"] == "needs_attention" and "npx tsc --noEmit" in t2["report"]["why"]
+
+
+async def test_a_transient_github_error_never_leaves_an_unpublishable_task(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    await admin.put("/autopilot/api/agent/github", headers=WRITE, json={"token": "github_pat_" + "a" * 30})
+    gh.head_failures = 1
+    tid = (await admin.post("/autopilot/api/agent/tasks", headers=WRITE, json={"prompt": "Add tests", "repo": "o/r"})).json()["id"]
+    t = await wait_final(mgr, tid)
+    assert t["state"] == "done" and t["base_sha"] == "base1"
+    gh.head_failures = 3
+    runner.calls.clear()
+    tid2 = (await admin.post("/autopilot/api/agent/tasks", headers=WRITE, json={"prompt": "Add more tests", "repo": "o/r"})).json()["id"]
+    t2 = await wait_final(mgr, tid2)
+    assert t2["state"] == "failed" and "could not read the branch" in t2["error"]
+    assert not any(p == "/source" for _, p in runner.calls)          # no workspace, so there is nothing to leave half-published
+
+
+async def test_long_task_history_is_paged(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    tid = (await mgr.create("Long task", "vellur-coder"))["id"]
+    await wait_final(mgr, tid)
+    await asyncio.sleep(0.05)
+    for i in range(5):
+        mgr._ev(tid, 1, "text", text=f"page line {i}")
+    seen, after, pages = [], 0, 0
+    while True:
+        r = (await admin.get(f"/autopilot/api/agent/tasks/{tid}/events?after={after}&limit=2", headers=ADMIN)).json()
+        pages += 1
+        seen += [e["id"] for e in r["events"]]
+        if r["events"]:
+            after = r["events"][-1]["id"]
+        if not r["has_more"]:
+            break
+    assert pages > 2 and seen == sorted(set(seen)) == list(range(seen[0], seen[0] + len(seen)))
+    lines = [e["data"].get("text", "") for e in (await admin.get(f"/autopilot/api/agent/tasks/{tid}/events?limit=1000",
+                                                                 headers=ADMIN)).json()["events"]]
+    assert [x for x in lines if x.startswith("page line")] == [f"page line {i}" for i in range(5)]
 
 
 async def test_screenshots_stream_and_diagnostics(agents):

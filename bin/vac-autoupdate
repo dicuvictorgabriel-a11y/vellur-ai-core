@@ -17,7 +17,8 @@
 #   1. the commit's automated tests on GitHub (CI) must have passed (skip only with --force);
 #   2. wait while an agent task is running (installing restarts the agent container);
 #   3. download exactly that commit, run its install.sh, then `vac verify`;
-#   4. if the installer or the checks fail: re-install the previous release and never retry that commit.
+#   4. if the installer or the checks fail: re-install the previous release; that commit is retried only after the
+#      owner approves it again (or with --force for a manual install).
 set -uo pipefail
 
 DEST="${VAC_HOME:-/opt/vellur-ai-core}"
@@ -94,11 +95,17 @@ do_rollback() {
 	note "rollback to $(basename "$prev" | cut -c1-12) FAILED: run the installer by hand (see $LOG)" rollback; say "ROLLBACK FAILED"; return 1
 }
 
-do_install() {   # do_install <sha> [--force]
-	local sha=$1 force=${2:-} cur failed ci tmp old
+do_install() {   # do_install <sha> [--force] [approval]  (approval: dashboard timestamp, or "manual")
+	local sha=$1 force=${2:-} approval=${3:-} cur failed failed_approval ci tmp old
 	cur=$(cur_sha); failed=$(cat "$DEST/.release-failed" 2>/dev/null || true)
+	failed_approval=$(cat "$DEST/.release-failed-approval" 2>/dev/null || true)
 	[ "$sha" = "$cur" ] && { note "version ${sha:0:7} is already installed" approved; return 0; }
-	if [ "$sha" = "$failed" ] && [ "$force" != --force ]; then note "version ${sha:0:7} failed to install earlier and was not retried" approved; return 0; fi
+	# A failed commit is not retried by the timer alone; only a NEW owner approval (or --force / a manual install) is consent.
+	if [ "$sha" = "$failed" ] && [ "$force" != --force ] &&
+		{ [ "$approval" = manual ] || [ "$approval" = "$failed_approval" ]; }; then
+		note "version ${sha:0:7} failed to install earlier; approve it again in the dashboard (or run install with --force) to retry" approved
+		return 0
+	fi
 	if [ "$force" != --force ]; then
 		ci=$(ci_state "$sha")
 		case $ci in
@@ -117,7 +124,7 @@ do_install() {   # do_install <sha> [--force]
 	mv "$tmp" "$REL/$sha"
 	old=$(cur_dir)
 	if install_dir "$REL/$sha"; then
-		echo "$sha" > "$DEST/.release-sha"; rm -f "$DEST/.release-failed"
+		echo "$sha" > "$DEST/.release-sha"; rm -f "$DEST/.release-failed" "$DEST/.release-failed-approval"
 		[ -n "$old" ] && [ "$old" != "$REL/$sha" ] && echo "$old" > "$DEST/.release-prev"
 		echo "$REL/$sha" > "$DEST/.release-current"
 		for d in "$REL"/*; do     # keep only the current and the previous release
@@ -125,7 +132,7 @@ do_install() {   # do_install <sha> [--force]
 		done
 		note "installed ${sha:0:7} on $(date -u +'%F %H:%M UTC')" approved; say "installed ${sha:0:7}"; return 0
 	fi
-	echo "$sha" > "$DEST/.release-failed"; say "install of ${sha:0:7} FAILED"
+	echo "$sha" > "$DEST/.release-failed"; printf '%s\n' "$approval" > "$DEST/.release-failed-approval"; say "install of ${sha:0:7} FAILED"
 	rm -rf -- "${REL:?}/$sha"
 	if [ -n "$old" ] && [ -f "$old/install.sh" ]; then
 		say "restoring $(basename "$old")"
@@ -139,14 +146,15 @@ do_install() {   # do_install <sha> [--force]
 
 run() {
 	locked
-	local pend approved request
+	local pend approved approved_at request
 	pend=$(local_api GET release/pending) || { say "dashboard not reachable; nothing to do (use: vac autoupdate install|rollback)"; return 0; }
 	approved=$(printf '%s' "$pend" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("approved") or "")' 2>/dev/null)
+	approved_at=$(printf '%s' "$pend" | python3 -c 'import json,sys; a=json.load(sys.stdin).get("approved_at") or ""; print(a)' 2>/dev/null)
 	request=$(printf '%s' "$pend" | python3 -c 'import json,sys; print(json.load(sys.stdin).get("request") or "")' 2>/dev/null)
 	if [ "$request" = rollback ]; then do_rollback; return; fi
 	if [[ $approved =~ ^[0-9a-f]{40}$ ]] && [ "$approved" != "$(cur_sha)" ]; then
 		local sha; sha=$(resolve_sha "$approved") || { note "approved version ${approved:0:7} was not found in $REPO" approved; return 1; }
-		do_install "$sha"; return
+		do_install "$sha" "" "$approved_at"; return
 	fi
 	note "$(cat "$DEST/.autoupdate-last" 2>/dev/null || echo "waiting for an approved release")"
 }
@@ -166,7 +174,7 @@ case "${1:-status}" in
 	install)
 		need_root; locked
 		sha=$(resolve_sha "${2:?usage: vac autoupdate install <commit|latest> [--force]}") || { echo "commit not found in $REPO" >&2; exit 1; }
-		do_install "$sha" "${3:-}"; rc=$?; cat "$DEST/.autoupdate-last"; exit $rc ;;
+		do_install "$sha" "${3:-}" manual; rc=$?; cat "$DEST/.autoupdate-last"; exit $rc ;;
 	rollback) need_root; locked; do_rollback; rc=$?; cat "$DEST/.autoupdate-last"; exit $rc ;;
 	on)
 		need_root

@@ -95,7 +95,7 @@ class Release:
     # ── called by the server-side installer (secret header) ─────────────────────────────────────
     def pending(self) -> dict:
         s = self._save(seen=time.time())
-        return {"approved": s["approved"], "request": s["request"]}
+        return {"approved": s["approved"], "approved_at": s["approved_at"], "request": s["request"]}
 
     def report(self, installed: str, previous: str, last: str, clear: str) -> dict:
         changes = {"installed": installed[:40], "previous": previous[:60], "last": last[:300], "seen": time.time()}

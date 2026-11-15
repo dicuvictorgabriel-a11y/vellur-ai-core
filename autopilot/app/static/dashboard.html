@@ -848,8 +848,12 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     let t; try { t = await send("agent/tasks/" + id, "GET"); } catch (e) { newTask(); return; }
     CUR = t; header(); composer(); renderTasks(); box().innerHTML = "";
     if (t.legacy) { renderLegacy(t); loadPreview(); return; }
-    const r = await send("agent/tasks/" + id + "/events?after=0", "GET");
-    r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; });
+    for (let after = 0; ;) {
+      const r = await send("agent/tasks/" + id + "/events?after=" + after + "&limit=1000", "GET");
+      r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; });
+      if (!r.has_more || !r.events.length) break;
+      after = LAST_EV;
+    }
     if (t.report && t.report.publication) updateReportPublication(t.report.run, t.report.publication);
     box().scrollTop = box().scrollHeight; loadPreview();
     if (!FINAL_STATES.includes(t.state)) live();
@@ -1001,7 +1005,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   $("cpToggle").onclick = () => { const p = $("cpPanel"); p.hidden = !p.hidden; if (!p.hidden) loadCheckpoints(); };
   $("cpClose").onclick = () => { $("cpPanel").hidden = true; };
   $("cpSave").onclick = async () => { const label = prompt("Name this checkpoint:", "Good version"); if (label === null) return;
-    try { await send("agent/tasks/" + TASK + "/checkpoints", "POST", { label }); await loadCheckpoints(); const r = await send("agent/tasks/" + TASK + "/events?after=" + LAST_EV, "GET"); r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; }); } catch (e) { alert(e.message); } };
+    try { await send("agent/tasks/" + TASK + "/checkpoints", "POST", { label }); await loadCheckpoints(); await catchUp(); } catch (e) { alert(e.message); } };
   $("agVision").onchange = async () => { try { await send("settings", "PUT", { agent_vision: $("agVision").checked }); } catch (e) { alert(e.message); } };
   // ── releases of VELLUR itself: the owner approves, the server installs ───────────────────────
   async function loadRelease() {
@@ -1021,6 +1025,13 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       try { await send("release/approve", "POST", { sha: L.sha }); await loadRelease(); } catch (e) { $("relNote").textContent = e.message; } };
     $("relCancel").onclick = async () => { await send("release/cancel", "POST", {}); await loadRelease(); };
     $("relRollback").onclick = async () => { if (!confirm("Return the server to the previous version of VELLUR?")) return; await send("release/rollback", "POST", {}); $("relNote").textContent = "Requested: the server does it within two minutes."; };
+  }
+  async function catchUp() {      // fetch every event after LAST_EV, in pages (a long run has more than 500)
+    for (;;) {
+      const r = await send("agent/tasks/" + TASK + "/events?after=" + LAST_EV + "&limit=1000", "GET");
+      r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; });
+      if (!r.has_more || !r.events.length) break;
+    }
   }
   function closeStream() { if (ES) { ES.close(); ES = null; } working(false); }
   function live() {
@@ -1051,7 +1062,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       } else {
         await send("agent/tasks/" + TASK + "/messages", "POST", { text, model: $("tModel").value, visual_inspection: $("agInspect").checked, auto_screenshots: $("agAutoShots").checked }); $("agIn").value = ""; agGrow();
         CUR = await send("agent/tasks/" + TASK, "GET"); header(); composer();
-        const r = await send("agent/tasks/" + TASK + "/events?after=" + LAST_EV, "GET"); r.events.forEach(e => { renderEvent(e); LAST_EV = e.id; }); live();
+        await catchUp(); live();
       }
     } catch (e) { $("agNote").textContent = e.message; }
     finally { composer(); }

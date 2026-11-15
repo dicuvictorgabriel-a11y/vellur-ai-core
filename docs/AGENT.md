@@ -36,7 +36,7 @@ reply is at the output limit (16 384 tokens), it was cut off. The raw log is und
   and a `STATUS:` line), and builds a **final report** from recorded facts only.
 - **Outcome is judged, not assumed.** Process state (`done`, `failed`, …) is separate from `outcome`:
   `completed` (agent says COMPLETE and its last checks passed), `partial`, `blocked`, `unverified` (no final report),
-  `incomplete` (reply cut off), `needs_attention` (a check failed in its last run), `failed`, `stopped` (limit),
+  `incomplete` (reply cut off), `needs_attention` (the last check the agent ran failed), `failed`, `stopped` (limit),
   `cancelled`.
 - **Cut-off replies** are continued automatically up to 2 times ("continue in smaller steps").
 - **Live progress**: `GET /autopilot/api/agent/tasks/{id}/stream` (server-sent events; reconnects resume from

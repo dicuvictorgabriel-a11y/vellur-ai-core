@@ -104,7 +104,7 @@ install -m 644 "$SRC/opencode/"* "$DEST/opencode/"
 install -m 644 "$SRC/autopilot/Dockerfile" "$SRC/autopilot/requirements.txt" "$SRC/autopilot/.dockerignore" "$DEST/autopilot/"
 install -m 644 "$SRC/autopilot/app/"*.py "$DEST/autopilot/app/"
 install -m 644 "$SRC/autopilot/app/providers/"*.py "$DEST/autopilot/app/providers/"
-install -m 644 "$SRC/autopilot/app/static/"* "$DEST/autopilot/app/static/"
+cp -a "$SRC/autopilot/app/static/." "$DEST/autopilot/app/static/"   # includes subdirs (3d/vendor)
 install -d -m 755 "$DEST/agent"
 install -m 644 "$SRC/agent/Dockerfile" "$SRC/agent/runner.py" "$DEST/agent/"
 install -m 755 "$SRC/agent/vellur-screenshot" "$DEST/agent/"

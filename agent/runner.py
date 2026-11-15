@@ -612,6 +612,80 @@ def kill_group(pid):
         time.sleep(1)
 
 
+def _in_work(pid):
+    """True when the process works inside the agent workspace (so it is ours, not an unrelated/reused pid)."""
+    try:
+        cwd = os.path.realpath(f"/proc/{int(pid)}/cwd")
+    except (OSError, ValueError):
+        return False
+    root = os.path.realpath(WORK)
+    return cwd == root or cwd.startswith(root + os.sep)
+
+
+def preview_listeners(port):
+    """Pids in this container that LISTEN on 127.0.0.1:port (found through /proc, without extra tools)."""
+    inodes = set()
+    for fn in ("/proc/net/tcp", "/proc/net/tcp6"):
+        try:
+            with open(fn) as f:
+                next(f, None)
+                for line in f:
+                    c = line.split()
+                    if len(c) < 10 or c[3] != "0A":
+                        continue
+                    try:
+                        if int(c[1].rsplit(":", 1)[1], 16) == port:
+                            inodes.add(c[9])
+                    except (IndexError, ValueError):
+                        continue
+        except OSError:
+            continue
+    pids = set()
+    if not inodes:
+        return pids
+    for name in os.listdir("/proc"):
+        if not name.isdigit():
+            continue
+        try:
+            for fd in os.listdir(f"/proc/{name}/fd"):
+                try:
+                    link = os.readlink(f"/proc/{name}/fd/{fd}")
+                except OSError:
+                    continue
+                if link.startswith("socket:[") and link[8:-1] in inodes:
+                    pids.add(int(name))
+                    break
+        except OSError:
+            continue
+    return pids
+
+
+def stop_port_listeners(port):
+    """Kill listeners of the preview port that belong to our workspace (never an unrelated or reused pid)."""
+    for pid in preview_listeners(port):
+        if pid == os.getpid() or not _in_work(pid):
+            continue
+        for sig in (signal.SIGTERM, signal.SIGKILL):
+            try:
+                os.kill(pid, sig)
+            except OSError:
+                break
+            time.sleep(0.5)
+            try:
+                os.kill(pid, 0)
+            except OSError:
+                break
+
+
+def wait_port_closed(port, seconds=3.0):
+    end = time.time() + seconds
+    while time.time() < end:
+        if not port_open(port):
+            return True
+        time.sleep(0.1)
+    return not port_open(port)
+
+
 def stop_preview():
     """Stop the preview server, including one left behind by an earlier runner process (its id is kept on disk)."""
     p = preview["proc"]
@@ -619,12 +693,13 @@ def stop_preview():
         kill_group(p.pid)
     try:
         old = int(open(PREVIEW_PID).read().strip())
-        if not p or old != p.pid:
+        if (not p or old != p.pid) and _in_work(old):
             kill_group(old)
         os.remove(PREVIEW_PID)
     except (OSError, ValueError):
         pass
     preview.update(tid=None, proc=None, key=None)
+    stop_port_listeners(PREVIEW_PORT)
 
 
 def port_open(port):
@@ -647,7 +722,11 @@ def ensure_preview(tid, t, plan, wait=45):
             log = open(os.path.join(t["dir"], "preview.log"), "ab", buffering=0)
             log.write(f"\n[preview] starting: {plan['command']}\n".encode())
             if port_open(PREVIEW_PORT):
-                return f"port {PREVIEW_PORT} is already used by another process in the agent container"
+                stop_port_listeners(PREVIEW_PORT)          # a preview left by an earlier runner, no pid file
+                wait_port_closed(PREVIEW_PORT)
+            if port_open(PREVIEW_PORT):
+                return (f"port {PREVIEW_PORT} is used by a process outside the agent workspace; "
+                        "restart the agent workspace (sudo vac agent disable && sudo vac agent enable)")
             try:
                 proc = subprocess.Popen(["bash", "-lc", plan["command"]], cwd=os.path.join(repo, plan["dir"]), env=env,
                                         stdin=subprocess.DEVNULL, stdout=log, stderr=subprocess.STDOUT, start_new_session=True)

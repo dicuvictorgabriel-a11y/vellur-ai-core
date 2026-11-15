@@ -33,12 +33,13 @@ async def test_release_is_installed_only_after_the_owner_approves_an_exact_commi
     o = (await c.get("/autopilot/api/release", headers=ADMIN)).json()
     assert o["latest"] == {"sha": SHA, "message": "Add a badge", "date": "2026-11-15T10:00:00Z", "ci": "passed"}
     assert o["approved"] == "" and o["installer_active"] is False
-    assert (await c.get("/autopilot/api/release/pending", headers=ADMIN)).json() == {"approved": "", "request": ""}   # nothing by itself
+    assert (await c.get("/autopilot/api/release/pending", headers=ADMIN)).json() == {"approved": "", "approved_at": 0, "request": ""}   # nothing by itself
     assert (await c.post("/autopilot/api/release/approve", json={"sha": SHA})).status_code in (401, 403)
     assert (await c.post("/autopilot/api/release/approve", headers=WRITE, json={"sha": "main"})).status_code == 400
     assert (await c.post("/autopilot/api/release/approve", headers=WRITE, json={"sha": OLD})).status_code == 404   # not in the repository
     assert (await c.post("/autopilot/api/release/approve", headers=WRITE, json={"sha": SHA})).json()["approved"] == SHA
-    assert (await c.get("/autopilot/api/release/pending", headers=ADMIN)).json() == {"approved": SHA, "request": ""}
+    p = (await c.get("/autopilot/api/release/pending", headers=ADMIN)).json()
+    assert p["approved"] == SHA and p["approved_at"] > 0 and p["request"] == ""
     r = await c.post("/autopilot/api/release/report", headers=WRITE, json={"installed": SHA, "previous": OLD, "last": "installed aaaaaaa", "clear": "approved"})
     assert r.json()["approved"] == "" and r.json()["installed"] == SHA
     o = (await c.get("/autopilot/api/release", headers=ADMIN)).json()
@@ -46,7 +47,8 @@ async def test_release_is_installed_only_after_the_owner_approves_an_exact_commi
     assert (await c.post("/autopilot/api/release/rollback", headers=WRITE)).json()["request"] == "rollback"
     assert (await c.get("/autopilot/api/release/pending", headers=ADMIN)).json()["request"] == "rollback"
     await c.post("/autopilot/api/release/report", headers=WRITE, json={"installed": "", "previous": "", "last": "rolled back", "clear": "rollback"})
-    assert (await c.get("/autopilot/api/release/pending", headers=ADMIN)).json() == {"approved": "", "request": ""}
+    p = (await c.get("/autopilot/api/release/pending", headers=ADMIN)).json()
+    assert p["approved"] == "" and p["request"] == "" and "approved_at" in p
 
 
 async def test_release_overview_reports_failed_and_running_tests(rig):
