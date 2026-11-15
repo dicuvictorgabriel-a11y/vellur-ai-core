@@ -21,6 +21,7 @@ DATA_URL = "data:image/png;base64," + base64.b64encode(PNG).decode()
 class ImageUpstream:
     def __init__(self):
         self.calls = []
+        self.provider_cost = None
 
     def handler(self, req: httpx.Request):
         body = json.loads(req.content or b"{}") if req.method == "POST" else {}
@@ -38,8 +39,11 @@ class ImageUpstream:
                  "pricing": {"prompt": "0", "completion": "0"}},
             ]})
         if req.url.path.endswith("/chat/completions"):
-            return httpx.Response(200, json={"choices": [{"message": {
-                "content": "Here is the image", "images": [{"image_url": {"url": DATA_URL}}]}}]})
+            resp = {"choices": [{"message": {
+                "content": "Here is the image", "images": [{"image_url": {"url": DATA_URL}}]}}]}
+            if self.provider_cost is not None:
+                resp["usage"] = {"prompt_tokens": 10, "completion_tokens": 5, "cost": self.provider_cost}
+            return httpx.Response(200, json=resp)
         if req.url.path.endswith("/images/generations"):
             return httpx.Response(200, json={"data": [{"b64_json": base64.b64encode(PNG).decode()}]})
         return httpx.Response(404)
@@ -233,3 +237,50 @@ def test_text_models_not_detected_as_image_without_catalog_metadata():
     for model in text_models:
         caps = infer_capabilities(model, {}, "openrouter")
         assert "image_generation" not in caps, f"{model} should NOT have image_generation, got {caps}"
+
+
+async def test_openrouter_sends_usage_include_and_provider_cost_is_captured(images):
+    ctrl, router, up, client = images()
+    await client.post("/autopilot/api/llm/providers/openrouter/catalog", headers=WRITE)
+    ctrl.settings.update({"routes": {"vellur-image": ["openrouter:img/model"]},
+                          "image_prices": {"openrouter:img/model": 0.04}, "image_max_usd": 1.0})
+    up.provider_cost = 0.123
+    r = await client.post("/autopilot/api/images/generate", headers=WRITE,
+                          json={"prompt": "a red cube", "model": "vellur-image", "confirm": True})
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["cost_usd"] == pytest.approx(0.123) and data["cost_source"] == "provider"
+    call = [c for c in up.calls if c[1].endswith("/chat/completions")][-1]
+    assert call[2].get("usage") == {"include": True}
+    row = ctrl.db.one("SELECT * FROM usage ORDER BY id DESC LIMIT 1")
+    assert row["cost_usd"] == pytest.approx(0.123) and row["cost_source"] == "provider"
+
+
+async def test_image_without_price_and_without_provider_cost_is_unpriced_not_token_estimate(images):
+    ctrl, router, up, client = images()
+    await client.post("/autopilot/api/llm/providers/openrouter/catalog", headers=WRITE)
+    ctrl.settings.update({"routes": {"vellur-image": ["openrouter:img/model"]}, "image_max_usd": 1.0})
+    up.provider_cost = None
+    r = await client.post("/autopilot/api/images/generate", headers=WRITE,
+                          json={"prompt": "a red cube", "model": "vellur-image", "confirm": True})
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["cost_usd"] == 0.0 and data["cost_source"] == "unpriced"
+    row = ctrl.db.one("SELECT * FROM usage ORDER BY id DESC LIMIT 1")
+    assert row["cost_usd"] == 0.0 and row["cost_source"] == "unpriced"
+    assert row["images"] == 1
+
+
+async def test_cost_handles_string_provider_cost(images):
+    ctrl, router, up, client = images()
+    await client.post("/autopilot/api/llm/providers/openrouter/catalog", headers=WRITE)
+    ctrl.settings.update({"routes": {"vellur-image": ["openrouter:img/model"]},
+                          "image_prices": {"openrouter:img/model": 0.04}, "image_max_usd": 1.0})
+    up.provider_cost = "0.042"
+    r = await client.post("/autopilot/api/images/generate", headers=WRITE,
+                          json={"prompt": "a red cube", "model": "vellur-image", "confirm": True})
+    assert r.status_code == 200, r.text
+    data = r.json()
+    assert data["cost_usd"] == pytest.approx(0.042) and data["cost_source"] == "provider"
+    row = ctrl.db.one("SELECT * FROM usage ORDER BY id DESC LIMIT 1")
+    assert row["cost_usd"] == pytest.approx(0.042) and row["cost_source"] == "provider"

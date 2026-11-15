@@ -36,7 +36,7 @@ from .attachments import IMAGE_MIMES, _image_size
 from .budget import month_key
 from .lifecycle import Controller
 from .model_intel import SUGGESTED_IMAGE_MODELS, image_modalities
-from .router import Router, RouterError
+from .router import Router, RouterError, provider_usd
 
 ID_RE = re.compile(r"^img_[a-f0-9]{32}$")
 SIZE_RE = re.compile(r"^(\d{3,4})x(\d{3,4})$")
@@ -368,15 +368,15 @@ class ImageService:
         except Exception as e:  # noqa: BLE001
             self.router.record(role, target, info, False, 0, None, t0, tag, f"{e.__class__.__name__}: {e}")
             raise ImageError("provider", f"image provider failed ({e.__class__.__name__})", 502)
-        provider_cost = usage.get("cost") if isinstance(usage, dict) else None
+        provider_cost = provider_usd(usage.get("cost")) if isinstance(usage, dict) else None
         if not results:
             # A provider that charged for an answer without a usable image is still recorded as spending.
             self.router.record(role, target, info, False, 502, usage or None, t0, tag, "provider returned no images")
-            if isinstance(provider_cost, (int, float)) and provider_cost > 0:
+            if provider_cost:
                 self._record_charge(role, target, info, float(provider_cost), t0, tag)
             raise ImageError("invalid_image", "the provider answered but returned no image", 502)
-        if isinstance(provider_cost, (int, float)):
-            cost, source = float(provider_cost), "provider"
+        if provider_cost is not None:
+            cost, source = provider_cost, "provider"
         elif estimate["free"]:
             cost, source = 0.0, "plan"
         elif estimate["price_per_image"] is not None:
