@@ -747,6 +747,8 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     ES.addEventListener("ev", (m) => { const e = JSON.parse(m.data); if (e.id <= LAST_EV) return; LAST_EV = e.id;
       renderEvent(e); if (e.kind === "tool") working(true, toolView(e.data).verb + " " + toolView(e.data).obj); if (e.kind === "report") working(false); });
     ES.addEventListener("task", async (m) => { const b = JSON.parse(m.data); Object.assign(CUR, b); header(); composer();
+      const a = (b.activity || [])[0];   // the command running right now (OpenCode shows a command only when it ends)
+      if (a && !FINAL_STATES.includes(b.state)) working(true, "Running now: " + a.cmd.slice(0, 80) + " · for " + fmtDur(a.elapsed_s) + ", CPU " + fmtDur(a.cpu_s));
       const row = TASKS.find(x => x.id === b.id); if (row) { Object.assign(row, b); renderTasks(); }
       if (FINAL_STATES.includes(b.state)) { working(false); CUR = await send("agent/tasks/" + TASK, "GET"); header(); composer(); const last = [...box().querySelectorAll(".report")].pop(); if (last) fillActs(last); } });
     ES.addEventListener("end", () => { closeStream(); });

@@ -85,7 +85,9 @@ class FakeRunner:
             if self.state == "running" and self.polls >= self.finish_after:
                 self.state = "done"
             return httpx.Response(200, json={"state": self.state, "exit": 0, "changed": 2, "error": "", "log": "agent log line",
-                                             "session": "ses_1", "run": self.run})
+                                             "session": "ses_1", "run": self.run,
+                                             "activity": [{"cmd": "blender -b scene.blend", "cpu_s": 61.0, "elapsed_s": 70}]
+                                             if self.state == "running" else []})
         return httpx.Response(200, json={"ok": True})
 
 
@@ -204,6 +206,11 @@ async def test_one_task_at_a_time_and_cancel(agents):
     ctrl, router, mgr, runner, gh, admin = agents()
     runner.finish_after = 10**9
     tid = (await admin.post("/autopilot/api/agent/tasks", headers=WRITE, json={"prompt": "Scratch task without repo"})).json()["id"]
+    for _ in range(100):                                           # the command running right now is visible
+        if mgr.task(tid)["activity"]:
+            break
+        await asyncio.sleep(0.01)
+    assert mgr.task(tid)["activity"][0]["cmd"] == "blender -b scene.blend"
     r = await admin.post("/autopilot/api/agent/tasks", headers=WRITE, json={"prompt": "Second task at once"})
     assert r.status_code == 409 and r.json()["error"] == "busy"
     await admin.post(f"/autopilot/api/agent/tasks/{tid}/cancel", headers=WRITE)

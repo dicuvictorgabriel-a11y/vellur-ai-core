@@ -54,7 +54,7 @@ class TokenBody(BaseModel):
 
 
 def _brief(t: dict) -> dict:
-    return {k: t.get(k) for k in ("id", "state", "outcome", "runs", "files_changed", "pr_url", "cost_usd", "error", "updated")}
+    return {k: t.get(k) for k in ("id", "state", "outcome", "runs", "files_changed", "pr_url", "cost_usd", "error", "activity")}
 
 
 def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager, admin, admin_write) -> None:

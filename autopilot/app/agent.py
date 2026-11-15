@@ -236,6 +236,7 @@ class AgentManager:
                                         headers={"X-Runner-Secret": self.env.agent_runner_secret},
                                         transport=runner_transport, timeout=httpx.Timeout(30, read=300, write=300))
         self._jobs: dict[int, asyncio.Task] = {}
+        self.activity: dict[int, list] = {}      # processes running right now in each task (from the runner)
 
     # ── helpers ─────────────────────────────────────────────────────────────────────────────────
     def available(self) -> tuple:
@@ -280,6 +281,7 @@ class AgentManager:
         if t:
             t["cost_usd"] = round(self.router.tag_cost(f"task:{tid}"), 4)
             t["report"] = _loads(t.get("report"), {})
+            t["activity"] = self.activity.get(tid, [])
         return t
 
     def list(self, limit: int = 40) -> list:
@@ -438,6 +440,7 @@ class AgentManager:
             while True:
                 await asyncio.sleep(self.poll)
                 info = (await self._runner("GET", f"/tasks/{tid}")).json()
+                self.activity[tid] = info.get("activity") or []
                 self.db.kv_set(f"task_log_{tid}", ANSI_RE.sub("", info.get("log", ""))[-40000:])
                 await self._import_events(tid)
                 await self._import_shots(tid, run)
@@ -454,6 +457,7 @@ class AgentManager:
                     await self._runner("POST", f"/tasks/{tid}/cancel")
                     limit_note = f"cost limit of ${st['agent_max_usd']:.2f} per run reached"
                     self._set(tid, state="cancelling", error=limit_note)
+            self.activity.pop(tid, None)
             await self._import_events(tid)
             await self._import_shots(tid, run)
             final = info["state"]

@@ -222,6 +222,37 @@ def run_task(tid):
         save_state(t)
 
 
+def activity(t):
+    """What runs right now inside this task (OpenCode reports a command only when it finishes): the busiest child
+    processes of the OpenCode session with their CPU time, read from /proc. [] when nothing runs."""
+    p = t.get("proc")
+    if not p or p.poll() is not None:
+        return []
+    tick = os.sysconf("SC_CLK_TCK")
+    try:
+        uptime = float(open("/proc/uptime").read().split()[0])
+    except OSError:
+        return []
+    out = []
+    for pid in os.listdir("/proc"):
+        if not pid.isdigit() or int(pid) == p.pid:
+            continue
+        try:
+            raw = open(f"/proc/{pid}/stat").read()
+            fields = raw[raw.rindex(")") + 2:].split()
+            if int(fields[3]) != p.pid:          # session id: only processes started by this task's OpenCode
+                continue
+            cmd = open(f"/proc/{pid}/cmdline", "rb").read().replace(b"\0", b" ").decode(errors="replace").strip()
+        except (OSError, ValueError, IndexError):
+            continue
+        name = os.path.basename(cmd.split(" ", 1)[0]) if cmd else ""
+        if not cmd or name in ("sh", "bash", "dash", "timeout", "env"):
+            continue
+        cpu = (int(fields[11]) + int(fields[12])) / tick
+        out.append({"cmd": cmd[:200], "cpu_s": round(cpu, 1), "elapsed_s": round(uptime - int(fields[19]) / tick)})
+    return sorted(out, key=lambda x: -x["cpu_s"])[:3]
+
+
 def file_summary(repo):
     """[{path, status, added, removed}] of the changes against the baseline (binary files: added/removed = None)."""
     git(repo, "add", "-A", check=False)
@@ -378,7 +409,7 @@ class H(BaseHTTPRequestHandler):
                 pass
             return self.send(200, {"state": t["state"], "exit": t["exit"], "changed": t["changed"], "error": t["error"],
                                    "started": t["started"], "ended": t["ended"], "session": t.get("session", ""),
-                                   "run": t.get("run", 1), "log": tail.decode(errors="replace")})
+                                   "run": t.get("run", 1), "activity": activity(t), "log": tail.decode(errors="replace")})
         if method == "GET" and action == "diff":
             if t["state"] in ("created", "running"):
                 git(repo, "add", "-A", check=False)
