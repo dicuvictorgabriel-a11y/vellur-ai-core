@@ -38,13 +38,20 @@ The UI now explains it and always asks before such a request; the provider-repor
 - `black-forest-labs/flux.2-klein-4b` — FLUX.2 Klein 4B
 - **Seedream 5.5: not found** on OpenRouter; not added. Prices are deliberately not hard-coded.
 
+## Round 2
+
+- **Who answers what** (Models): per kind of work an ordered list of models with move up/down/remove and an
+  "Add" list that only offers suitable models (image models for Image, text models elsewhere). Saved as one draft;
+  the text boxes stay as "advanced".
+- **Image format** in Chat (1:1, 2:3, 9:16, 3:2, 16:9), sent as `image_config.aspect_ratio`.
+- **Spend per day** (Costs): one bar per day of the month with hover/focus details and a table view.
+
 ## Still open (priority order)
 
 1. One real, owner-approved image test with a known price (e.g. a manual price for the chosen model) to confirm the
    live request/response path. Needs the owner's OpenRouter key on the server; not run from here.
 2. Agent: per-task cost in the header comes from live usage, the report from a snapshot; they agree on the server
    but the preview's seeded demo shows different numbers. Session continuity and outcomes were not changed.
-3. Routing (advanced) is still a text box per role; a drag-and-drop chain editor would be friendlier.
 4. Interface language is mixed (dashboard English, Precision Studio Romanian).
 5. 3D Studio editing (transform, materials, export) is not implemented; it is a viewer plus agent hand-off.
 6. Cancelling an image only stops waiting; the provider may still finish and charge (the result is then saved).

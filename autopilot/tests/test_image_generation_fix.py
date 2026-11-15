@@ -310,3 +310,16 @@ async def test_chat_images_are_counted_as_image_generation_in_costs(env):
     uses = {u["use"]: u for u in (await client.get("/autopilot/api/costs", headers=ADMIN)).json()["by_use"]}
     assert uses["image generation"]["cost_usd"] == pytest.approx(0.0123)
     assert "API clients (OpenCode, apps)" not in uses
+
+
+async def test_chat_image_format_reaches_the_provider(env):
+    ctrl, router, up, client = await env(FLUX)
+    conv = (await client.post("/autopilot/api/conversations", headers=WRITE, json={})).json()
+    r = await client.post(f"/autopilot/api/conversations/{conv['id']}/messages", headers=WRITE,
+                          json={"content": "a monolith", "model": "vellur-image", "image_size": "1344x768"})
+    confirm = next(json.loads(line[5:]) for line in r.text.splitlines() if "vellur_image_confirm" in line)
+    assert confirm["vellur_image_confirm"]["size"] == "1344x768" and gen_calls(up) == []
+    r = await client.post("/autopilot/api/images/generate", headers=WRITE,
+                          json={"prompt": "a monolith", "size": "1344x768", "confirm": True, "conversation_id": conv["id"]})
+    assert r.status_code == 200
+    assert gen_calls(up)[0]["image_config"] == {"aspect_ratio": "16:9"}
