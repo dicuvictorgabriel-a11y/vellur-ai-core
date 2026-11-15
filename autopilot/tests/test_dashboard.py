@@ -22,6 +22,25 @@ def test_dashboard_has_no_basic_auth_or_secrets():
     assert "/autopilot/login" not in html and "X-Vellur-Admin" not in html and "localStorage" not in html
 
 
+def test_3d_studio_hooks_are_present_and_keep_the_web_preview_sandboxed():
+    html = open(PAGE).read()
+    assert 'id="pv3D"' in html and 'id="nav3D"' in html
+    assert "vellur-3d-selection" in html and "SANDBOX_3D" in html and "SANDBOX_WEB" in html
+    assert 'sandbox="allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock"' in html
+    assert "allow-same-origin" not in html.split('id="pvFrame"', 1)[1].split("</iframe>", 1)[0]
+
+
+def test_live_preview_shows_a_loading_state_instead_of_a_blank_pane():
+    html = open(PAGE).read()
+    assert '<div id="pvEmpty"><b>Loading preview…</b>' in html
+    assert 'id="pvLoading"' in html and 'id="pvLoadText"' in html and 'id="pvLoadHint"' in html
+    assert 'pvLoading(true, "Checking preview…"' in html
+    assert 'pvLoading(true, info.mode === "command" ? "Starting preview…"' in html
+    assert 'pvWait(seq)' in html and 'Preview is taking too long' in html
+    assert '$("pvFrame").addEventListener("load"' in html
+    assert '#cpToggle span{display:none}' in html and '#pvToggle span,#cpToggle span{display:none}' not in html
+
+
 def test_agent_tools_markup_and_payloads():
     html = open(PAGE).read()
     assert '<details id="agTools"><summary title="Agent tools" aria-label="Agent tools">' in html

@@ -15,6 +15,7 @@ import re
 import secrets
 import time
 from typing import Optional
+from urllib.parse import quote
 
 import httpx
 
@@ -57,6 +58,8 @@ How to work:
   `.vellur/preview.json` like {"command": "npm run dev -- --port $PORT --host 127.0.0.1", "dir": "."}; the command must
   listen on $PORT and VELLUR starts it for you. You can open the same preview at $VELLUR_PREVIEW_URL (curl or
   vellur-screenshot). The preview is independent of optional screenshots and visual inspection.
+- For 3D work, create a browser-ready GLB (preferred), glTF, OBJ or STL in the project; VELLUR 3D Studio shows it
+  automatically. A .blend is only previewable when Blender is installed (optional), so export a GLB when possible.
 - Do not commit, push or deploy. The owner reviews your changes and publishes them from VELLUR.
 
 Always finish with this report (in the owner's language when their notes ask for one):
@@ -790,6 +793,45 @@ class AgentManager:
             return await self.runner.request(method, url, content=body or None, headers=headers)
         except httpx.HTTPError as e:
             raise AgentError("runner", f"agent workspace unreachable ({e.__class__.__name__})", 502)
+
+    # ── 3D assets ───────────────────────────────────────────────────────────────────────────────
+    async def models(self, tid: int) -> dict:
+        """3D files in the task workspace: GLB/glTF/OBJ/STL plus .blend files that can be exported by Blender."""
+        if not self.task(tid):
+            raise AgentError("not_found", "unknown task", 404)
+        try:
+            return (await self._runner("GET", f"/tasks/{tid}/models")).json()
+        except AgentError as e:
+            return {"models": [], "blender": False, "why": e.message}
+
+    async def model_asset(self, tid: int, path: str) -> httpx.Response:
+        """One asset (and relative buffers/textures) from the task workspace, never a path outside it."""
+        if not self.task(tid):
+            raise AgentError("not_found", "unknown task", 404)
+        path = (path or "").lstrip("/")
+        if not path or len(path) > 1024 or "\x00" in path:
+            raise AgentError("invalid", "invalid asset path", 400)
+        try:
+            return await self.runner.request("GET", f"/tasks/{tid}/asset/{quote(path, safe='/@')}")
+        except httpx.HTTPError as e:
+            raise AgentError("runner", f"agent workspace unreachable ({e.__class__.__name__})", 502)
+
+    async def export_blend(self, tid: int, path: str) -> dict:
+        if not self.task(tid):
+            raise AgentError("not_found", "unknown task", 404)
+        path = (path or "").strip().lstrip("/")
+        if len(path) > 1024 or "\x00" in path:
+            raise AgentError("invalid", "invalid Blender file path", 400)
+        if not path.lower().endswith(".blend"):
+            raise AgentError("invalid", "only .blend files can be prepared", 400)
+        try:
+            r = await self.runner.request("POST", f"/tasks/{tid}/blend-export", json={"path": path})
+        except httpx.HTTPError as e:
+            raise AgentError("runner", f"agent workspace unreachable ({e.__class__.__name__})", 502)
+        if r.status_code >= 400:
+            detail = r.json().get("error", r.text[:300]) if r.headers.get("content-type", "").startswith("application/json") else r.text[:300]
+            raise AgentError("blend", str(detail), 503 if r.status_code in (503, 504) else 400)
+        return r.json()
 
     # ── checkpoints ─────────────────────────────────────────────────────────────────────────────
     async def checkpoints(self, tid: int) -> list:

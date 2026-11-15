@@ -75,6 +75,10 @@ class TokenBody(BaseModel):
     token: str = ""
 
 
+class BlendBody(BaseModel):
+    path: str = ""
+
+
 # Preview pages are code written by the agent. They are served sandboxed (no access to the dashboard's origin,
 # cookies or API) under a short-lived link that only a logged-in owner can create.
 PREVIEW_HEADERS = {
@@ -402,6 +406,38 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
             loc = r.headers["location"]
             headers["Location"] = prefix + loc[len(inner):] if loc.startswith(inner) else loc
         return Response(content=content, status_code=r.status_code, media_type=ctype, headers=headers)
+
+    @app.get("/autopilot/api/agent/tasks/{tid}/models", dependencies=[Depends(admin)])
+    async def task_models(tid: int):
+        """3D assets in this task's workspace (GLB, glTF, OBJ, STL, .blend). Used by VELLUR 3D Studio."""
+        try:
+            return await agent.models(tid)
+        except AgentError as e:
+            return err(e)
+
+    @app.get("/autopilot/api/agent/tasks/{tid}/asset/{path:path}", dependencies=[Depends(admin)])
+    async def task_asset(tid: int, path: str):
+        """Stream one 3D asset through the controller. The runner confines the path to the task workspace."""
+        try:
+            r = await agent.model_asset(tid, path)
+        except AgentError as e:
+            return err(e)
+        if r.status_code >= 400:
+            message = r.text[:300] if r.status_code not in (404,) else "asset not found"
+            return JSONResponse(status_code=r.status_code if r.status_code in (400, 404, 413) else 502,
+                                content={"error": "asset", "message": message})
+        ctype = r.headers.get("content-type", "application/octet-stream")
+        return Response(content=r.content, media_type=ctype,
+                        headers={"Cache-Control": "private, no-store", "X-Content-Type-Options": "nosniff",
+                                 "Content-Disposition": "inline"})
+
+    @app.post("/autopilot/api/agent/tasks/{tid}/blend-export", dependencies=[Depends(admin_write)])
+    async def task_blend_export(tid: int, body: BlendBody):
+        """Prepare a browser preview of a .blend file with a headless Blender (optional dependency)."""
+        try:
+            return await agent.export_blend(tid, body.path)
+        except AgentError as e:
+            return err(e)
 
     @app.get("/autopilot/api/agent/tasks/{tid}/checkpoints", dependencies=[Depends(admin)])
     async def task_checkpoints(tid: int):

@@ -125,11 +125,16 @@ body.studio-open #studio{display:flex}
 .seg{display:inline-flex;border:1px solid var(--line2);border-radius:99px;overflow:hidden;flex:none}
 .seg button{background:transparent;color:var(--muted);border:0;border-radius:0;padding:5px 11px;font-size:12px;font-weight:500;min-height:0}
 .seg button.on{background:var(--raise);color:var(--text)}
-#pvStage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;overflow:auto;padding:0}
+#pvStage{flex:1;min-height:0;display:flex;flex-direction:column;align-items:center;overflow:auto;padding:0;position:relative}
 #pvFrame{border:0;background:#fff;width:100%;flex:1 1 auto;min-height:0;display:none}
 #studio.phone #pvStage{padding:16px;background:#060607}#studio.phone #pvFrame{width:390px;max-width:100%;flex:0 1 844px;border-radius:18px;border:1px solid var(--line2)}
 #pvEmpty{margin:auto;max-width:340px;text-align:center;color:var(--muted);font-size:13.5px;line-height:1.6;padding:24px}
 #pvEmpty b{display:block;color:var(--text);font-size:15px;margin-bottom:6px}
+#pvLoading{position:absolute;inset:0;z-index:2;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:24px;text-align:center;color:var(--muted);font-size:13px;line-height:1.5;background:rgba(10,10,12,.94)}
+#pvLoading[hidden]{display:none}
+#pvLoading b{color:var(--text);font-size:15px;font-weight:600}
+#pvLoading small{max-width:320px;color:var(--muted);font-size:12.5px}
+#pvLoading .ring{width:22px;height:22px;border:2px solid var(--line2);border-top-color:var(--accent);border-radius:50%;animation:spin .8s linear infinite;flex:none}
 #agMain{position:relative}
 #cpToggle{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;font-size:12.5px;flex:none}
 #cpPanel{position:absolute;z-index:15;top:60px;right:12px;width:min(420px,calc(100% - 24px));max-height:70%;overflow:auto;background:var(--panel);border:1px solid var(--line2);border-radius:14px;padding:14px;box-shadow:0 18px 50px rgba(0,0,0,.55)}
@@ -224,7 +229,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   body.is-admin[data-view="chat"] main{flex:1;min-height:0}
   body.is-admin[data-view="agent"]{position:fixed;inset:0;display:flex;flex-direction:column}
   body.is-admin[data-view="agent"] main{flex:1;min-height:0}
-  #agHead{padding:8px 12px;min-height:0}#agHead .t b{font-size:14px}#pvToggle span,#cpToggle span{display:none}#cpPanel{top:52px}
+  #agHead{padding:8px 12px;min-height:0}#agHead .t b{font-size:14px}#cpToggle span{display:none}#pvToggle{padding:6px 9px}#cpPanel{top:52px}
   body.studio-open #agMain{display:none}#studio{width:100%;max-width:none;min-width:0;border-left:0}#pvBar{min-height:0;padding:8px 10px}
   .report{padding:14px}.act summary{padding:9px 10px}
   #agFoot{width:calc(100% - 16px);margin-bottom:max(8px,env(safe-area-inset-bottom))}
@@ -242,6 +247,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   <nav id="tabs">
     <button data-view="chat"><svg class="ic" viewBox="0 0 24 24"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></svg>Chat</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24"><polyline points="4 17 10 11 4 5"/><line x1="12" x2="20" y1="19" y2="19"/></svg>Agent</button>
     <a class="navbtn" href="/autopilot/studio/" style="text-decoration:none"><svg class="ic" viewBox="0 0 24 24"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg>Precision Studio</a>
+    <a class="navbtn" id="nav3D" href="/autopilot/3d/" target="_blank" rel="noopener" style="text-decoration:none"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg>3D Studio</a>
     <div class="sep"></div>
     <button data-view="models"><svg class="ic" viewBox="0 0 24 24"><path d="m12 2 9 5-9 5-9-5z"/><path d="m3 12 9 5 9-5"/><path d="m3 17 9 5 9-5"/></svg>Models</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24"><rect width="20" height="14" x="2" y="5" rx="2"/><line x1="2" x2="22" y1="10" y2="10"/></svg>Costs</button><button data-view="gpu"><svg class="ic" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>GPU</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button>
   </nav>
@@ -429,11 +435,12 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
       <div id="pvBar">
         <span id="pvInfo">Live preview</span>
         <div class="seg"><button id="pvDesk" class="on" title="Desktop width">Desktop</button><button id="pvMob" title="Phone width">Phone</button></div>
+        <button class="iconbtn" id="pv3D" title="Show 3D Studio" aria-label="Show 3D Studio" style="display:none"><svg class="ic" viewBox="0 0 24 24"><path d="M12 2 2 7l10 5 10-5-10-5Z"/><path d="m2 17 10 5 10-5M2 12l10 5 10-5"/></svg></button>
         <button class="iconbtn" id="pvReload" title="Reload"><svg class="ic" viewBox="0 0 24 24"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
         <a class="iconbtn" id="pvOpen" title="Open in a new tab" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 24 24"><path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></a>
         <button class="iconbtn" id="pvClose" title="Close the preview"><svg class="ic" viewBox="0 0 24 24"><path d="M6 6l12 12M18 6 6 18"/></svg></button>
       </div>
-      <div id="pvStage"><div id="pvEmpty"></div><iframe id="pvFrame" title="Live preview of the project" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock" referrerpolicy="no-referrer"></iframe></div>
+      <div id="pvStage"><div id="pvEmpty"><b>Loading preview…</b>Checking what can be shown for this task.</div><div id="pvLoading" hidden><div class="ring"></div><b id="pvLoadText">Starting preview…</b><small id="pvLoadHint"></small></div><iframe id="pvFrame" title="Live preview of the project" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock" referrerpolicy="no-referrer"></iframe></div>
      </aside>
     </section>
 
@@ -860,26 +867,123 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
     put(el, true); fillActs(el);
   }
   // ── studio: live preview of the project next to the conversation ────────────────────────────
-  let PV = { url: "", mode: "", timer: null, task: null };
+  let PV = { url: "", mode: "", timer: null, task: null, view: "web", models: [], model: "", loadTimer: null, loadSeq: 0 };
+  const SANDBOX_WEB = "allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock";
+  const SANDBOX_3D = "allow-scripts allow-same-origin allow-downloads allow-popups allow-modals";
   const studioOpen = () => document.body.classList.contains("studio-open");
-  function pvEmpty(title, text) { $("pvFrame").style.display = "none"; $("pvFrame").removeAttribute("src"); $("pvEmpty").style.display = "";
-    $("pvEmpty").innerHTML = "<b>" + esc(title) + "</b>" + esc(text); $("pvOpen").removeAttribute("href"); }
+  function pvLoading(on, text, hint) {
+    const el = $("pvLoading");
+    if (!on) { el.hidden = true; return; }
+    $("pvLoadText").textContent = text || "Starting preview…";
+    $("pvLoadHint").textContent = hint || "";
+    el.hidden = false;
+  }
+  function pvWait(seq) {
+    clearTimeout(PV.loadTimer);
+    PV.loadTimer = setTimeout(() => {
+      if (seq !== PV.loadSeq) return;
+      pvLoading(false);
+      pvEmpty("Preview is taking too long", "The preview server did not answer in time. Try Reload, or open the preview in a new tab.");
+    }, 60000);
+  }
+  function pvEmpty(title, text) { PV.url = ""; PV.mode = "none"; PV.view = "web"; PV.loadSeq++; clearTimeout(PV.loadTimer); PV.loadTimer = null; pvLoading(false);
+    $("pvFrame").style.display = "none"; $("pvFrame").removeAttribute("src"); $("pvEmpty").style.display = "";
+    $("pvEmpty").innerHTML = "<b>" + esc(title) + "</b>" + esc(text); $("pvOpen").removeAttribute("href");
+    $("pv3D").style.display = PV.models.length ? "" : "none"; }
+  function show3D(entry) {
+    if (!CUR) return loadPreview();
+    PV.view = "3d";
+    if (!PV.models.length) return loadPreview();
+    if (entry) PV.model = entry;
+    const task = encodeURIComponent(TASK);
+    const model = PV.model ? "&model=" + encodeURIComponent(PV.model) : "";
+    PV.url = "/autopilot/3d/?task=" + task + "&embed=1" + model;
+    $("pvInfo").textContent = "3D Studio · " + PV.models.length + " model" + (PV.models.length === 1 ? "" : "s");
+    $("pvOpen").href = "/autopilot/3d/?task=" + task + model;
+    $("pvOpen").title = "Open 3D Studio in a new tab";
+    $("pv3D").title = PV.mode === "model" ? "3D Studio" : "Show the live web preview";
+    $("pv3D").setAttribute("aria-pressed", "true");
+    $("pvFrame").setAttribute("sandbox", SANDBOX_3D);
+    $("pvFrame").title = "3D Studio";
+    const seq = ++PV.loadSeq;
+    $("pvEmpty").style.display = "none"; $("pvFrame").style.display = "block";
+    pvLoading(true, "Opening 3D Studio…", "Loading the model viewer.");
+    $("pvFrame").src = PV.url + "&_=" + Date.now();
+    pvWait(seq);
+  }
+  function showWeb(info) {
+    PV.view = "web"; PV.mode = info.mode;
+    $("pv3D").setAttribute("aria-pressed", "false");
+    $("pv3D").title = PV.models.length ? "Show 3D Studio" : "No 3D models in this task";
+    $("pvFrame").setAttribute("sandbox", SANDBOX_WEB);
+    $("pvFrame").title = "Live preview of the project";
+    $("pvInfo").textContent = info.mode === "static" ? "Live preview · " + (info.root === "." ? "project folder" : info.root + "/") : "Live preview · " + info.command;
+    PV.url = info.url; $("pvOpen").href = info.url; $("pvOpen").title = "Open in a new tab";
+    const seq = ++PV.loadSeq;
+    $("pvEmpty").style.display = "none"; $("pvFrame").style.display = "block";
+    pvLoading(true, info.mode === "command" ? "Starting preview…" : "Loading preview…",
+              info.mode === "command" ? "The preview command is starting. The first start can take a few seconds." : "");
+    $("pvFrame").src = info.url + "?_=" + Date.now();
+    pvWait(seq);
+  }
   async function loadPreview(force) {
     if (!studioOpen()) return;
-    if (!CUR) { PV.task = null; $("pvInfo").textContent = "Live preview"; return pvEmpty("Nothing to show yet", "The live preview of your project appears here as soon as the agent starts working."); }
+    if (!CUR) { PV.task = null; PV.models = []; PV.model = ""; $("pv3D").style.display = "none"; $("nav3D").href = "/autopilot/3d/"; $("pvInfo").textContent = "Live preview"; return pvEmpty("Nothing to show yet", "The live preview of your project appears here as soon as the agent starts working."); }
+    if (PV.task !== TASK) { PV.task = TASK; PV.view = "web"; PV.models = []; PV.model = ""; }
+    const model = PV.model ? "&model=" + encodeURIComponent(PV.model) : "";
+    $("nav3D").href = "/autopilot/3d/?task=" + encodeURIComponent(TASK) + model;
+    clearTimeout(PV.loadTimer); PV.loadTimer = null; PV.loadSeq++;
+    pvLoading(true, "Checking preview…", "Looking for a web page or 3D model in this task.");
     let info; try { info = await send("agent/tasks/" + TASK + "/preview", "POST", {}); } catch (e) { $("pvInfo").textContent = "Preview unavailable"; return pvEmpty("Preview unavailable", e.message); }
-    PV.mode = info.mode; PV.task = TASK;
-    if (info.mode === "none") { PV.url = ""; $("pvInfo").textContent = "No preview yet"; return pvEmpty("No preview yet", "This project has no web page to show (" + (info.why || "nothing found") + "). Ask the agent to build one, or to add a preview command."); }
-    $("pvInfo").textContent = info.mode === "static" ? "Live preview · " + (info.root === "." ? "project folder" : info.root + "/") : "Live preview · " + info.command;
-    PV.url = info.url; $("pvOpen").href = info.url; $("pvEmpty").style.display = "none"; $("pvFrame").style.display = "block";
-    $("pvFrame").src = info.url + "?_=" + Date.now();
+    PV.models = Array.isArray(info.models) ? info.models : [];
+    PV.mode = info.mode;
+    PV.task = TASK;
+    $("pv3D").style.display = PV.models.length ? "" : "none";
+    if (info.mode === "model" || (PV.view === "3d" && PV.models.length)) return show3D();
+    if (info.mode === "none") { $("pvInfo").textContent = "No preview yet"; return pvEmpty("No preview yet", "This project has no web page to show (" + (info.why || "nothing found") + "). Ask the agent to build one, or to add a preview command."); }
+    showWeb(info);
   }
   function pvRefreshSoon() { if (!studioOpen()) return; clearTimeout(PV.timer); PV.timer = setTimeout(() => {
-      if (PV.url && PV.task === TASK && PV.mode !== "none") $("pvFrame").src = PV.url + "?_=" + Date.now(); else loadPreview(); }, 1200); }
+      if (PV.view === "3d") return;             // the 3D viewer polls for model changes itself
+      if (PV.url && PV.task === TASK && PV.mode !== "none") {
+        const seq = ++PV.loadSeq; pvLoading(true, "Reloading preview…", ""); $("pvFrame").src = PV.url + "?_=" + Date.now(); pvWait(seq);
+      } else loadPreview(); }, 1200); }
   function setStudio(on) { document.body.classList.toggle("studio-open", on); try { sessionStorage.setItem("vellurStudio", on ? "1" : "0"); } catch (e) {} if (on) loadPreview(); }
-  $("pvToggle").onclick = () => setStudio(!studioOpen()); $("pvClose").onclick = () => setStudio(false); $("pvReload").onclick = () => loadPreview();
+  $("pvToggle").onclick = () => setStudio(!studioOpen()); $("pvClose").onclick = () => setStudio(false);
+  $("pvReload").onclick = () => { if (PV.view === "3d") show3D(); else loadPreview(); };
+  $("pv3D").onclick = () => { if (PV.view !== "3d") return show3D(); if (PV.mode === "model") return show3D(); PV.view = "web"; loadPreview(); };
   $("pvDesk").onclick = () => { $("studio").classList.remove("phone"); $("pvDesk").classList.add("on"); $("pvMob").classList.remove("on"); };
   $("pvMob").onclick = () => { $("studio").classList.add("phone"); $("pvMob").classList.add("on"); $("pvDesk").classList.remove("on"); };
+  $("pvFrame").addEventListener("load", () => {
+    if (!PV.url || $("pvFrame").style.display === "none") return;
+    clearTimeout(PV.loadTimer); PV.loadTimer = null; pvLoading(false);
+  });
+  window.addEventListener("message", (e) => {
+    if (e.origin !== location.origin || e.source !== $("pvFrame").contentWindow) return;
+    const d = e.data || {};
+    if (d.type === "vellur-3d-close") return setStudio(false);
+    if (d.type === "vellur-3d-ready") {
+      if (String(d.taskId) !== String(TASK)) return;
+      PV.model = String(d.model || "");
+      const task = encodeURIComponent(TASK);
+      const model = PV.model ? "&model=" + encodeURIComponent(PV.model) : "";
+      $("nav3D").href = "/autopilot/3d/?task=" + task + model;
+      $("pvOpen").href = "/autopilot/3d/?task=" + task + model;
+      return;
+    }
+    if (d.type !== "vellur-3d-selection" || String(d.taskId) !== String(TASK)) return;
+    const s = d.selection || {};
+    const bits = ["[3D selection] " + (s.name || "object") + " (" + (s.type || "mesh") + ")"];
+    if (s.triangles) bits.push(s.triangles + " triangles");
+    if (s.vertices) bits.push(s.vertices + " vertices");
+    if (s.material) bits.push("material " + s.material);
+    if (s.path) bits.push("file " + s.path);
+    const line = bits.join(" · ");
+    const ta = $("agIn");
+    ta.value = (ta.value.trim() ? ta.value.replace(/\s+$/, "") + "\n" : "") + line;
+    ta.focus(); agGrow(); ta.setSelectionRange(ta.value.length, ta.value.length);
+    try { $("agComposer").scrollIntoView({ block: "nearest" }); } catch (err) {}
+  });
   (() => { let v = null; try { v = sessionStorage.getItem("vellurStudio"); } catch (e) {} if (v === "1" || (v === null && innerWidth >= 1100)) document.body.classList.add("studio-open"); })();
   // ── checkpoints: saved versions of the project ───────────────────────────────────────────────
   async function loadCheckpoints() {

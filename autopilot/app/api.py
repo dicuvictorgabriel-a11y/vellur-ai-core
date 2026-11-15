@@ -23,6 +23,16 @@ from .lifecycle import ControlError, Controller
 from .settings import SettingsError
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
+STUDIO3D = os.path.join(STATIC, "3d")
+# The 3D Studio is first-party UI (unlike agent-written preview pages): it may call the dashboard API with the owner's
+# session. It loads only local files, and model data is never executed as code.
+STUDIO3D_HEADERS = {
+    "Content-Security-Policy": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; "
+                               "img-src 'self' data: blob:; connect-src 'self'; worker-src 'self' blob:; "
+                               "font-src 'self'; object-src 'none'; base-uri 'none'; frame-ancestors 'self'",
+    "Referrer-Policy": "no-referrer", "X-Content-Type-Options": "nosniff", "X-Robots-Tag": "noindex, nofollow",
+    "Cache-Control": "no-store",
+}
 
 
 class StartBody(BaseModel):
@@ -128,6 +138,18 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
         if asset not in {"studio.js", "geometry.js", "studio.css"}:
             raise HTTPException(404, "not found")
         return FileResponse(os.path.join(STATIC, asset), headers={"Cache-Control": "no-store"})
+
+    @app.get("/autopilot/3d/", dependencies=[Depends(admin)])
+    async def studio3d():
+        return FileResponse(os.path.join(STUDIO3D, "studio3d.html"), headers=STUDIO3D_HEADERS)
+
+    @app.get("/autopilot/3d/{asset:path}", dependencies=[Depends(admin)])
+    async def studio3d_asset(asset: str):
+        root = os.path.realpath(STUDIO3D)
+        target = os.path.realpath(os.path.join(root, asset))
+        if not target.startswith(root + os.sep) or not os.path.isfile(target):
+            raise HTTPException(404, "not found")
+        return FileResponse(target, headers=STUDIO3D_HEADERS)
 
     @app.get("/autopilot/api/public/status")
     async def public_status():

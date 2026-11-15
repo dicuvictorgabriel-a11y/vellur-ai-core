@@ -16,6 +16,7 @@ WRITE = {**ADMIN, "X-Vellur-Request": "1", "Origin": "https://ai.example"}
 
 
 PNG = b"\x89PNG\r\n\x1a\n" + b"0" * 32
+GLB = b"glTF\x02\x00\x00\x00\x10\x00\x00\x00" + b"0" * 4
 
 
 def oc(typ, run=1, **part):
@@ -79,6 +80,18 @@ class FakeRunner:
                 cps = [{"id": f"{len(cps):040x}", "ts": 2, "label": label}] + cps
                 self.cps = cps
             return httpx.Response(200, json={"id": cps[0]["id"], "changed": 1, "checkpoints": cps})
+        elif p.endswith("/models"):
+            return httpx.Response(200, json={"models": [
+                {"path": "models/scene.glb", "name": "scene.glb", "format": "glb", "size": len(GLB), "mtime": 1.5,
+                 "previewable": True, "source": "repo", "reason": ""}], "blender": False})
+        elif "/asset/" in p:
+            self.asset_calls = getattr(self, "asset_calls", []) + [p]
+            return httpx.Response(200, content=GLB, headers={"content-type": "model/gltf-binary"})
+        elif p.endswith("/blend-export"):
+            body = json.loads(req.content)
+            return httpx.Response(200, json={"model": {"path": "@derived/scene-abc123.glb", "name": body["path"],
+                                                       "format": "glb", "size": len(GLB), "mtime": 2.0, "previewable": True,
+                                                       "source": "derived", "sourcePath": body["path"]}})
         elif p.endswith("/preview-info"):
             return httpx.Response(200, json={"mode": "static", "root": "dist", "why": "", "running": False})
         elif "/preview/" in p:
@@ -407,6 +420,26 @@ async def test_live_preview_is_sandboxed_and_needs_a_link_from_a_logged_in_owner
     assert (await admin.get("/autopilot/preview/" + "x" * 32 + "/")).status_code == 404
     mgr.previews = {k: (v[0], 0) for k, v in mgr.previews.items()}     # links expire
     assert (await admin.get(info["url"])).status_code == 404
+
+
+async def test_3d_models_assets_and_blend_export_use_the_existing_login(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    tid = (await mgr.create("Build a 3D scene", "vellur-coder"))["id"]
+    assert (await admin.get(f"/autopilot/api/agent/tasks/{tid}/models")).status_code in (401, 403)
+    data = (await admin.get(f"/autopilot/api/agent/tasks/{tid}/models", headers=ADMIN)).json()
+    assert data["blender"] is False and data["models"][0]["path"] == "models/scene.glb"
+    assert data["models"][0]["mtime"] == 1.5
+
+    asset = await admin.get(f"/autopilot/api/agent/tasks/{tid}/asset/models/scene.glb", headers=ADMIN)
+    assert asset.status_code == 200 and asset.content == GLB
+    assert asset.headers["content-type"].startswith("model/gltf-binary")
+    assert asset.headers["cache-control"] == "private, no-store" and asset.headers["x-content-type-options"] == "nosniff"
+    assert runner.asset_calls[-1] == f"/tasks/{tid}/asset/models/scene.glb"
+
+    assert (await admin.post(f"/autopilot/api/agent/tasks/{tid}/blend-export", headers=ADMIN, json={"path": "scene.blend"})).status_code == 403
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/blend-export", headers=WRITE, json={"path": "scene.blend"})
+    assert r.status_code == 200 and r.json()["model"]["path"] == "@derived/scene-abc123.glb"
+    assert (await admin.post(f"/autopilot/api/agent/tasks/{tid}/blend-export", headers=WRITE, json={"path": "x.txt"})).status_code == 400
 
 
 async def test_publish_directly_only_as_fast_forward(agents):

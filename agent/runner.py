@@ -11,8 +11,10 @@ short-lived inference token for the VELLUR model router. Standard library only.
 """
 import base64
 import contextlib
+import hashlib
 import io
 import json
+import mimetypes
 import os
 import re
 import shutil
@@ -22,6 +24,7 @@ import tarfile
 import threading
 import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+from urllib.parse import unquote
 
 WORK = os.environ.get("AGENT_WORK", "/work")
 SECRET = os.environ.get("AGENT_RUNNER_SECRET", "")
@@ -381,6 +384,196 @@ MAX_PREVIEW_BODY = 20 * 1024 * 1024
 preview = {"tid": None, "proc": None, "key": None, "started": 0.0}
 plock = threading.Lock()
 
+# ── 3D assets: discovered in the workspace, served through the controller only ───────────────────
+MODEL_FORMATS = {".glb": "glb", ".gltf": "gltf", ".obj": "obj", ".stl": "stl"}
+MODEL_MIME = {".glb": "model/gltf-binary", ".gltf": "model/gltf+json; charset=utf-8", ".obj": "text/plain; charset=utf-8",
+              ".stl": "model/stl", ".bin": "application/octet-stream", ".png": "image/png", ".jpg": "image/jpeg",
+              ".jpeg": "image/jpeg", ".webp": "image/webp", ".ktx2": "image/ktx2", ".blend": "application/octet-stream"}
+ASSET_EXTS = frozenset(MODEL_MIME) - {".blend"}
+MAX_MODEL_BYTES = 64 * 1024 * 1024
+MAX_GLTF_JSON = 16 * 1024 * 1024
+MAX_MODELS = 120
+MAX_SCAN_FILES = 20000
+SKIP_DIRS = {".git", "node_modules", ".venv", "venv", "__pycache__", ".pytest_cache", ".mypy_cache", ".ruff_cache",
+             ".next", ".turbo", ".cache"}
+DERIVED_PREFIX = "@derived/"
+_model_cache = {}
+
+
+def blender_bin():
+    """Optional: Blender is never installed automatically. Set VELLUR_BLENDER or put `blender` on PATH."""
+    return os.environ.get("VELLUR_BLENDER") or shutil.which("blender") or ""
+
+
+def _inside(root, target):
+    root, target = os.path.realpath(root), os.path.realpath(target)
+    return target == root or target.startswith(root + os.sep)
+
+
+def _gltf_problem(raw, repo, rel_dir):
+    try:
+        doc = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, ValueError) as e:
+        return f"glTF JSON is not valid ({e.__class__.__name__})"
+    if not isinstance(doc, dict):
+        return "glTF root must be an object"
+    asset = doc.get("asset")
+    if not isinstance(asset, dict):
+        return "glTF asset metadata is invalid"
+    version = str(asset.get("version") or "")
+    if not version.startswith("2"):
+        return "only glTF 2.0 is supported"
+    for key in ("buffers", "images"):
+        for i, item in enumerate(doc.get(key) or []):
+            if not isinstance(item, dict):
+                return f"{key}[{i}] is invalid"
+            uri = item.get("uri")
+            if not uri:
+                continue
+            if not isinstance(uri, str):
+                return f"{key}[{i}].uri is invalid"
+            low = uri.strip().lower()
+            if low.startswith("data:"):
+                continue
+            if re.match(r"^(?:[a-z]+:)?//", low) or low.startswith(("file:", "blob:")):
+                return f"{key}[{i}] uses an external URL; only files inside the project are allowed"
+            clean = unquote(uri.split("#", 1)[0].split("?", 1)[0])
+            if not clean or os.path.isabs(clean):
+                return f"{key}[{i}] points outside the project"
+            target = os.path.normpath(os.path.join(rel_dir, clean))
+            if target.startswith("..") or not _inside(repo, os.path.join(repo, target)):
+                return f"{key}[{i}] points outside the project"
+            if not os.path.isfile(os.path.join(repo, target)):
+                return f"{key}[{i}] references a missing file ({clean[:80]})"
+    return ""
+
+
+def _glb_problem(raw, size):
+    if len(raw) < 12:
+        return "GLB file is too short"
+    if raw[:4] != b"glTF":
+        return "not a GLB file (missing glTF header)"
+    if int.from_bytes(raw[4:8], "little") != 2:
+        return "only glTF 2.0 is supported"
+    length = int.from_bytes(raw[8:12], "little")
+    if length < 12 or length > MAX_MODEL_BYTES:
+        return "GLB declared length is invalid"
+    if length > size:
+        return "GLB file is truncated"
+    return ""
+
+
+def _valid_glb(path):
+    try:
+        with open(path, "rb") as f:
+            raw = f.read(64)
+        size = os.path.getsize(path)
+    except OSError:
+        return False
+    return size <= MAX_MODEL_BYTES and not _glb_problem(raw, size)
+
+
+def _model_entry(rel, root, source):
+    path = os.path.join(root, rel)
+    if not _inside(root, path):
+        return None
+    try:
+        st = os.stat(path)
+    except OSError:
+        return None
+    ext = os.path.splitext(rel)[1].lower()
+    fmt = MODEL_FORMATS.get(ext)
+    if not fmt:
+        return None
+    shown = rel.replace(os.sep, "/")
+    entry = {"path": shown if source == "repo" else DERIVED_PREFIX + shown, "name": os.path.basename(rel),
+             "format": fmt, "size": st.st_size, "mtime": st.st_mtime, "modified": st.st_mtime, "source": source,
+             "previewable": True, "reason": ""}
+    if st.st_size <= 0:
+        entry.update(previewable=False, reason="file is empty")
+    elif st.st_size > MAX_MODEL_BYTES:
+        entry.update(previewable=False, reason=f"file is larger than {MAX_MODEL_BYTES // (1024 * 1024)} MB")
+    else:
+        try:
+            if fmt == "glb":
+                with open(path, "rb") as f:
+                    problem = _glb_problem(f.read(64), st.st_size)
+            elif fmt == "gltf":
+                if st.st_size > MAX_GLTF_JSON:
+                    problem = "glTF JSON is too large"
+                else:
+                    with open(path, "rb") as f:
+                        problem = _gltf_problem(f.read(), root, os.path.dirname(rel))
+            else:
+                problem = ""
+        except OSError as e:
+            problem = f"file could not be read ({e.__class__.__name__})"
+        if problem:
+            entry.update(previewable=False, reason=problem)
+    return entry
+
+
+def model_files(t, refresh=False):
+    """3D files in the workspace (and Blender exports). Results are cached for two seconds; scans are bounded."""
+    key = t.get("dir")
+    now = time.time()
+    if not refresh and key in _model_cache and now - _model_cache[key][0] < 2:
+        return _model_cache[key][1]
+    repo = os.path.realpath(os.path.join(t["dir"], "repo"))
+    out, seen = [], 0
+    if os.path.isdir(repo):
+        for base, dirs, files in os.walk(repo):
+            dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+            for name in files:
+                seen += 1
+                if seen > MAX_SCAN_FILES or len(out) >= MAX_MODELS:
+                    break
+                ext = os.path.splitext(name)[1].lower()
+                if ext not in MODEL_FORMATS and ext != ".blend":
+                    continue
+                rel = os.path.relpath(os.path.join(base, name), repo)
+                if ext == ".blend":
+                    full = os.path.join(base, name)
+                    if not _inside(repo, full):
+                        continue
+                    try:
+                        st = os.stat(full)
+                    except OSError:
+                        continue
+                    blender = blender_bin()
+                    out.append({"path": rel.replace(os.sep, "/"), "name": name, "format": "blend", "size": st.st_size,
+                                "mtime": st.st_mtime, "modified": st.st_mtime, "source": "repo", "previewable": False,
+                                "needsExport": True, "blender": bool(blender),
+                                "reason": "" if blender else "Blender is not installed in the agent environment"})
+                else:
+                    entry = _model_entry(rel, repo, "repo")
+                    if entry:
+                        out.append(entry)
+            if seen > MAX_SCAN_FILES or len(out) >= MAX_MODELS:
+                break
+    derived = os.path.join(t["dir"], "derived")
+    if os.path.isdir(derived):
+        for name in sorted(os.listdir(derived)):
+            if len(out) >= MAX_MODELS:
+                break
+            if not name.endswith(".glb"):
+                continue
+            entry = _model_entry(name, derived, "derived")
+            if not entry:
+                continue
+            try:
+                with open(os.path.join(derived, name + ".json")) as f:
+                    meta = json.load(f)
+                if isinstance(meta, dict):
+                    entry["sourcePath"] = str(meta.get("source") or "")
+                    entry["name"] = os.path.basename(entry["sourcePath"]) or entry["name"]
+            except (OSError, ValueError):
+                pass
+            out.append(entry)
+    out.sort(key=lambda m: (m.get("previewable") is False, -m.get("modified", 0), m["name"].lower()))
+    _model_cache[key] = (now, out)
+    return out
+
 
 def preview_plan(t):
     """How this task's project can be shown: {"mode": "static", "root"} | {"mode": "command", ...} | {"mode": "none", "why"}."""
@@ -401,6 +594,9 @@ def preview_plan(t):
     for sub in STATIC_ROOTS:
         if os.path.isfile(os.path.join(repo, sub, "index.html")):
             return {"mode": "static", "root": sub}
+    models = [m for m in model_files(t) if m.get("previewable")]
+    if models:
+        return {"mode": "model", "root": ".", "why": "3D models only (no web page)", "models": models[:20]}
     return {"mode": "none", "why": "no index.html was found and the project has no .vellur/preview.json yet"}
 
 
@@ -526,6 +722,94 @@ def serve_static(handler, tid, t, plan, rel):
     return handler.send(200, raw=in_preview(data, tid) if ctype.startswith("text/html") else data, ctype=ctype)
 
 
+def serve_asset(handler, t, rel):
+    """Serve one 3D asset (and its relative textures/buffers) from the workspace or the derived Blender output."""
+    rel = unquote(rel.split("?", 1)[0].split("#", 1)[0]).lstrip("/")
+    if not rel:
+        return handler.send(404, {"error": "not found"})
+    if rel.startswith(DERIVED_PREFIX):
+        root, sub = os.path.join(t["dir"], "derived"), rel[len(DERIVED_PREFIX):]
+    else:
+        root, sub = os.path.join(t["dir"], "repo"), rel
+    target = os.path.realpath(os.path.join(root, sub))
+    if not _inside(root, target) or "/.git/" in target + "/":
+        return handler.send(404, {"error": "not found"})
+    if not os.path.isfile(target):
+        return handler.send(404, {"error": "not found"})
+    try:
+        size = os.path.getsize(target)
+    except OSError:
+        return handler.send(404, {"error": "not found"})
+    if size > MAX_MODEL_BYTES:
+        return handler.send(413, {"error": f"file is larger than {MAX_MODEL_BYTES // (1024 * 1024)} MB"})
+    ext = os.path.splitext(target)[1].lower()
+    if ext not in ASSET_EXTS:
+        return handler.send(404, {"error": "not found"})
+    ctype = MODEL_MIME[ext]
+    try:
+        with open(target, "rb") as f:
+            data = f.read(MAX_MODEL_BYTES + 1)
+    except OSError:
+        return handler.send(404, {"error": "not found"})
+    if len(data) > MAX_MODEL_BYTES:
+        return handler.send(413, {"error": f"file is larger than {MAX_MODEL_BYTES // (1024 * 1024)} MB"})
+    return handler.send(200, raw=data, ctype=ctype)
+
+
+def export_blend(t, rel):
+    """Export a .blend scene to GLB with a headless Blender, if one is installed. Never installed automatically."""
+    blender = blender_bin()
+    if not blender:
+        raise RuntimeError("Blender is not installed in the agent environment")
+    rel = unquote(str(rel or "")).strip().lstrip("/")
+    repo = os.path.realpath(os.path.join(t["dir"], "repo"))
+    src = os.path.realpath(os.path.join(repo, rel))
+    if not _inside(repo, src) or os.path.splitext(src)[1].lower() != ".blend" or not os.path.isfile(src):
+        raise ValueError("unknown Blender file")
+    st = os.stat(src)
+    if st.st_size > 512 * 1024 * 1024:
+        raise ValueError("Blender file is too large")
+    key = hashlib.sha1(f"{rel}|{st.st_mtime_ns}|{st.st_size}".encode()).hexdigest()[:12]
+    outdir = os.path.join(t["dir"], "derived")
+    os.makedirs(outdir, exist_ok=True)
+    stem = re.sub(r"[^A-Za-z0-9._-]+", "-", os.path.splitext(os.path.basename(rel))[0])[:40] or "scene"
+    out = os.path.join(outdir, f"{stem}-{key}.glb")
+    if os.path.isfile(out) and not _valid_glb(out):
+        with contextlib.suppress(OSError):
+            os.remove(out)
+        with contextlib.suppress(OSError):
+            os.remove(out + ".json")
+    if not os.path.isfile(out):
+        script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blender_export.py")
+        tmp = os.path.join(t["dir"], "tmp")
+        os.makedirs(tmp, exist_ok=True)
+        env = {k: os.environ[k] for k in PASS_ENV if k in os.environ}
+        env.update({"HOME": os.path.join(t["dir"], "home"), "TMPDIR": tmp})
+        cmd = [blender, "--background", "--factory-startup", src, "--python", script, "--", out]
+        r = subprocess.run(cmd, cwd=repo, env=env, stdin=subprocess.DEVNULL, stdout=subprocess.PIPE,
+                           stderr=subprocess.STDOUT, timeout=180)
+        if r.returncode != 0 or not os.path.isfile(out):
+            with contextlib.suppress(OSError):
+                os.remove(out)
+            tail = (r.stdout or b"")[-1200:].decode(errors="replace")
+            raise RuntimeError(f"Blender export failed (exit {r.returncode}): {tail}")
+        if os.path.getsize(out) > MAX_MODEL_BYTES:
+            os.remove(out)
+            raise RuntimeError("the exported model is larger than the preview limit")
+        if not _valid_glb(out):
+            os.remove(out)
+            raise RuntimeError("Blender wrote an invalid GLB file")
+        with open(out + ".json", "w") as f:
+            json.dump({"source": rel, "label": os.path.basename(rel), "mtime": st.st_mtime, "size": st.st_size}, f)
+    _model_cache.pop(t.get("dir"), None)
+    entry = _model_entry(os.path.basename(out), outdir, "derived")
+    if not entry:
+        raise RuntimeError("Blender output could not be read")
+    entry["sourcePath"] = rel
+    entry["name"] = os.path.basename(rel)
+    return entry
+
+
 def proxy_app(handler, tid, method, rel, body):
     import http.client
     conn = http.client.HTTPConnection("127.0.0.1", PREVIEW_PORT, timeout=60)
@@ -558,11 +842,14 @@ def proxy_app(handler, tid, method, rel, body):
 def preview_info(tid, t):
     plan = preview_plan(t)
     info = {"mode": plan["mode"], "why": plan.get("why", ""), "root": plan.get("root", ""), "command": plan.get("command", ""),
-            "running": False, "log": ""}
+            "running": False, "log": "", "models": [], "model": "", "blender": bool(blender_bin())}
     if plan["mode"] == "command":
         p = preview["proc"]
         info["running"] = bool(preview["key"] == plan["key"] and p and p.poll() is None and port_open(PREVIEW_PORT))
         info["log"] = preview_log(t)[-1500:]
+    models = model_files(t)
+    info["models"] = models[:60]
+    info["model"] = next((m["path"] for m in models if m.get("previewable")), "")
     return info
 
 
@@ -581,6 +868,9 @@ def auto_shots(tid, t):
     plan = preview_plan(t)
     if plan["mode"] == "none":
         screenshot_notice(t, f"preview unavailable: {plan.get('why', 'no preview')}")
+        return
+    if plan["mode"] == "model":
+        screenshot_notice(t, "3D model preview has no web page; open it in VELLUR 3D Studio")
         return
     if plan["mode"] == "command":
         why = ensure_preview(tid, t, plan, wait=40)
@@ -630,10 +920,16 @@ class H(BaseHTTPRequestHandler):
     def route(self, method):
         parts = [p for p in self.path.split("?")[0].split("/") if p]
         is_preview = len(parts) >= 3 and parts[0] == "tasks" and parts[2] == "preview"
+        is_asset = len(parts) >= 4 and parts[0] == "tasks" and parts[2] == "asset"
         # Inside the container (screenshots, the agent's own checks) the preview needs no secret; everything else does.
         local_preview = is_preview and self.client_address[0] in ("127.0.0.1", "::1")
         if not local_preview and (not SECRET or self.headers.get("x-runner-secret") != SECRET):
             return self.send(401, {"error": "unauthorized"})
+        if is_asset:
+            t = tasks.get(int(parts[1])) if parts[1].isdigit() else None
+            if t is None:
+                return self.send(404, {"error": "unknown task"})
+            return serve_asset(self, t, self.path.split("/asset", 1)[1])
         if is_preview:
             t = tasks.get(int(parts[1])) if parts[1].isdigit() else None
             if t is None:
@@ -647,6 +943,8 @@ class H(BaseHTTPRequestHandler):
                 if why:
                     return self.send(503, {"error": why})
                 return proxy_app(self, int(parts[1]), method, rel, self.body(MAX_PREVIEW_BODY) if method in ("POST", "PUT", "PATCH") else None)
+            if plan["mode"] == "model":
+                return self.send(404, {"error": "this project has 3D models but no web page; open VELLUR 3D Studio"})
             return self.send(404, {"error": plan["why"]})
         if parts == ["healthz"]:
             return self.send(200, {"ok": True, "busy": any(t["state"] in ("created", "running") for t in tasks.values())})
@@ -737,6 +1035,20 @@ class H(BaseHTTPRequestHandler):
             return self.send(200, {"id": sha, "changed": t["changed"], "checkpoints": checkpoints(repo)})
         if method == "GET" and action == "preview-info":
             return self.send(200, preview_info(tid, t))
+        if method == "GET" and action == "models":
+            return self.send(200, {"models": model_files(t, refresh=True), "blender": bool(blender_bin()),
+                                   "limits": {"bytes": MAX_MODEL_BYTES, "count": MAX_MODELS}})
+        if method == "POST" and action == "blend-export":
+            body = json.loads(self.body(100_000) or b"{}")
+            try:
+                entry = export_blend(t, str(body.get("path") or ""))
+            except ValueError as e:
+                return self.send(400, {"error": str(e)})
+            except subprocess.TimeoutExpired:
+                return self.send(504, {"error": "Blender export timed out"})
+            except (RuntimeError, OSError) as e:
+                return self.send(503, {"error": str(e)[:600]})
+            return self.send(200, {"model": entry})
         if method == "POST" and action == "validate":
             if t["state"] in ("created", "running"):
                 return self.send(409, {"error": "running"})
