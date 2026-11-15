@@ -99,7 +99,9 @@ install -m 755 "$SRC/bin/vac-autoupdate" "$DEST/bin/vac-autoupdate"
 install -m 644 "$SRC/tunnel/Dockerfile" "$SRC/tunnel/tunnel.sh" "$DEST/tunnel/"
 install -m 644 "$SRC/www/"* "$DEST/www/"
 install -m 755 "$SRC/gpu/"*.sh "$DEST/gpu/"
-install -m 644 "$SRC/README.md" "$DEST/"; [ -d "$SRC/docs" ] && install -m 644 "$SRC/docs/"* "$DEST/docs/"
+# Only the top-level files of docs/: screenshots and other subfolders stay in the repository. (`install` stops on a
+# directory, and with set -e that aborted the whole update in 2 seconds: release d9b13d4 added docs/obsidian/.)
+install -m 644 "$SRC/README.md" "$DEST/"; [ -d "$SRC/docs" ] && find "$SRC/docs" -maxdepth 1 -type f -exec install -m 644 {} "$DEST/docs/" \;
 install -m 644 "$SRC/opencode/"* "$DEST/opencode/"
 install -m 644 "$SRC/autopilot/Dockerfile" "$SRC/autopilot/requirements.txt" "$SRC/autopilot/.dockerignore" "$DEST/autopilot/"
 install -m 644 "$SRC/autopilot/app/"*.py "$DEST/autopilot/app/"
