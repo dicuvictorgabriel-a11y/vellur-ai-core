@@ -233,7 +233,11 @@ def run_task(tid):
         env.update({"HOME": home, "XDG_CONFIG_HOME": os.path.join(home, ".config"),
                     "XDG_DATA_HOME": os.path.join(home, ".local/share"), "XDG_CACHE_HOME": os.path.join(home, ".cache"),
                     "OPENCODE_CONFIG": cfg, "CI": "1", "TERM": "dumb", "NO_COLOR": "1", "VELLUR_SHOTS": shots,
-                    "VELLUR_PREVIEW_URL": f"http://127.0.0.1:{os.environ.get('AGENT_PORT', '7070')}/tasks/{tid}/preview/"})
+                    "VELLUR_PREVIEW_URL": f"http://127.0.0.1:{os.environ.get('AGENT_PORT', '7070')}/tasks/{tid}/preview/",
+                    "VELLUR_IMAGE_URL": os.environ.get("VELLUR_IMAGE_URL",
+                                                       "http://autopilot:8080/autopilot/api/agent/images"),
+                    "VELLUR_RUNNER_SECRET": os.environ.get("AGENT_RUNNER_SECRET", ""),
+                    "VELLUR_TASK_ID": str(tid)})
         cmd = [OPENCODE, "run", "--auto", "--format", "json", "-m", f"vellur/{t['meta']['model']}"]
         if t.get("session"):
             cmd += ["--session", t["session"]]

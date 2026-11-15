@@ -44,6 +44,10 @@ reply is at the output limit (16 384 tokens), it was cut off. The raw log is und
   or leaving the page loses nothing.
 - **GitHub**: "Create draft pull request" from the report; after a follow-up, "Update pull request" moves the same
   task branch. Never merged or deployed automatically. The PR body contains the agent's report and the checks it ran.
+  "GitHub connected" is a real `/user` check, not just a saved token. "Check access" also reports the repository's
+  canonical name, Contents write permission and whether the selected branch is protected. A 401 is a bad/expired
+  token; a 403 is authorization (permissions, SSO or branch protection); 404 is no repository/branch access; 422 is
+  a rejected branch update. Direct publishing to a protected branch is refused; use "Pull request instead".
 
 ## API (all behind the existing login)
 
@@ -57,6 +61,7 @@ reply is at the output limit (16 384 tokens), it was cut off. The raw log is und
 | GET | `/autopilot/api/agent/tasks/{id}/diff` | code changes, on demand |
 | GET | `/autopilot/api/agent/tasks/{id}/shots/{name}` | screenshot PNG |
 | POST | `/autopilot/api/agent/tasks/{id}/cancel`, `/publish` | stop; create or update the draft PR |
+| GET | `/autopilot/api/agent/github/check?repo=&branch=` | real token check plus repository/branch access (no secrets) |
 
 ## Limits and honest caveats
 

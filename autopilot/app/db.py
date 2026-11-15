@@ -65,6 +65,14 @@ CREATE TABLE IF NOT EXISTS attachments (
 );
 CREATE INDEX IF NOT EXISTS attachments_conv ON attachments(conv_id);
 CREATE INDEX IF NOT EXISTS attachments_task ON attachments(task_id);
+CREATE TABLE IF NOT EXISTS generated_images (
+  id TEXT PRIMARY KEY, created REAL NOT NULL, prompt TEXT NOT NULL, provider TEXT NOT NULL, model TEXT NOT NULL,
+  target TEXT NOT NULL, mime TEXT NOT NULL, size INTEGER NOT NULL, width INTEGER DEFAULT 0, height INTEGER DEFAULT 0,
+  sha256 TEXT NOT NULL, cost_usd REAL DEFAULT 0, cost_source TEXT DEFAULT '', conv_id INTEGER, task_id INTEGER,
+  meta TEXT DEFAULT '{}'
+);
+CREATE INDEX IF NOT EXISTS generated_images_conv ON generated_images(conv_id);
+CREATE INDEX IF NOT EXISTS generated_images_task ON generated_images(task_id);
 """
 
 # Columns added after the first release (ALTER TABLE ... ADD COLUMN is skipped when the column exists).
@@ -74,6 +82,7 @@ MIGRATIONS = [
     ("tasks", "cursor", "INTEGER DEFAULT 0"),      # runner event lines already imported
     ("tasks", "report", "TEXT DEFAULT '{}'"),      # final report of the latest run (JSON)
     ("tasks", "base_sha", "TEXT DEFAULT ''"),      # commit the workspace started from (or was last published as)
+    ("usage", "images", "INTEGER DEFAULT 0"),       # generated images (image models have no text tokens)
 ]
 
 
