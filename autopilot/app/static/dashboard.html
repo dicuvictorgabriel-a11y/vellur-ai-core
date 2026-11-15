@@ -443,10 +443,8 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
 .hrec{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:22px}
 .hrec .pc{position:relative;display:block;text-align:left;padding:0;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:22px;overflow:hidden;font-weight:400;min-height:0}
 .hrec .pc:hover{border-color:var(--line3);opacity:1}
-.pc .cover{display:block;height:116px;background-color:var(--raise)}
-.pc .cover.c0{background-image:radial-gradient(120% 140% at 85% -30%,transparent 46%,var(--pearl-b) 47%,transparent 62%),radial-gradient(90% 120% at 110% 120%,var(--pearl-c),transparent 60%)}
-.pc .cover.c1{background-image:linear-gradient(180deg,transparent 30%,var(--pearl-b)),repeating-linear-gradient(90deg,transparent 0 9px,var(--accent-dim) 9px 11px)}
-.pc .cover.c2{background-image:linear-gradient(118deg,transparent 52%,var(--pearl-b) 53%,transparent 78%),linear-gradient(160deg,var(--accent-dim),transparent 60%)}
+.pc .cover{display:block;height:116px;background:var(--raise);overflow:hidden}
+.pc .cover svg{display:block;width:100%;height:100%}
 .pc .meta{display:flex;align-items:flex-start;gap:12px;padding:16px 20px 18px}.pc .meta svg.ic{width:20px;height:20px;margin-top:2px;stroke-width:1.5}
 .pc .meta div{min-width:0;flex:1}.pc .meta b{display:block;font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}.pc .meta small{display:block;color:var(--muted);font-size:13px;margin-top:5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .hempty{grid-column:1/-1;color:var(--muted);font-size:14px;border:1px dashed var(--line2);border-radius:22px;padding:26px}
@@ -631,13 +629,15 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
 
     <section class="admin-only" id="homeCard" data-tab="home">
       <svg class="ribbon" viewBox="0 0 1400 560" preserveAspectRatio="xMaxYMin slice" aria-hidden="true"><defs>
-        <linearGradient id="rbA" x1=".25" y1=".1" x2=".95" y2=".75"><stop offset="0" stop-color="var(--pearl-b)" stop-opacity="0"/><stop offset=".42" stop-color="var(--pearl-b)"/><stop offset=".6" stop-color="var(--pearl-a)"/><stop offset=".72" stop-color="var(--pearl-c)"/><stop offset="1" stop-color="var(--pearl-b)" stop-opacity="0"/></linearGradient>
-        <linearGradient id="rbF" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#fff" stop-opacity=".9"/><stop offset=".5" stop-color="#fff" stop-opacity=".8"/><stop offset="1" stop-color="#fff" stop-opacity="0"/></linearGradient>
-        <mask id="rbM" maskUnits="userSpaceOnUse" x="-200" y="-100" width="1800" height="760"><rect x="-200" y="-100" width="1800" height="660" fill="url(#rbF)"/></mask>
-        <filter id="rbBlur" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="34"/></filter><filter id="rbSoft" x="-10%" y="-10%" width="120%" height="120%"><feGaussianBlur stdDeviation="7"/></filter></defs>
-        <g mask="url(#rbM)" transform="translate(150 0)"><path d="M620-40C640 150 560 320 60 470L60 520C700 430 960 240 990-40Z" fill="url(#rbA)" filter="url(#rbBlur)" opacity=".3"/>
-        <path d="M690-40C700 130 640 300 120 452 660 372 900 200 930-40Z" fill="url(#rbA)" filter="url(#rbSoft)" opacity=".75"/>
-        <path d="M770-40C772 110 720 250 330 400 700 318 868 180 880-40Z" fill="url(#rbA)" filter="url(#rbSoft)" opacity=".5"/></g></svg>
+        <linearGradient id="rbA" gradientUnits="userSpaceOnUse" x1="830" y1="-40" x2="230" y2="460"><stop offset="0" stop-color="var(--pearl-b)" stop-opacity=".25"/><stop offset=".28" stop-color="var(--pearl-a)"/><stop offset=".5" stop-color="var(--pearl-c)"/><stop offset=".7" stop-color="var(--pearl-b)"/><stop offset="1" stop-color="var(--pearl-b)" stop-opacity="0"/></linearGradient>
+        <filter id="rbW" filterUnits="userSpaceOnUse" x="-200" y="-300" width="1800" height="1100"><feGaussianBlur stdDeviation="30"/></filter>
+        <filter id="rbM" filterUnits="userSpaceOnUse" x="-200" y="-300" width="1800" height="1100"><feGaussianBlur stdDeviation="9"/></filter>
+        <filter id="rbC" filterUnits="userSpaceOnUse" x="-200" y="-300" width="1800" height="1100"><feGaussianBlur stdDeviation="1.2"/></filter>
+        <filter id="rbN" x="0" y="0" width="100%" height="100%"><feTurbulence type="fractalNoise" baseFrequency=".85" numOctaves="1" seed="7"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .045 0"/></filter></defs>
+        <g fill="none" stroke="url(#rbA)" stroke-linecap="round">
+          <path d="M755-60C765 120 690 290 210 452" stroke-width="170" opacity=".28" filter="url(#rbW)"/><path d="M755-60C765 120 690 290 210 452" stroke-width="46" opacity=".42" filter="url(#rbM)"/><path d="M755-60C765 120 690 290 210 452" stroke-width="7" opacity=".7" filter="url(#rbC)"/><path d="M755-60C765 120 690 290 210 452" stroke-width="1.3" opacity=".9"/>
+          <path d="M860-60C860 110 810 250 490 380" stroke-width="70" opacity=".16" filter="url(#rbW)"/><path d="M860-60C860 110 810 250 490 380" stroke-width="3" opacity=".35" filter="url(#rbC)"/></g>
+        <rect width="1400" height="560" filter="url(#rbN)"/></svg>
       <div class="hdr"><button class="iconbtn plain" id="navBack" aria-label="Back" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg></button><button class="iconbtn plain" id="navFwd" aria-label="Forward" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg></button><span class="sp"></span>
         <button class="iconbtn plain" id="btnSearch" title="Search conversations and projects (Ctrl+K)" aria-label="Search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></button><button class="iconbtn plain" id="btnTheme" title="Switch between dark and light" aria-label="Switch theme"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg></button>
         <select id="homeModel" class="modelpill" aria-label="Model"></select></div>
@@ -1080,6 +1080,22 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
       <g clip-path="url(#${id}c)"><circle cx="50" cy="50" r="49" fill="url(#${id}b)"/><g filter="url(#${id}n)" opacity=".62" style="mix-blend-mode:soft-light">${bands}</g>
       <g filter="url(#${id}n)" opacity=".26">${bands}</g><path d="M17 43C21 24 37 13 56 13" fill="none" stroke="rgba(255,255,255,.55)" stroke-width="2.2" stroke-linecap="round" filter="url(#${id}n)"/><circle cx="50" cy="50" r="49" fill="url(#${id}s)"/><circle cx="50" cy="50" r="49" fill="url(#${id}h)"/><circle cx="50" cy="50" r="49" fill="url(#${id}r)"/></g></svg>`;
   }
+  // Project cover: soft colour fields bent by low-frequency noise (liquid nacre), seeded by the project id.
+  let COVER_N = 0;
+  function coverSVG(seed) {
+    const f = (n) => { const x = Math.sin((seed % 100003) * 91.345 + n * 47.853) * 43758.5453; return x - Math.floor(x); };
+    const id = "cv" + (++COVER_N);
+    const tints = ["158,136,236", "236,172,204", "150,196,238", "246,242,252"];
+    const grads = tints.map((c, i) => `<radialGradient id="${id}g${i}"><stop offset="0" stop-color="rgb(${c})"/><stop offset=".55" stop-color="rgb(${c})" stop-opacity=".55"/><stop offset="1" stop-color="rgb(${c})" stop-opacity="0"/></radialGradient>`).join("");
+    const blobs = tints.map((c, i) =>
+      `<ellipse cx="${(f(i) * 300).toFixed(0)}" cy="${(f(i + 4) * 120).toFixed(0)}" rx="${(90 + f(i + 8) * 110).toFixed(0)}" ry="${(30 + f(i + 12) * 50).toFixed(0)}" transform="rotate(${(f(i + 16) * 180 - 90).toFixed(0)} 150 60)" fill="url(#${id}g${i})" opacity="${[.85, .6, .55, .7][i]}"/>`).join("");
+    return `<svg viewBox="0 0 300 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><defs>
+      ${grads}
+      <filter id="${id}f" x="-30%" y="-30%" width="160%" height="160%" color-interpolation-filters="sRGB"><feTurbulence type="fractalNoise" baseFrequency="${(.006 + f(20) * .006).toFixed(4)} ${(.012 + f(21) * .01).toFixed(4)}" numOctaves="2" seed="${seed % 997}" result="n"/><feDisplacementMap in="SourceGraphic" in2="n" scale="${(70 + f(22) * 50).toFixed(0)}" xChannelSelector="R" yChannelSelector="G"/><feGaussianBlur stdDeviation="3"/></filter>
+      <filter id="${id}s" x="-20%" y="-20%" width="140%" height="140%"><feGaussianBlur stdDeviation="4"/></filter>
+      <filter id="${id}d"><feTurbulence type="fractalNoise" baseFrequency=".9" numOctaves="1" seed="3"/><feColorMatrix values="0 0 0 0 .5  0 0 0 0 .5  0 0 0 0 .5  0 0 0 .07 0"/></filter></defs>
+      <g filter="url(#${id}f)">${blobs}</g><path d="M${(f(30) * 120).toFixed(0)} 135C${(60 + f(31) * 80).toFixed(0)} 70 ${(160 + f(32) * 60).toFixed(0)} 25 ${(260 + f(33) * 60).toFixed(0)} -15" fill="none" stroke="rgba(255,255,255,.32)" stroke-width="${(10 + f(34) * 8).toFixed(1)}" stroke-linecap="round" filter="url(#${id}s)"/><rect width="300" height="120" filter="url(#${id}d)"/></svg>`;
+  }
   let IDENT = "";
   function identity(s) {
     const st = (s && s.settings) || null; if (!st) return;
@@ -1148,8 +1164,8 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
     const tasks = TASKS.slice(0, 3), convs = HOME.convs.slice(0, 3), folder = '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2V17a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>';
     const outcome = (t) => !FINAL_STATES.includes(t.state) ? "Working" : (OUTCOME[t.outcome] || [t.state])[0];
     $("recTitle").textContent = tasks.length ? "Recent Projects" : "Recent Conversations";
-    $("recGrid").innerHTML = tasks.length ? tasks.map(t => `<button type="button" class="pc" data-task="${t.id}"><span class="cover c${t.id % 3}"></span><span class="meta">${folder}<div><b>${esc(t.title)}</b><small>${esc((t.repo || "Empty workspace").split("/").pop())} · ${esc(outcome(t))}</small></div></span></button>`).join("")
-      : convs.length ? convs.map(c => `<button type="button" class="pc" data-conv="${c.id}"><span class="cover c${c.id % 3}"></span><span class="meta">${folder}<div><b>${esc(c.title)}</b><small>Conversation · ${esc(agoShort(c.updated))}</small></div></span></button>`).join("")
+    $("recGrid").innerHTML = tasks.length ? tasks.map(t => `<button type="button" class="pc" data-task="${t.id}"><span class="cover">${coverSVG(t.id)}</span><span class="meta">${folder}<div><b>${esc(t.title)}</b><small>${esc((t.repo || "Empty workspace").split("/").pop())} · ${esc(outcome(t))}</small></div></span></button>`).join("")
+      : convs.length ? convs.map(c => `<button type="button" class="pc" data-conv="${c.id}"><span class="cover">${coverSVG(c.id + 7919)}</span><span class="meta">${folder}<div><b>${esc(c.title)}</b><small>Conversation · ${esc(agoShort(c.updated))}</small></div></span></button>`).join("")
       : HOME.loaded ? '<div class="hempty">Nothing here yet. Your projects and conversations appear here once you start one above.</div>' : "";
     $("recGrid").querySelectorAll("[data-task]").forEach(b => b.onclick = () => openProject(Number(b.dataset.task)));
     $("recGrid").querySelectorAll("[data-conv]").forEach(b => b.onclick = () => openChat(Number(b.dataset.conv)));
