@@ -531,7 +531,10 @@ SCENE_LLM_SYSTEM = (
 )
 
 
-async def maybe_llm_scene(router, prompt: str, current_scene: dict | None = None) -> tuple[dict | None, str]:
+AI_MODELS = ("vellur-coder", "vellur-max", "vellur-chat")
+
+
+async def maybe_llm_scene(router, prompt: str, current_scene: dict | None = None, model: str = "vellur-coder") -> tuple[dict | None, str]:
     """AI Assist: ask the routed coding model for a full scene JSON. Returns (scene, note). On any failure the scene is
     None and the note says why in plain words, so the caller can fall back to the procedural rules *and tell the user*.
     (Before 2026-11-16 this called a non-existent router.complete() and failed silently.)"""
@@ -540,7 +543,7 @@ async def maybe_llm_scene(router, prompt: str, current_scene: dict | None = None
     user_msg = prompt if current_scene is None else (
         f"Current scene JSON:\n{json.dumps(current_scene, separators=(',', ':'))}\n\nApply edit instruction:\n{prompt}"
     )
-    body = {"model": "vellur-coder", "stream": False, "max_tokens": 2400,
+    body = {"model": model if model in AI_MODELS else "vellur-coder", "stream": False, "max_tokens": 2400,
             "messages": [{"role": "system", "content": SCENE_LLM_SYSTEM}, {"role": "user", "content": user_msg}]}
     try:
         resp = await router.handle("POST", "chat/completions", "", {}, json.dumps(body).encode(), "studio3d")
@@ -569,7 +572,7 @@ async def maybe_llm_scene(router, prompt: str, current_scene: dict | None = None
     if not (isinstance(parsed, dict) and isinstance(parsed.get("objects"), list) and parsed["objects"]):
         return None, "AI Assist: the model's scene had no objects."
     return normalize_scene(parsed, (current_scene or {}).get("title") or "AI Scene"), \
-        f"Built by AI Assist ({target or 'vellur-coder'})."
+        f"Built by AI Assist ({target or model})."
 
 
 class CreateSceneBody(BaseModel):
@@ -580,6 +583,7 @@ class CreateSceneBody(BaseModel):
     scene: Optional[dict] = None
     task_id: Optional[int] = None
     use_ai: bool = False
+    model: str = "vellur-coder"
 
 
 class SaveSceneBody(BaseModel):
@@ -592,6 +596,7 @@ class SaveSceneBody(BaseModel):
 class PromptMutateBody(BaseModel):
     prompt: str
     use_ai: bool = False
+    model: str = "vellur-coder"
 
 
 class SnapshotBody(BaseModel):
@@ -754,7 +759,7 @@ def register(app: FastAPI, ctrl, router, agent, admin, admin_write) -> Studio3DS
         if prompt:
             if len(prompt) > 4000:
                 return bad("Prompt must be under 4000 characters.")
-            ai_scene, ai_note = (await maybe_llm_scene(router, prompt)) if body.use_ai else (None, "")
+            ai_scene, ai_note = (await maybe_llm_scene(router, prompt, None, body.model)) if body.use_ai else (None, "")
             if ai_scene:
                 sc, summary, mode = ai_scene, ai_note, "ai"
             else:
@@ -794,7 +799,7 @@ def register(app: FastAPI, ctrl, router, agent, admin, admin_write) -> Studio3DS
         prompt = (body.prompt or "").strip()
         if not 2 <= len(prompt) <= 4000:
             return bad("Prompt must be between 2 and 4000 characters.")
-        ai_scene, ai_note = (await maybe_llm_scene(router, prompt, cur["scene"])) if body.use_ai else (None, "")
+        ai_scene, ai_note = (await maybe_llm_scene(router, prompt, cur["scene"], body.model)) if body.use_ai else (None, "")
         if ai_scene:
             updated_sc, summary, mode = ai_scene, ai_note, "ai"
         else:

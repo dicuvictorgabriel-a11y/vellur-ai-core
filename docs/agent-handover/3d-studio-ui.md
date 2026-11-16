@@ -34,10 +34,10 @@ Runtime: three.js in the browser (WebGL required), Python stdlib only on the ser
 | Method + path | Body → result |
 |---|---|
 | `GET studio3d/scenes` | → `{scenes:[summary…], presets:{id:{name,color,metalness,roughness,opacity,transmission}}, primitives:[…]}` |
-| `POST studio3d/scenes` | `{title?, description?, prompt?, preset?:"futuristic_room", scene?, task_id?, use_ai?}` → full scene record |
+| `POST studio3d/scenes` | `{title?, description?, prompt?, preset?:"futuristic_room", scene?, task_id?, use_ai?, model?}` → full scene record |
 | `GET studio3d/scenes/{id}` | → `{id,title,description,version,task_id,created,updated,scene,history,snapshots}` |
 | `PUT studio3d/scenes/{id}` | `{scene, title?, description?, note?}` → record, version + 1, history entry `inspector_save` |
-| `POST studio3d/scenes/{id}/prompt` | `{prompt (2–4000 chars), use_ai?}` → record, version + 1, history entry `prompt_edit` |
+| `POST studio3d/scenes/{id}/prompt` | `{prompt (2–4000 chars), use_ai?, model?: vellur-coder|vellur-max|vellur-chat}` → record, version + 1, history entry `prompt_edit` |
 | `DELETE studio3d/scenes/{id}` | → `{ok, deleted}` |
 | `GET studio3d/scenes/{id}/export.glb` | → `model/gltf-binary` attachment |
 | `POST studio3d/scenes/{id}/snapshots` | `{data_url?: "data:image/png;base64,…", note?}` (no data_url → server rasterizer) → `{id,url,width,height,…}` (≤ 10 MB, PNG validated) |
@@ -72,7 +72,8 @@ Limits: 12 lights, 80 objects. Material presets: see `MATERIAL_PRESETS` in `stud
 | Task-model viewer (GLB/glTF/OBJ/STL), selection messages to the dashboard | **Working** (tests) | `test_3d.py` model discovery/serving/confinement tests. |
 | `.blend` → GLB | **Optional** | Only when Blender is installed in the agent container (`test_blend_export_*`). |
 | Local file open (no upload) | **Working** (test) | `test_3d_studio_opens_local_models_without_uploading`. |
-| Phone layout | **Broken / limited** | At 390 px the toolbar and side panel are not reachable, the title and the prompt dock are clipped. |
+| Phone layout | **Improved (2026-11-16)** | Toolbar scrolls horizontally, prompt dock fits 320–430 px (engine, prompt, Edit/New reachable). The side panel (scenes/graph) is still desktop-first. |
+| Engine selector (AI model for scenes) | **Working** | `#aiModel`: Built-in rules (free) / AI · Coder / AI · Max / AI · Chat; sent as `model` (whitelisted, unknown → Coder), remembered in cookie `nova_3d_engine`, drives the hidden `#useAiToggle`. Test `test_ai_assist_uses_the_model_chosen_in_the_engine_selector`. |
 | NOVA themes / Carbon in the 3D UI | **Not implemented** | The page has its own stylesheet and only reads dark/light from the `vellur_theme` cookie. |
 
 ### Agent (AI) loop — what an agent can do today
@@ -101,7 +102,7 @@ The coding agent can produce model *files* in a task workspace, which 3D Studio 
   localFile btnPanel btnFit btnGrid btnWire btnSpin btnAnim btnShot btnFull`; tabs `tabScenes tabObjects tabFiles` and
   panes `paneScenes paneObjects paneFiles`; lists `sceneList historyList objList list`; inspector `insPosX insPosY
   insPosZ insScale insRotY insColor insPreset insRough insMetal insTrans insOpac insSaveBtn insDelObj`; prompt dock
-  `promptForm promptInput btnApplyPrompt btnCreatePrompt useAiToggle chipPrompt1 chipPrompt2 promptStatus`; stage
+  `promptForm promptInput btnApplyPrompt btnCreatePrompt aiModel useAiToggle(hidden) chipPrompt1 chipPrompt2 promptStatus`; stage
   `canvas empty loading error updatePill hud selection`. Find them with `grep -n "\$('" autopilot/app/static/3d/*.js`.
 - `scene_studio.js` receives its dependencies through `createSceneStudio({ $, api, getThree, onInstallCustomRoot,
   onSelectMesh, setSub, setStatusNote })` — keep that seam; put new UI behind it rather than reaching into globals.
