@@ -279,7 +279,7 @@ export function createSceneStudio(ctx) {
     try {
       const body = preset
         ? { preset }
-        : { prompt, use_ai: !!$('useAiToggle').checked };
+        : { prompt, use_ai: !!$('useAiToggle').checked, model: $('aiModel').value || 'vellur-coder' };
       const rec = await api('studio3d/scenes', { method: 'POST', body: JSON.stringify(body) });
       await refreshScenes();
       renderRecord(rec, false);
@@ -298,7 +298,7 @@ export function createSceneStudio(ctx) {
     try {
       const rec = await api(`studio3d/scenes/${studio.activeRecord.id}/prompt`, {
         method: 'POST',
-        body: JSON.stringify({ prompt, use_ai: !!$('useAiToggle').checked }),
+        body: JSON.stringify({ prompt, use_ai: !!$('useAiToggle').checked, model: $('aiModel').value || 'vellur-coder' }),
       });
       await refreshScenes();
       renderRecord(rec, false);
@@ -418,7 +418,16 @@ export function createSceneStudio(ctx) {
     }
   }
 
+  function wireEngine() {
+    // Engine choice persists per device (cookie; no localStorage) and drives the hidden AI toggle the API code reads.
+    const sel = $('aiModel'), saved = (document.cookie.match(/(?:^|; )nova_3d_engine=([^;]*)/) || [])[1] || '';
+    if ([...sel.options].some(o => o.value === saved)) sel.value = saved;
+    const sync = () => { $('useAiToggle').checked = !!sel.value; document.cookie = 'nova_3d_engine=' + sel.value + '; path=/autopilot; max-age=31536000; SameSite=Lax';
+      $('btnApplyPrompt').textContent = sel.value ? 'Edit with AI' : 'Edit scene'; };
+    sel.addEventListener('change', sync); sync();
+  }
   function wireStudioUI(getSelectedMesh, clearSel) {
+    wireEngine();
     $('tabScenes').onclick = () => switchTab('scenes');
     $('tabObjects').onclick = () => switchTab('objects');
     $('tabFiles').onclick = () => switchTab('files');

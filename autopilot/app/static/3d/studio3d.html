@@ -136,14 +136,22 @@
         <div class="prompt-chips">
           <button type="button" class="chip" id="chipPrompt1" title="Demo Prompt 1: Create minimalist futuristic room">1. Create futuristic room</button>
           <button type="button" class="chip" id="chipPrompt2" title="Demo Prompt 2: Make glass transparent, move sphere left, adjust camera">2. Edit glass, sphere &amp; camera</button>
-          <label class="ai-chk" title="Optional LLM assist (obeys €10 budget cap); off = $0 deterministic engine"><input type="checkbox" id="useAiToggle"> AI Assist</label>
+          <label class="engine" title="Who builds the scene. Built-in rules are free and instant; AI models follow your routing and budget.">
+            <span>Engine</span>
+            <select id="aiModel" aria-label="Scene engine">
+              <option value="">Built-in rules · free</option>
+              <option value="vellur-coder">AI · Coder (recommended)</option>
+              <option value="vellur-max">AI · Max (best quality)</option>
+              <option value="vellur-chat">AI · Chat (cheapest)</option>
+            </select></label>
+          <input type="checkbox" id="useAiToggle" hidden>
         </div>
         <form id="promptForm" class="prompt-row">
-          <input type="text" id="promptInput" placeholder="Describe a new 3D scene or iterative edit (e.g. Make the glass more transparent, move the sphere to the left)…" autocomplete="off">
+          <input type="text" id="promptInput" placeholder="Describe a scene, or what to change…" aria-label="Describe a scene or a change" autocomplete="off">
           <button type="submit" class="primary" id="btnApplyPrompt">Edit Scene</button>
           <button type="button" class="ghost" id="btnCreatePrompt" title="Create as a brand new scene">New</button>
         </form>
-        <div id="promptStatus" class="prompt-status"></div>
+        <div id="promptStatus" class="prompt-status" role="status" aria-live="polite"></div>
       </section>
     </div>
 

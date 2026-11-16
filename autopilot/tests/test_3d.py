@@ -312,3 +312,28 @@ async def test_ai_assist_uses_the_router_and_explains_fallbacks(rig):
         assert last["mode"] == "procedural" and "AI Assist unavailable" in last["summary"] and "provider overloaded" in last["summary"]
         assert "built-in rules" in last["summary"]
     assert ctrl.db.one("SELECT COUNT(*) AS n FROM usage WHERE tag='studio3d'")["n"] >= 1   # the cost is recorded like any call
+
+
+async def test_ai_assist_uses_the_model_chosen_in_the_engine_selector(rig):
+    import json as _json
+    import httpx
+    from app.api import build_admin
+    from app.router import Router
+    seen = []
+
+    def upstream(req: httpx.Request):
+        seen.append(_json.loads(req.content)["model"])
+        return httpx.Response(200, json={"choices": [{"message": {"content": _json.dumps({"objects": [{"id": "a", "primitive": "box"}]})}}]})
+    ctrl = rig()
+    router = Router(ctrl, transport=httpx.MockTransport(upstream))
+    router.update_provider("deepseek", {"api_key": "sk-deepseek-secret-1234"})
+    ctrl.settings.update({"routes": {"vellur-coder": ["deepseek:coder"], "vellur-max": ["deepseek:max"]},
+                          "prices": {"deepseek:coder": [0.1, 0.2], "deepseek:max": [1, 2]}})
+    W = {"X-Vellur-Admin": "s" * 32, "X-Vellur-Request": "1", "Origin": "https://ai.example"}
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=build_admin(ctrl, router=router)), base_url="https://ai.example") as c:
+        r = (await c.post("/autopilot/api/studio3d/scenes", headers=W, json={"prompt": "a box", "use_ai": True, "model": "vellur-max"})).json()
+        assert r["history"][-1]["mode"] == "ai" and seen[-1] == "max"
+        await c.post(f"/autopilot/api/studio3d/scenes/{r['id']}/prompt", headers=W, json={"prompt": "bigger", "use_ai": True, "model": "nope"})
+        assert seen[-1] == "coder"                       # unknown choice falls back to Coder
+    page = open(__import__("os").path.join(__import__("os").path.dirname(__file__), "..", "app", "static", "3d", "studio3d.html")).read()
+    assert 'id="aiModel"' in page and 'id="useAiToggle"' in page

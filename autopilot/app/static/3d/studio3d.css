@@ -295,3 +295,19 @@ button.primary { background: var(--accent); color: #0b0d0f; border: 1px solid va
 .prompt-status { font-size: 11px; color: var(--accent2); min-height: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 body.embed #promptDock { bottom: 10px; width: calc(100% - 16px); }
 
+
+/* engine selector + phone layout (2026-11-16) */
+.engine{display:inline-flex;align-items:center;gap:6px;margin-left:auto;font-size:12px;color:var(--muted,#888)}
+.engine select{font:inherit;font-size:12px;padding:5px 26px 5px 10px;border-radius:999px;border:1px solid rgba(128,128,128,.35);background:transparent;color:inherit;min-height:32px}
+#promptInput{min-width:0;flex:1}
+@media (max-width:700px){
+  #bar{flex-wrap:wrap;gap:6px;height:auto!important;padding:8px 10px!important}
+  #title{font-size:14px!important;max-width:calc(100vw - 80px);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  #tools{width:100%;overflow-x:auto;flex-wrap:nowrap;scrollbar-width:none;-webkit-overflow-scrolling:touch}
+  #tools button{flex:none;min-height:40px}
+  #promptDock{left:8px!important;right:8px!important;width:auto!important;max-width:none!important;transform:none!important;bottom:max(8px,env(safe-area-inset-bottom))!important}
+  .prompt-chips{flex-wrap:wrap;gap:6px}.engine{margin-left:0;width:100%}.engine select{flex:1}
+  .prompt-row{flex-wrap:wrap}.prompt-row #promptInput{flex:1 1 100%;min-height:44px;font-size:16px}
+  .prompt-row button{flex:1;min-height:44px}
+  #stats{display:none}
+}
