@@ -1901,6 +1901,30 @@ body[data-agent="attention"] .kpis .kpi[data-k="att"] b,body[data-agent="working
       sel.appendChild(og);
     }
     if (keep && [...sel.options].some(o => o.value === keep)) sel.value = keep;
+    if (kind === "agent" && sel.id === "tModel") updateVisualInspectionCheckboxes();
+  }
+
+  async function updateVisualInspectionCheckboxes() {
+    const model = $("tModel").value;
+    let modelInfo = MODELS.find(m => m.target === model);
+    if (!modelInfo && MODELS.length === 0) {
+      try {
+        const l = await send("llm", "GET");
+        MODELS.length = 0; MODELS.push(...(l.models || []));
+        modelInfo = MODELS.find(m => m.target === model);
+      } catch (e) {}
+    }
+    if (!modelInfo) {
+      const target = ROUTE_HINT[model];
+      if (target) modelInfo = MODELS.find(m => m.target === target);
+    }
+    const hasVision = !!modelInfo?.vision;
+    $("agInspect").disabled = !hasVision;
+    $("agAutoShots").disabled = !hasVision;
+    if (!hasVision) {
+      $("agInspect").checked = false;
+      $("agAutoShots").checked = false;
+    }
   }
   async function loadRouteHints() {
     try { const l = await send("llm", "GET"); ROUTE_HINT = {};
@@ -2709,6 +2733,7 @@ body[data-agent="attention"] .kpis .kpi[data-k="att"] b,body[data-agent="working
   $("chatMode").onchange = () => setWorkMode($("chatMode").value);
   $("workRepo").addEventListener("focus", async () => { try { const r = await send("agent/repos", "GET"); $("workRepos").replaceChildren(...(r.repos || []).map(x => { const o = document.createElement("option"); o.value = x.name; return o; })); } catch(e) { $("workHint").textContent = "Repository suggestions unavailable. Enter owner/repository manually."; } });
   $("chatModel").addEventListener("change", () => { if ($("chatModel").value === "vellur-image") setWorkMode("chat"); });
+  $("tModel").addEventListener("change", updateVisualInspectionCheckboxes);
   async function sendWork() {
     if (WORK_SENDING) return;
     const text = $("chatIn").value.trim(); if (!text) return;
@@ -3585,7 +3610,7 @@ body[data-agent="attention"] .kpis .kpi[data-k="att"] b,body[data-agent="working
   }
   async function loadAgent() {
     try { AGENT = await send("agent", "GET"); } catch (e) { AGENT = { available: false, why: e.message, tasks: [] }; }
-    if (PREFS) syncAgentPrefs(PREFS);
+    if (S && S.settings) syncAgentPrefs(S.settings);
     TASKS = AGENT.tasks || []; renderTasks(); fillModels($("tModel"), $("tModel").value || "vellur-coder", "agent");
     const gh = AGENT.github || {};
     if (gh.ok) $("ghNote").textContent = "GitHub connected as " + (gh.login || "token") + " ✓ · change token";

@@ -296,7 +296,7 @@ class Router:
     def info(self, target: str) -> Optional[dict]:
         if target == "gpu":
             return {"kind": "gpu", "provider": "gpu", "model": "vellur-coder", "free": False,
-                    "capabilities": ["chat", "coding", "reasoning", "text_input", "text_output", "tool_call"]}
+                    "capabilities": ["chat", "coding", "reasoning", "text_input", "text_output", "tool_call", "vision"]}
         name, _, model = target.partition(":")
         p = self.providers().get(name)
         if not p:
@@ -350,7 +350,7 @@ class Router:
         rows.append({"target": "gpu", "provider": "gpu", "provider_display": "GPU Autopilot", "model": "vellur-coder",
                      "id": "vellur-coder", "in": None, "out": None, "ctx": None, "image_price": None,
                      "capabilities": gpu["capabilities"], "labels": labels(gpu["capabilities"]),
-                     "vision": False, "image_generation": False, "tool_call": True, "coding": True,
+                     "vision": "vision" in gpu["capabilities"], "image_generation": False, "tool_call": True, "coding": True,
                      "free": False, "usable": self.usable("gpu", fallback=False, budget_exhausted=budget_exhausted)[0]})
         return rows
 
