@@ -686,8 +686,17 @@ async def test_visual_inspection_requires_capability_and_is_explicit_on_create(a
     ctrl, router, mgr, runner, gh, admin = agents()
     url = "/autopilot/api/agent/tasks"
     body = {"prompt": "Inspect the page", "visual_inspection": True}
+    # With default GPU backend (which has vision), visual inspection should work without agent_vision setting
+    r = await admin.post(url, headers=WRITE, json=body)
+    assert r.status_code == 200
+    await wait_final(mgr, r.json()["id"])
+    assert runner.meta["vision"] is True
+    # Now test that visual inspection fails when neither agent_vision nor router supports vision
+    # Override route to use a mock provider without vision
+    ctrl.settings.update({"routes": {"vellur-coder": ["mock:text-model"]}, "agent_vision": False})
     r = await admin.post(url, headers=WRITE, json=body)
     assert r.status_code == 400 and r.json()["error"] == "vision_unavailable"
+    # With agent_vision setting enabled, it should work even without router vision
     ctrl.settings.update({"agent_vision": True})
     r = await admin.post(url, headers=WRITE, json={**body, "auto_screenshots": True})
     assert r.status_code == 200

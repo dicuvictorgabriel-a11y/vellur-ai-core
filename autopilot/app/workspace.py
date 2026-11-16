@@ -614,9 +614,10 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     async def agent_state():
         ok, why = agent.available()
         st = ctrl.settings.get()
+        vision = bool(st.get("agent_vision") or router.can_vision("vellur-coder"))
         return {"available": ok, "why": why, "github_token_set": bool(agent.github_token()),
                 "github": await agent.github_status(), "tasks": agent.list(),
-                "self_repo": ctrl.env.self_repo, "vision": bool(st.get("agent_vision")),
+                "self_repo": ctrl.env.self_repo, "vision": vision,
                 "max_minutes": st["agent_max_minutes"], "max_usd": st["agent_max_usd"]}
 
     @app.post("/autopilot/api/agent/tasks", dependencies=[Depends(admin_write)])

@@ -529,7 +529,8 @@ class AgentManager:
             raise AgentError("invalid", "repository must look like owner/name")
         if base and not BRANCH_RE.match(base):
             raise AgentError("invalid", "invalid branch name")
-        if visual_inspection and not self.ctrl.settings.get().get("agent_vision"):
+        st = self.ctrl.settings.get()
+        if visual_inspection and not (st.get("agent_vision") or self.router.can_vision(model)):
             raise AgentError("vision_unavailable", "Enable image support for the selected model and its fallbacks before requesting AI visual inspection")
         self._check_can_run()
         try:
@@ -561,7 +562,9 @@ class AgentManager:
             raise AgentError("invalid", "unknown model")
         if not t["started"]:
             raise AgentError("expired", "this task never started an agent session; start a new task", 410)
-        if visual_inspection and not self.ctrl.settings.get().get("agent_vision"):
+        st = self.ctrl.settings.get()
+        eff_model = model or t["model"]
+        if visual_inspection and not (st.get("agent_vision") or self.router.can_vision(eff_model)):
             raise AgentError("vision_unavailable", "Enable image support for the selected model and its fallbacks before requesting AI visual inspection")
         self._check_can_run()
         try:
