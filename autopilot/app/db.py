@@ -120,6 +120,36 @@ CREATE TABLE IF NOT EXISTS mission_items (
   updated REAL NOT NULL
 );
 CREATE INDEX IF NOT EXISTS mission_items_obj ON mission_items(objective_id, position);
+CREATE TABLE IF NOT EXISTS music_releases (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  artist TEXT NOT NULL DEFAULT '',
+  status TEXT NOT NULL DEFAULT 'planned',          -- planned | released
+  target_date TEXT NOT NULL DEFAULT '',            -- optional, artist-entered (YYYY-MM-DD or free text)
+  released_at TEXT NOT NULL DEFAULT '',
+  notes TEXT NOT NULL DEFAULT '',
+  cover_image_id TEXT NOT NULL DEFAULT '',         -- optional link to a real uploaded/generated image
+  created REAL NOT NULL,
+  updated REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS music_tracks (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  release_id INTEGER NOT NULL,
+  title TEXT NOT NULL,
+  duration TEXT NOT NULL DEFAULT '',               -- free text, artist-entered
+  notes TEXT NOT NULL DEFAULT '',
+  position INTEGER NOT NULL DEFAULT 0,
+  created REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS music_tracks_rel ON music_tracks(release_id, position);
+CREATE TABLE IF NOT EXISTS music_profile (
+  id INTEGER PRIMARY KEY CHECK (id = 1),
+  artist_name TEXT NOT NULL DEFAULT '',
+  genre TEXT NOT NULL DEFAULT '',
+  bio TEXT NOT NULL DEFAULT '',
+  links TEXT NOT NULL DEFAULT '',
+  updated REAL NOT NULL
+);
 """
 
 # Columns added after the first release (ALTER TABLE ... ADD COLUMN is skipped when the column exists).

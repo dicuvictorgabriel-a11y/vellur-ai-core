@@ -47,6 +47,15 @@ a{color:inherit}
 #tabs button:hover,.navbtn:hover{background:var(--hover);color:var(--text);opacity:1}#tabs button.on{background:var(--hover);color:var(--text)}
 #tabs button.on:before{content:"";position:absolute;left:-10px;top:9px;bottom:9px;width:2px;border-radius:2px;background:var(--accent)}
 #tabs button.on svg{color:var(--accent)}
+.lscope{display:inline-flex;gap:2px;background:var(--hover);border:1px solid var(--line);border-radius:10px;padding:2px;align-self:center}
+.lscope button{background:transparent;border:0;border-radius:8px;padding:7px 14px;min-height:40px;font:inherit;font-size:13.5px;font-weight:500;color:var(--muted);cursor:pointer;transition:background .12s,color .12s}
+.lscope button.on{background:var(--raise);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.15)}
+body.lib-assets .know-only{display:none!important}
+.kassets{margin-top:14px}.kgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
+.kasset{position:relative;display:block;aspect-ratio:1;border-radius:12px;overflow:hidden;background:var(--hover);border:1px solid var(--line)}
+.kasset img{width:100%;height:100%;object-fit:cover;display:block}
+.kasset.file{display:flex;align-items:center;gap:10px;padding:12px;aspect-ratio:auto}
+.navdiv{margin:12px 10px 4px;font-size:10.5px;font-weight:700;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);opacity:.7}
 .navbtn .ext{margin-left:auto;font:500 10px var(--mono);color:var(--faint);letter-spacing:.06em}
 #tabs .sep{height:1px;background:var(--line);margin:8px 6px}
 svg.ic{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-width:1.8;stroke-linecap:round;stroke-linejoin:round}
@@ -60,7 +69,7 @@ svg.ic{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-wid
 .bar.warn i{background:var(--warn)}.bar.hot i{background:var(--orange)}
 #sideBudget .label{display:block;margin-bottom:7px}
 main{flex:1;min-width:0;padding:28px 28px 64px;overflow:auto;height:100dvh}
-.wrap{max-width:1040px;margin:0 auto}
+.wrap{max-width:1060px;margin:0 auto}
 #topbar{display:none}
 body:not(.is-admin) #side{display:none}body:not(.is-admin) main{height:auto}
 body.is-admin .pubhead{display:none}
@@ -377,7 +386,7 @@ body[data-view="agent"] #convList{display:none}body[data-view="agent"] #taskList
   .chathead{display:none}.msgs{padding:16px 12px 8px}.m .txt{font-size:16px}
   .composer{width:calc(100% - 16px);margin-bottom:6px;border-radius:18px}.composer textarea{font-size:16px}
   .chatfoot{margin-bottom:max(8px,env(safe-area-inset-bottom))}
-  input,select,textarea{font-size:16px}button{min-height:40px}#tabs button{padding:11px 10px;font-size:15px}
+  input,select,textarea{font-size:16px}button{min-height:44px}#tabs button{padding:11px 10px;font-size:15px}
   table{font-size:12.5px}.card{padding:14px}
 }
 
@@ -720,7 +729,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 .polh{margin:24px 0 10px;font-size:12px;font-weight:500;color:var(--muted)}
 #bottomNav{display:none}
 @media(max-width:860px){
-  #bottomNav{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:4px 4px max(6px,env(safe-area-inset-bottom))}
+  #bottomNav{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:4px 4px max(6px,env(safe-area-inset-bottom))}
   body:not(.is-admin) #bottomNav,body.typing #bottomNav,body.staged.stage-full #bottomNav{display:none}
   #bottomNav button{display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:0;color:var(--faint);font:500 10px var(--sans);min-height:52px;justify-content:center;border-radius:12px;padding:0}
   #bottomNav button.on{color:var(--text)}#bottomNav button.on svg{color:var(--accent)}#bottomNav svg.ic{width:20px;height:20px}
@@ -747,7 +756,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 <aside id="side" class="admin-only">
   <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div><span data-brand>NOVA</span><small>ATELIER</small></div></div>
   <nav id="tabs">
-    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Workspace</button><button data-view="mission"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/></svg>Mission</button><button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Conversations</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Projects</button><button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button><button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button><button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Usage</button>
+    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Home</button><button data-view="music"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>Music</button><button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button><div class="navdiv" role="presentation">Advanced</div><button data-view="mission"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/></svg>Mission</button><button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Conversations</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Projects</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button><button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button><button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Usage</button>
   </nav>
   <button class="navbtn" type="button" id="railToggle" title="Collapse or expand navigation" aria-label="Collapse or expand navigation"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/><path d="M19 5v14"/></svg>Collapse</button>
   <div class="sidehead"><span id="sideLabel">Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button></div>
@@ -767,13 +776,11 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 <div id="scrim"></div>
 <div id="toasts" role="status" aria-live="polite"></div>
 <nav id="bottomNav" class="admin-only" aria-label="Main">
-  <button type="button" data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg><span>Home</span></button>
-  <button type="button" data-view="mission"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/></svg><span>Mission</span></button>
-  <button type="button" data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/></svg><span>Chat</span></button>
-  <button type="button" data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg><span>Projects</span></button>
+<button type="button" data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg><span>Home</span></button>
+  <button type="button" data-view="music"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg><span>Music</span></button>
   <button type="button" data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg><span>Library</span></button>
-  <button type="button" data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Activity</span></button>
-</nav>
+  <button type="button" id="navMore" aria-label="More views"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>More</span></button></nav>
+<dialog id="muDlg" aria-labelledby="muDlgTitle"><form method="dialog"><h2 id="muDlgTitle">New release</h2><label>Title <input id="muTitleIn" maxlength="200" autocomplete="off" required></label><label>Artist <input id="muArtistIn" maxlength="200" autocomplete="off" placeholder="Optional"></label><label>Status <select id="muStatusIn"><option value="planned">Planned</option><option value="released">Released</option></select></label><label>Target date <input id="muDateIn" type="date" autocomplete="off"></label><label>Notes <textarea id="muNotesIn" rows="4" maxlength="2000" placeholder="Optional"></textarea></label><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary" id="muDlgOk">Create</button></div></form></dialog>
 <dialog id="askDlg" aria-labelledby="askTitle"><form method="dialog"><h2 id="askTitle"></h2><div id="askBody"></div><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" id="askOk">Continue</button></div></form></dialog>
 <dialog id="mcObjDlg" aria-labelledby="mcObjDlgTitle"><form method="dialog"><h2 id="mcObjDlgTitle">Objective</h2><label>Title <input id="mcObjTitleIn" maxlength="200" autocomplete="off"></label><label>What “done” looks like <textarea id="mcObjDetailIn" rows="4" maxlength="2000"></textarea></label><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary">Set as active</button></div></form></dialog>
 <dialog id="mcPlanDlg" aria-labelledby="mcPlanTitle"><form method="dialog"><h2 id="mcPlanTitle">Plan</h2><label>Concrete, verifiable steps <textarea id="mcPlanText" rows="10" maxlength="8000" placeholder="One step per line…"></textarea></label><div class="row"><button class="ghost" type="button" id="mcPlanSuggest">Ask NOVA for a plan</button><span class="note" id="mcPlanCost" style="margin:0"></span></div><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary">Save plan</button></div></form></dialog>
@@ -904,7 +911,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
         <button class="iconbtn plain" id="btnSearch" title="Search conversations and projects (Ctrl+K)" aria-label="Search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></button><button class="iconbtn plain" id="btnTheme" title="Switch between dark and light" aria-label="Switch theme"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg></button>
         <select id="homeModel" class="modelpill" aria-label="Model"></select></div>
      <div id="homeMain">
-      <div class="work-label">PERSONAL WORKSPACE <span>NOVA / ATELIER</span></div><div class="hhero"><span class="pearl" id="heroPearl"></span><div><h1 id="greet">Welcome.</h1><p>A little thought. A new possibility.</p></div></div>
+      <div class="work-label">PERSONAL WORKSPACE <span>NOVA / ATELIER</span></div><div class="hhero"><span class="pearl" id="heroPearl"></span><div><h1 id="greet">Welcome.</h1><p id="heroSub">A little thought. A new possibility.</p></div></div>
       <div class="hcomp" id="homeComposer">
         <button class="hbtn" type="button" id="homeAttach" title="Attach files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button><button class="hbtn" type="button" id="homeSettings" title="Models and routing" aria-label="Models and routing"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg></button>
         <select id="homeMode" class="hmode" aria-label="What to do"><option value="chat">Chat</option><option value="agent">Agent</option><option value="image">Image</option></select>
@@ -912,7 +919,12 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
         <button type="button" id="homeSend" aria-label="Send"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
       </div>
       <div class="hnote" id="homeNote" role="status"></div>
+      <div class="hfirst" id="homeFirst" hidden>
+        <p>Plan your first release — singles, tracks, notes and artwork live here. Nothing is published anywhere.</p>
+        <div class="row"><button class="primary" type="button" id="homePlan">Plan a release</button><button class="ghost" type="button" id="homeExplore">Explore NOVA</button></div>
+      </div>
       <article class="return-brief" id="homeBrief" aria-label="Latest project result" hidden></article>
+      <article class="return-brief" id="homeRel" aria-label="Latest release" hidden></article>
       <div class="hacts">
         <button type="button" data-act="build"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/></svg><b>Build</b><span>Apps, features, systems</span></button><button type="button" data-act="automate"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg><b>Automate</b><span>Flows, tasks, processes</span></button><button type="button" data-act="create"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 3.5 3 3-2.5 5 4"/></svg><b>Create</b><span>Visuals, media, content</span></button><button type="button" data-act="explore"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3.5 12.8 9l5.7 1.9-5.7 1.9L11 18.5l-1.8-5.7L3.5 10.9 9.2 9z"/><path d="M18.5 3v3M17 4.5h3"/></svg><b>Explore</b><span>Ideas, strategies, solutions</span></button>
       </div>
@@ -924,6 +936,16 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       <div class="hcard"><h3>Activity</h3><div id="hActivity"></div></div>
       <div class="hcard"><h3>Usage</h3><div id="hUsage"></div></div>
      </aside></details>
+    </section>
+    <section class="c12 admin-only pagehead" data-tab="music"><div><span class="label">NOVA · Music</span><h1>Music</h1><p>Releases and singles, planned and shipped. Everything lives in your workspace.</p></div><button class="primary" type="button" id="muNew"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14"/></svg>New release</button></section>
+    <section class="c12 admin-only" data-tab="music">
+      <div class="muempty" id="muEmpty" hidden>
+        <svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>
+        <h2>Your music starts here</h2>
+        <p>Plan a single, an EP or an album. NOVA keeps every release, track and note in your workspace — nothing is published anywhere.</p>
+        <button class="primary" type="button" id="muNewEmpty">Plan your first release</button>
+      </div>
+      <div class="mulist" id="muList"></div>
     </section>
     <section class="admin-only" id="missionCard" data-tab="mission">
       <div class="mcobj" id="mcObj" aria-live="polite"></div>
@@ -1113,11 +1135,12 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     </section>
 
 
-    <section class="c12 admin-only pagehead" data-tab="library"><div><span class="label">NOVA · Library</span><h1>Library</h1><p>What NOVA knows about your work: decisions, requirements, constraints and verified history. The agent reads the relevant records before it starts.</p></div><button class="primary" type="button" id="kNew">New record</button></section>
+    <section class="c12 admin-only pagehead" data-tab="library"><div><span class="label">NOVA · Library</span><h1>Library</h1><p>Your images and files, plus what NOVA knows about your work — decisions, requirements and verified history.</p></div><div class="lscope" role="tablist" aria-label="Library scope"><button type="button" id="scopeAssets" role="tab" aria-selected="false">Assets</button><button type="button" id="scopeKnowledge" role="tab" aria-selected="true" class="on">Knowledge</button></div><button class="primary know-only" type="button" id="kNew">New record</button></section>
     <section class="c12 admin-only" data-tab="library"><div class="lib">
-      <div class="libbar"><input id="kQ" type="search" placeholder="Search knowledge…" aria-label="Search knowledge" autocomplete="off"><select id="kProject" aria-label="Project"><option value="">All projects</option></select></div>
-      <div class="chips" id="kNs" role="tablist" aria-label="Namespace"></div>
-      <div id="kList" class="klist"></div><p class="note" id="kMeta"></p>
+      <div id="kAssets" class="kassets" role="tabpanel" aria-label="Assets" hidden></div>
+      <div class="libbar know-only"><input id="kQ" type="search" placeholder="Search knowledge…" aria-label="Search knowledge" autocomplete="off"><select id="kProject" aria-label="Project"><option value="">All projects</option></select></div>
+      <div class="chips know-only" id="kNs" role="tablist" aria-label="Namespace"></div>
+      <div id="kList" class="klist know-only"></div><p class="note know-only" id="kMeta"></p>
     </div></section>
     <dialog id="kDlg" aria-labelledby="kDlgTitle"><form method="dialog" id="kForm">
       <h2 id="kDlgTitle">New record</h2>
@@ -1363,7 +1386,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       fillModels($("chatModel")); fillModels($("tModel"), null, "agent"); } catch (e) {}
   }
   let VIEW = "chat";
-  const VIEW_NAMES = { home: "Workspace", mission: "Mission", chat: "Conversations", agent: "Projects", project: "Project", library: "Library", models: "Models", tools: "Tools", costs: "Usage", gpu: "GPU", activity: "Activity" };
+  const VIEW_NAMES = { home: "Home", mission: "Mission", music: "Music", chat: "Conversations", agent: "Projects", project: "Project", library: "Library", models: "Models", tools: "Tools", costs: "Usage", gpu: "GPU", activity: "Activity" };
   const HIST = []; let HPOS = -1;
   function setView(v, fromHistory) {
     if (!VIEW_NAMES[v]) v = "home";
@@ -1371,10 +1394,10 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     clearTimeout(WORK_TIMER); clearTimeout(MISSION.timer);
     if (!fromHistory && HIST[HPOS] !== v) { HIST.splice(HPOS + 1); HIST.push(v); HPOS = HIST.length - 1; }
     $("navBack").disabled = HPOS <= 0; $("navFwd").disabled = HPOS >= HIST.length - 1;
-    VIEW = v; document.body.dataset.view = v; if ($("sideLabel")) $("sideLabel").textContent = v === "agent" ? "Agent tasks" : "Conversations"; document.body.classList.remove("nav-open"); $("topTitle").textContent = VIEW_NAMES[v]; $("topNew").style.visibility = ["chat", "agent", "home"].includes(v) ? "" : "hidden"; try { sessionStorage.setItem("vellurView", v); } catch (e) {}
+    VIEW = v; document.body.dataset.view = v; try { if (("#" + v) !== location.hash) history.replaceState(null, "", "#" + v); } catch (e) {} if ($("sideLabel")) $("sideLabel").textContent = v === "agent" ? "Agent tasks" : "Conversations"; document.body.classList.remove("nav-open"); $("topTitle").textContent = VIEW_NAMES[v]; $("topNew").style.visibility = ["chat", "agent", "home"].includes(v) ? "" : "hidden"; try { sessionStorage.setItem("vellurView", v); } catch (e) {}
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v || (b.dataset.view === "tools" && v === "gpu") || (b.dataset.view === "agent" && v === "project")));
     document.querySelectorAll("section[data-tab]").forEach(sec => { sec.hidden = !sec.dataset.tab.split(" ").includes(v); });
-    return ({ home: loadHome, mission: loadMission, chat: loadConvs, agent: loadAgent, library: loadLibrary, project: () => loadProjectHome(PROJECT_REPO), models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {}, tools: () => {} })[v]();
+    return ({ home: loadHome, mission: loadMission, music: loadMusic, chat: loadConvs, agent: loadAgent, library: loadLibrary, project: () => loadProjectHome(PROJECT_REPO), models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {}, tools: () => {} })[v]();
   }
   $("navBack").onclick = () => { if (HPOS > 0) setView(HIST[--HPOS], true); };
   $("navFwd").onclick = () => { if (HPOS < HIST.length - 1) setView(HIST[++HPOS], true); };
@@ -1498,7 +1521,22 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     const rows = TASKS.slice(0, 5).map(t => { const d = dotFor(t); return `<button type="button" class="hrow" data-task="${t.id}"><i class="st ${d}">${d === "ok" ? "✓" : d === "bad" ? "✕" : d === "warn" ? "!" : ""}</i><span>${esc(t.title)}</span><small>${esc(d === "run" ? "In progress" : agoShort(t.updated))}</small></button>`; }).join("");
     $("hActivity").innerHTML = rows || '<div class="note" style="margin:0">No agent activity yet.</div>';
     $("hActivity").querySelectorAll("[data-task]").forEach(b => b.onclick = () => openProject(Number(b.dataset.task)));
+    muHomeState();
     renderHomeBrief();
+  }
+  function muHomeState() {
+    if (!$("homeFirst")) return;
+    const firstRun = HOME.loaded && MUSIC.loaded && !TASKS.length && !HOME.convs.length && !MUSIC.releases.length;
+    $("homeFirst").hidden = !firstRun;
+    if (firstRun) { $("greet").innerHTML = "Make more music."; $("heroSub").textContent = "We'll handle the rest."; }
+    const rel = MUSIC.loaded && MUSIC.releases.length ? MUSIC.releases[0] : null, el = $("homeRel");
+    el.hidden = !rel;
+    if (rel) {
+      const art = rel.cover_image_id ? `<img class="mucover" src="/autopilot/api/images/${esc(rel.cover_image_id)}/content" alt="">` : `<span class="mucover muart"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg></span>`;
+      const meta = (rel.status === "released" ? "Released" : "Planned") + (rel.target_date && rel.status !== "released" ? " · " + esc(rel.target_date) : "") + " · " + rel.tracks.length + (rel.tracks.length === 1 ? " track" : " tracks");
+      el.innerHTML = `<h3>Latest release</h3><div class="row rel-row">${art}<span class="rel-meta"><b>${esc(rel.title)}</b><small>${meta}</small></span><button type="button" class="ghost" id="relOpen">Open Music</button></div>`;
+      $("relOpen").onclick = () => setView("music");
+    }
   }
   function homeUsage(s) {
     if (!s || !s.budget || !$("hUsage")) return; const b = s.budget, pct = Math.min(100, b.percent || 0);
@@ -1506,6 +1544,105 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       + `<div class="umeter"><span>GPU</span><div class="bar"><i style="width:${["ready", "processing", "idle"].includes(s.phase) ? 100 : 0}%"></i></div><small>${esc(LABEL[s.phase] || s.phase || "—")}</small></div>`
       + `<div class="umeter"><span>Requests</span><div class="bar"><i style="width:${Math.min(100, (s.inflight || 0) * 25)}%"></i></div><small>${s.inflight || 0} active</small></div>`;
   }
+  // ── music: releases, tracks and profile — real records in the workspace ─────────────
+  const MUSIC = { loaded: false, releases: [], profile: null, open: null };
+
+  const muOverview = async () => { const d = await api("music"); MUSIC.releases = d.releases || []; MUSIC.profile = d.profile || {}; MUSIC.loaded = true; renderMusic(); };
+
+  function muCard(rel) {
+    const art = rel.cover_image_id ? '<img class="mucover" src="/autopilot/api/images/' + esc(rel.cover_image_id) + '/content" alt="" onerror="this.remove()">' : '<span class="mucover muart"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg></span>';
+    const date = rel.status === "released" ? (rel.released_at ? "Released " + rel.released_at.slice(0, 10) : "Released") : (rel.target_date ? "Planned for " + rel.target_date : "Planned");
+    return '<button type="button" class="mucard" data-rel="' + rel.id + '">' + art +
+      '<span class="mumeta"><b>' + esc(rel.title) + '</b><span class="mudate">' + esc(date) + '</span>' +
+      '<span class="chip ' + (rel.status === "released" ? "ok" : "") + '">' + (rel.status === "released" ? "Released" : "Planned") + '</span>' +
+      '<span class="mutracks">' + rel.tracks.length + (rel.tracks.length === 1 ? " track" : " tracks") + '</span></span></button>';
+  }
+
+  function renderMusic() {
+    if (!MUSIC.loaded) return;
+    const has = MUSIC.releases.length > 0;
+    if (MUSIC.open != null) return muRenderDetail();
+    $("muEmpty").hidden = has; $("muList").hidden = !has;
+    $("muNew").hidden = false;
+    if (has) $("muList").innerHTML = MUSIC.releases.map(muCard).join("");
+    renderHome();
+  }
+
+  async function muRenderDetail() {
+    let rel;
+    try { rel = await api("music/releases/" + MUSIC.open); } catch (e) { MUSIC.open = null; toast("Release not found."); return renderMusic(); }
+    const tr = rel.tracks.length ? rel.tracks.map(t => '<li><span>' + esc(t.title) + '</span><span class="mudur">' + esc(t.duration || "") + '</span><button type="button" class="iconbtn plain" data-deltrack="' + t.id + '" aria-label="Remove ' + esc(t.title) + '" title="Remove track"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m5 5 14 14M19 5 5 19"/></svg></button></li>').join("") : '<li class="mudim">No tracks yet.</li>';
+    $("muEmpty").hidden = true; $("muList").hidden = false;
+    $("muList").innerHTML =
+      '<button type="button" class="linkbtn" id="muBack">← All releases</button>' +
+      '<article class="mucard muopen"><div class="mudetail"><div class="mudhead">' +
+      (rel.cover_image_id ? '<img class="mucover big" src="/autopilot/api/images/' + esc(rel.cover_image_id) + '/content" alt="Release cover">' : '') +
+      '<div><h2>' + esc(rel.title) + '</h2><span class="chip ' + (rel.status === "released" ? "ok" : "") + '">' + (rel.status === "released" ? "Released" : "Planned") + '</span>' +
+      (rel.artist ? '<span class="mudim"> · ' + esc(rel.artist) + '</span>' : '') +
+      (rel.target_date ? '<span class="mudim"> · Target ' + esc(rel.target_date) + '</span>' : '') + '</div></div>' +
+      (rel.notes ? '<p class="munotes">' + esc(rel.notes) + '</p>' : '') +
+      '<div class="row muacts"><button type="button" class="ghost" id="muEdit">Edit</button><button type="button" class="ghost" id="muCover">Set cover</button><button type="button" class="ghost dangerlink" id="muDelete">Delete release</button></div>' +
+      '<h3>Tracks</h3><ul class="mutracklist">' + tr + '</ul>' +
+      '<form id="muTrackForm" class="mcrun"><input id="muTrackTitle" maxlength="200" placeholder="Track title" aria-label="Track title" required><input id="muTrackDur" maxlength="8" placeholder="3:21" aria-label="Duration"><button class="primary" type="submit">Add track</button></form>' +
+      '</div></article>';
+    $("muBack").onclick = () => { MUSIC.open = null; renderMusic(); };
+    $("muEdit").onclick = () => muDlg(rel);
+    $("muDelete").onclick = async () => { if (await ask("Delete release\n“" + rel.title + "” and its tracks are removed from your workspace. This cannot be undone.")) { try { await api("music/releases/" + rel.id, { method: "DELETE" }); MUSIC.open = null; toast("Release deleted.", "ok"); muOverview(); } catch (e) { toast(e.message); } } };
+    $("muCover").onclick = muPickCover;
+    const dt = rel.tracks.map(t => t.id);
+    $("muList").querySelectorAll("[data-deltrack]").forEach(b => b.onclick = async () => { try { await api("music/tracks/" + b.dataset.deltrack, { method: "DELETE" }); toast("Track removed.", "ok"); muRenderDetail(); } catch (e) { toast(e.message); } });
+    $("muTrackForm").onsubmit = async (e) => { e.preventDefault(); const title = $("muTrackTitle").value.trim(); if (!title) return; try { await api("music/releases/" + rel.id + "/tracks", { method: "POST", body: JSON.stringify({ title, duration: $("muTrackDur").value.trim() }) }); toast("Track added.", "ok"); muRenderDetail(); } catch (err) { toast(err.message); } };
+  }
+
+  function muDlg(rel) {
+    const d = $("muDlg");
+    $("muDlgTitle").textContent = rel ? "Edit release" : "New release";
+    $("muDlgOk").textContent = rel ? "Save" : "Create";
+    $("muTitleIn").value = rel ? rel.title : ""; $("muArtistIn").value = rel ? (rel.artist || "") : (MUSIC.profile && MUSIC.profile.artist_name) || "";
+    $("muStatusIn").value = rel ? rel.status : "planned"; $("muDateIn").value = rel ? (rel.target_date || "") : ""; $("muNotesIn").value = rel ? (rel.notes || "") : "";
+    d.returnValue = ""; d.showModal();
+    d.onclose = async () => {
+      if (d.returnValue !== "yes") return;
+      const body = { title: $("muTitleIn").value.trim(), artist: $("muArtistIn").value.trim(), status: $("muStatusIn").value, target_date: $("muDateIn").value || null, notes: $("muNotesIn").value.trim() };
+      if (!body.title) { toast("A release needs a title."); return; }
+      try {
+        if (rel) { await api("music/releases/" + rel.id, { method: "PATCH", body: JSON.stringify(body) }); toast("Release saved.", "ok"); }
+        else { const nr = await api("music/releases", { method: "POST", body: JSON.stringify(body) }); MUSIC.open = nr.id; toast("Release created.", "ok"); }
+        muOverview();
+      } catch (e) { toast(e.message); }
+    };
+    setTimeout(() => $("muTitleIn").focus(), 50);
+  }
+
+  async function muPickCover() {
+    if (!MUSIC.open) return;
+    let imgs = [], atts = [];
+    try { imgs = (await api("images").catch(() => ({ images: [] }))).images || []; } catch (e) { imgs = []; }
+    try { atts = ((await api("attachments").catch(() => ({ attachments: [] }))).attachments || []).filter(a => a.kind === "image"); } catch (e) { atts = []; }
+    const src = imgs.map(i => ({ id: i.id, url: "/autopilot/api/images/" + i.id + "/content" })).concat(atts.map(a => ({ id: a.id, url: a.url || ("/autopilot/api/attachments/" + a.id + "/content") })));
+    const d = $("askDlg");
+    $("askTitle").textContent = "Set cover";
+    $("askBody").innerHTML = src.length ? '<div class="mupick">' + src.slice(0, 12).map(i => '<button type="button" data-cover="' + esc(i.id) + '"><img src="' + esc(i.url) + '" alt=""></button>').join("") + '</div>' : '<p>No images in your library yet. Create one with the Image studio, then come back.</p>';
+    $("askOk").textContent = src.length ? "Use selected" : "Close";
+    $("askOk").style.display = src.length ? "" : "none";
+    $("askBody").querySelectorAll("[data-cover]").forEach(b => b.onclick = () => { $("askBody").querySelectorAll("[data-cover]").forEach(x => x.classList.remove("on")); b.classList.add("on"); d.dataset.cover = b.dataset.cover; });
+    delete d.dataset.cover;
+    d.returnValue = ""; d.showModal();
+    d.addEventListener("close", async () => {
+      $("askOk").style.display = "";
+      if (d.returnValue === "yes" && d.dataset.cover) {
+        try { await api("music/releases/" + MUSIC.open, { method: "PATCH", body: JSON.stringify({ cover_image_id: d.dataset.cover }) }); toast("Cover set.", "ok"); muRenderDetail(); } catch (e) { toast(e.message); }
+      }
+    }, { once: true });
+  }
+
+  async function loadMusic() { renderMusic(); try { await muOverview(); } catch (e) { toast(e.message); } }
+
+  $("muNew").onclick = () => muDlg(null);
+  $("muNewEmpty").onclick = () => muDlg(null);
+  $("muList").addEventListener("click", (e) => { const b = e.target.closest("[data-rel]"); if (b) { MUSIC.open = Number(b.dataset.rel); renderMusic(); } });
+  $("homePlan").onclick = () => muDlg(null);
+  $("homeExplore").onclick = () => setView("mission");
   async function loadHome() {
     greet(String((S && S.settings && S.settings.owner_name) || "").trim());
     if (!$("homeModel").options.length) { HOME_MODELS.forEach(([v, l]) => $("homeModel").add(new Option(l, v))); let m = "vellur-chat", mode = "chat";
@@ -1518,6 +1655,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     HOME.focus = null;
     if (!$("convSel").options.length) HOME.convs.forEach(x => $("convSel").add(new Option(x.title, x.id)));
     renderTasks(); renderHome();
+    if (!MUSIC.loaded) muOverview().catch(() => {});
     if (!focus) return;
     try {
       const detail = await send("agent/tasks/" + focus.id, "GET");
@@ -2228,6 +2366,24 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     ["kfNs", "kfStatus", "kfProject", "kfTitle", "kfBody", "kfTags", "kfSave", "kfDel"].forEach(id => $(id).disabled = !!(r && r.locked));
     $("kDlg").showModal();
   }
+  let ASSETS = null;
+  async function renderAssets() {
+    const [im, at] = await Promise.all([api("images").catch(() => ({ images: [] })), api("attachments").catch(() => ({ attachments: [] }))]);
+    ASSETS = (im.images || []).map(i => ({ url: i.url || "/autopilot/api/images/" + i.id + "/content", name: i.prompt || "Image", when: i.created }))
+      .concat((at.attachments || []).map(a => ({ url: a.url || "/autopilot/api/attachments/" + a.id + "/content", name: a.name || "File", img: a.kind === "image", when: a.created })));
+    ASSETS.sort((x, y) => (y.when || 0) - (x.when || 0));
+    $("kAssets").innerHTML = ASSETS.length ? '<div class="kgrid">' + ASSETS.slice(0, 60).map(a => a.img !== false && !a.name || a.img ? `<a class="kasset" href="${esc(a.url)}" target="_blank" rel="noopener"><img src="${esc(a.url)}" alt="${esc(a.name)}" loading="lazy"></a>` : `<a class="kasset file" href="${esc(a.url)}" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M13 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V9z"/><path d="M13 3v6h6"/></svg><span>${esc(a.name)}</span></a>`).join("") + '</div>'
+      : '<div class="kempty">No assets yet. Images you create and files you attach appear here.</div>';
+  }
+  function libScope(s) {
+    $("scopeAssets").classList.toggle("on", s === "assets"); $("scopeKnowledge").classList.toggle("on", s === "knowledge");
+    $("scopeAssets").setAttribute("aria-selected", String(s === "assets")); $("scopeKnowledge").setAttribute("aria-selected", String(s === "knowledge"));
+    $("kAssets").hidden = s !== "assets";
+    document.body.classList.toggle("lib-assets", s === "assets");
+    if (s === "assets") renderAssets().catch(e => toast(e.message));
+  }
+  $("scopeAssets").onclick = () => libScope("assets");
+  $("scopeKnowledge").onclick = () => libScope("knowledge");
   $("kNew").onclick = () => { if (!KN.data) loadLibrary().then(() => kOpen(null)); else kOpen(null); };
   $("kfSave").onclick = async () => {
     const body = { namespace: $("kfNs").value, status: $("kfStatus").value, project: $("kfProject").value.trim(), title: $("kfTitle").value.trim(), body: $("kfBody").value.trim(), tags: $("kfTags").value.trim() };
@@ -3014,6 +3170,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     if (VIEW !== "chat") await setView("chat"); $("convNew").click(); document.body.classList.remove("nav-open"); };
   $("sideNew").onclick = newChat; $("topNew").onclick = newChat;
   $("navOpen").onclick = () => document.body.classList.add("nav-open"); $("scrim").onclick = () => document.body.classList.remove("nav-open");
+  $("navMore").onclick = () => { document.body.classList.add("nav-open"); $("tabs").querySelector("button").focus(); };
   document.addEventListener("keydown", e => {
     if (e.key === "Escape" && document.body.classList.contains("nav-open")) { document.body.classList.remove("nav-open"); $("navOpen").focus(); }
     if (e.key === "Tab" && document.body.classList.contains("nav-open")) {
@@ -3079,6 +3236,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     connect();
     if (ADMIN) {
       let v = "home"; try { v = sessionStorage.getItem("vellurView") || "home"; } catch (e) {}
+      const hv = (location.hash || "").replace("#", ""); if (VIEW_NAMES[hv]) v = hv;
       $("memory").value = (S && S.settings && S.settings.memory) || "";
       setView(v); loadRouteHints(); setInterval(() => { if (VIEW === "activity") loadHistory(); else if (VIEW === "home" && !document.hidden) loadHome(); }, 15000);
     }

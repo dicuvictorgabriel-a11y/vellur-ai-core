@@ -76,6 +76,11 @@ def seed(db) -> tuple[int, int]:
     k.create({"namespace": "Constraints", "title": "No localStorage in dashboards",
               "body": "Demo record: dashboards keep state on the server or in cookies, never in localStorage."}, source="owner (demo)")
     k.record_run({"id": tid, "repo": "demo/project", "prompt": "Demo task: restyle the landing page"}, 1, report)
+    db.x("INSERT INTO music_releases(title,artist,status,target_date,notes,created,updated) VALUES(?,?,?,?,?,?,?)",
+         ("Midnight Frequencies", "Ring City", "planned", "2026-12-04", "Demo release: the first single of the season, three tracks.", now, now))
+    rel = db.all("SELECT id FROM music_releases ORDER BY id DESC LIMIT 1")[0]["id"]
+    for i, (t, d) in enumerate((("Neon Hours", "3:21"), ("Low Orbit", "2:58"), ("Signal Bloom", "4:02")), 1):
+        db.x("INSERT INTO music_tracks(release_id,title,duration,position,created) VALUES(?,?,?,?,?)", (rel, t, d, i, now))
     return cid, tid
 
 
