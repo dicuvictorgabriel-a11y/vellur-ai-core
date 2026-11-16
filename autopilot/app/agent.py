@@ -371,6 +371,8 @@ class AgentManager:
         self.activity: dict[int, list] = {}      # processes running right now in each task (from the runner)
         self.previews: dict[str, tuple] = {}     # preview link token -> (task id, expiry); minted only for a logged-in owner
         self.attachments = AttachmentStore(ctrl)
+        from .knowledge import Knowledge
+        self.knowledge = Knowledge(self.db)
 
     # ── helpers ─────────────────────────────────────────────────────────────────────────────────
     def available(self) -> tuple:
@@ -469,6 +471,12 @@ class AgentManager:
                   (_tid, time.time(), _run, _kind, json.dumps(data)))
         tid = _tid
         self.db.x("UPDATE tasks SET updated=? WHERE id=?", (time.time(), tid))
+        if _kind in ("report", "pr"):          # verified work becomes Knowledge (policy in app/knowledge.py)
+            t = self.db.one("SELECT id,repo,prompt FROM tasks WHERE id=?", (tid,))
+            if t and _kind == "report":
+                self.knowledge.record_run(t, _run, data)
+            elif t and data.get("url"):
+                self.knowledge.link_pr(t, data["url"])
 
     def events(self, tid: int, after: int = 0, limit: int = 500) -> list:
         rows = self.db.all("SELECT id,ts,run,kind,data FROM task_events WHERE task_id=? AND id>? ORDER BY id LIMIT ?",
@@ -566,7 +574,9 @@ class AgentManager:
             extra += ("\n- This repository is VELLUR AI Core itself, the application you are running in. You work on a "
                       "copy: the live server is not affected until the owner publishes and installs a release. Read "
                       "AGENTS.md first; never change the frozen login files; run the tests it names before reporting.")
-        return f"{AGENT_GUIDE}{extra}\n\n{notes}Task from the owner:\n{prompt}"
+        known, _ = self.knowledge.for_task(prompt, repo)
+        known = known + "\n\n" if known else ""
+        return f"{AGENT_GUIDE}{extra}\n\n{notes}{known}Task from the owner:\n{prompt}"
 
     async def _drive(self, tid: int, prompt: str, first: bool, visual_inspection: bool = False,
                      auto_screenshots: bool = False) -> None:
