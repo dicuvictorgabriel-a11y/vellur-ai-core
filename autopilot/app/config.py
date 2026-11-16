@@ -79,6 +79,7 @@ DEFAULT_SETTINGS: dict = {
     "routes": {"vellur-coder": [], "vellur-chat": [], "vellur-max": [], "vellur-image": []},
     # NOVA routing (app/policy.py). auto|economy|balanced|quality|manual. Automatic modes reorder the models saved in
     # the routes and stay off for paid models until an allowance (USD per month, inside the budget) is set.
+    "ui_theme": "",                  # NOVA Theme Studio: "<id>" or "system:<dark id>/<light id>"; empty = default
     "routing_mode": "auto",
     "auto_allowance_usd": 0.0,
     "auto_task_limit_usd": 0.5,

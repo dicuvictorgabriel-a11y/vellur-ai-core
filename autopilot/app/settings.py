@@ -157,6 +157,8 @@ class Settings:
             if not 0 <= clean["max_hourly_usd"] <= self.env.hard_max_hourly_usd:
                 raise SettingsError(f"max hourly rate must be 0–{self.env.hard_max_hourly_usd:g} USD "
                                     "(the ceiling is changed only on the server)")
+        if "ui_theme" in clean and not re.fullmatch(r"(|[a-z0-9-]{2,24}|system:[a-z0-9-]{2,24}/[a-z0-9-]{2,24})", clean["ui_theme"]):
+            raise SettingsError("ui_theme must be a theme id or system:<dark>/<light>")
         if "routing_mode" in clean and clean["routing_mode"] not in ("auto", "economy", "balanced", "quality", "manual"):
             raise SettingsError("routing_mode must be auto, economy, balanced, quality or manual")
         if "auto_allowance_usd" in clean and not 0 <= clean["auto_allowance_usd"] <= self.env.hard_max_monthly_usd:

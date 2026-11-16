@@ -10,7 +10,8 @@ PAGE = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
 def test_dashboard_script_parses(tmp_path):
     html = open(PAGE).read()
-    js = html[html.index("<script>") + 8: html.index("</script>")]
+    start = html.index("<script>") + 8
+    js = html[start: html.index("</script>", start)]
     f = tmp_path / "dash.js"
     f.write_text(js)
     r = subprocess.run(["node", "--check", str(f)], capture_output=True, text=True)
@@ -264,7 +265,7 @@ def test_nova_work_surface_is_wired_to_real_endpoints_and_stays_sandboxed():
     assert "allow-same-origin" not in frame
     assert "alert(e.message)" not in html and "function toast(" in html
     # approvals happen in the page (ApprovalDialog), never in the browser's blocking confirm()
-    script = html[html.index("<script>"):html.index("</script>")]
+    script = html[html.index("<script>"):html.index("</script>", html.index("<script>"))]
     assert 'id="askDlg"' in html and "function ask(text)" in script
     assert script.count("confirm(") == 2   # the fallback for browsers without <dialog> + its comment
     stage = html[html.index("  function phaseRows("):html.index("  function toolView(")] if "  function toolView(" in html[html.index("  function phaseRows("):] else ""
@@ -322,3 +323,18 @@ def test_astryx_interaction_rules_are_applied():
     assert "!e.isComposing" not in html                       # every Enter handler uses the two-signal guard
     assert 'aria-disabled="true"' in html and "function mpMove(to)" in html and '"PageDown"' in html
     assert "MP.trigger" in html and 'id="homeKpis"' in html and "function renderKpis()" in html
+
+
+def test_theme_studio_offers_ten_complete_carbon_token_themes():
+    import re
+    html = open(PAGE).read()
+    css = open(os.path.join(os.path.dirname(PAGE), "carbon", "nova-themes.css")).read()
+    ids = ["obsidian", "oxblood", "cobalt", "petrol", "aubergine", "porcelain", "carbon-white", "carbon-g10", "carbon-g90", "carbon-g100"]
+    for i in ids:
+        block = css.split(f'html:root[data-nova-theme="{i}"]', 1)[1].split("}", 1)[0]
+        for token in ("--cds-background:", "--cds-layer-01:", "--cds-text-primary:", "--cds-interactive:", "--cds-focus:",
+                      "--cds-button-primary:", "--cds-border-subtle-01:", "--cds-support-error:", "--nova-accent:"):
+            assert token in block, (i, token)
+        assert f'id: "{i}"' in html and f'"{i}":"' in html          # studio list + first-paint boot map
+    assert 'id="themeDlg"' in html and 'role="radiogroup"' in html and "<script data-theme-boot>" in html
+    assert "nova_theme=" in html and "ui_theme" in html and "localStorage" not in html

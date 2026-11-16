@@ -7,6 +7,19 @@
 <title>NOVA</title>
 <link rel="preload" href="/autopilot/carbon/fonts/IBMPlexSans-Regular.woff2" as="font" type="font/woff2" crossorigin>
 <link rel="stylesheet" href="/autopilot/carbon/carbon-tokens.css">
+<link rel="stylesheet" href="/autopilot/carbon/nova-themes.css">
+<script data-theme-boot>
+/* NOVA Theme Studio boot: apply the saved theme before the first paint (cookies; the server copy syncs later). */
+(function () {
+  var M = {"obsidian":"dark","oxblood":"dark","cobalt":"dark","petrol":"dark","aubergine":"dark","porcelain":"light",
+           "carbon-white":"light","carbon-g10":"light","carbon-g90":"dark","carbon-g100":"dark"};
+  var c = function (k) { var m = document.cookie.match(new RegExp("(?:^|; )" + k + "=([^;]*)")); return m ? decodeURIComponent(m[1]) : ""; };
+  var v = c("nova_theme") || "obsidian", id = v;
+  if (v.indexOf("system:") === 0) { var p = v.slice(7).split("/"); id = matchMedia("(prefers-color-scheme: light)").matches ? p[1] : p[0]; }
+  if (!M[id]) id = "obsidian";
+  var r = document.documentElement; r.setAttribute("data-nova-theme", id); r.setAttribute("data-theme", M[id]);
+})();
+</script>
 <style>:root{
   /* NOVA Artist Desk: premium graphite, one quiet violet accent. State colors only for truth. */
   --bg:#0B0C0E;--side:#101114;--panel:#17191D;--raise:#202228;--sunk:#0E0F11;--hover:#17191D;--code:#131417;
@@ -1030,6 +1043,57 @@ body *:not(.pearl):not(.oc):not(.tag):not(.cap):not(.step):not(.chip):not(#mode)
 }
 /* motion: Carbon productive easing */
 *{transition-timing-function:cubic-bezier(.2,0,.38,.9)}
+
+/* ═══ NOVA Theme Studio + expressive layer. Every theme is a full Carbon token set (nova-themes.css); nothing below
+   names a colour: it reads --cds-* and the two NOVA brand tokens (--nova-accent, --nova-accent-ink). ═══ */
+html.theme-switching,html.theme-switching *{transition:background-color 240ms cubic-bezier(.4,.14,.3,1),color 240ms cubic-bezier(.4,.14,.3,1),border-color 240ms cubic-bezier(.4,.14,.3,1)!important}
+@media(prefers-reduced-motion:reduce){html.theme-switching,html.theme-switching *{transition:none!important}}
+/* expressive moments: greeting, page titles, the active place */
+.hhero h1{font-size:clamp(2.25rem,4.4vw,3.75rem)!important;line-height:1.1!important;font-weight:300!important;letter-spacing:-.01em!important}
+.hhero h1 .acc{color:var(--nova-accent)}
+.pagehead h1{position:relative;padding-bottom:12px}.pagehead h1:after{content:"";position:absolute;left:0;bottom:0;width:32px;height:2px;background:var(--nova-accent)}
+.kpi:hover b{color:var(--nova-accent)}.kpi b{transition:color 110ms}
+.work-label,.return-kicker{color:var(--nova-accent)!important;letter-spacing:.32px!important;font-family:var(--sans)!important;text-transform:none!important}
+::selection{background:var(--nova-accent);color:var(--nova-accent-ink)}
+#tabs button.on:before{background:var(--nova-accent)!important}#bottomNav button.on{box-shadow:inset 0 3px 0 var(--nova-accent)}
+/* quiet inline actions (Copy under answers): Carbon ghost, small */
+.mmeta button,[data-copy]{background:transparent!important;color:var(--cds-text-secondary)!important;min-height:24px!important;padding:0 8px!important;border:0!important;font-size:.75rem!important}
+.mmeta button:hover,[data-copy]:hover{background:var(--cds-background-hover)!important;color:var(--cds-text-primary)!important}
+/* account entry */
+.themeentry{display:flex!important;align-items:center;gap:12px;width:100%;min-height:56px!important;background:var(--cds-layer-02)!important;color:var(--cds-text-primary)!important;border:0!important;padding:8px 12px!important;text-align:left}
+.themeentry:hover{background:var(--cds-layer-hover-02)!important}.themeentry b{display:block;font-weight:600}.themeentry small{color:var(--cds-text-secondary);font-size:.75rem}
+.sw4{display:flex;width:44px;height:28px;flex:none}.sw4 i{flex:1}.sw4 i:nth-child(1){background:var(--cds-background)}.sw4 i:nth-child(2){background:var(--cds-layer-01)}.sw4 i:nth-child(3){background:var(--nova-accent)}
+/* studio */
+#themeDlg{width:min(960px,calc(100vw - 32px));max-height:calc(100dvh - 32px);padding:0;border:1px solid var(--cds-border-subtle-01)!important;background:var(--cds-layer-01)!important;color:var(--cds-text-primary)}
+#themeDlg[open]{display:flex;flex-direction:column}
+.tshead{display:flex;justify-content:space-between;gap:16px;padding:24px 24px 16px}.tshead h2{margin:4px 0 8px;font-size:1.75rem;font-weight:300;line-height:1.25}
+.tshead p{margin:0;color:var(--cds-text-secondary);max-width:44ch}.tseyebrow{font-size:.75rem;letter-spacing:.32px;color:var(--nova-accent)}
+.tsbody{overflow:auto;padding:0 24px 8px;flex:1}
+.tssys{display:flex;align-items:center;gap:12px;padding:12px 0 20px;cursor:pointer;color:var(--cds-text-primary)}.tssys b{display:block;font-weight:600}.tssys small{color:var(--cds-text-secondary);font-size:.75rem}
+#themeDlg h3{display:flex;align-items:baseline;gap:8px;margin:8px 0 12px;font-size:.875rem;font-weight:600}#themeDlg h3 small{font-weight:400;color:var(--cds-text-secondary);font-size:.75rem}
+.tsgrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px;margin-bottom:24px}
+.tscard{display:flex!important;flex-direction:column;align-items:stretch;gap:0;padding:0!important;min-height:0!important;background:transparent!important;border:1px solid var(--cds-border-subtle-01)!important;color:var(--cds-text-primary)!important;text-align:left;cursor:pointer;position:relative}
+.tscard:hover{border-color:var(--cds-border-strong-01)!important}
+.tscard[aria-checked="true"]{border-color:var(--nova-accent)!important;box-shadow:inset 0 0 0 1px var(--nova-accent)}
+.tscard .meta{display:flex;flex-direction:column;gap:2px;padding:12px}.tscard .meta b{font-weight:600;font-size:.875rem}.tscard .meta small{color:var(--cds-text-secondary);font-size:.75rem;line-height:1.33}
+.tscard .chk{position:absolute;top:8px;right:8px;width:20px;height:20px;display:none;align-items:center;justify-content:center;background:var(--nova-accent);color:var(--nova-accent-ink)}
+.tscard[aria-checked="true"] .chk{display:flex}.tscard .slot{position:absolute;top:8px;left:8px;font-size:.6875rem;padding:2px 6px;background:var(--cds-background-inverse);color:var(--cds-text-inverse);display:none}
+.tscard[data-slot] .slot{display:block}
+/* the preview is drawn with the theme's own tokens (data-nova-preview scopes them) */
+.tsprev{display:grid;grid-template-columns:22% 1fr;height:116px;background:var(--cds-background);overflow:hidden}
+.tsprev .nav{background:var(--cds-background);border-right:1px solid var(--cds-border-subtle-00);padding:10px 6px;display:flex;flex-direction:column;gap:6px}
+.tsprev .nav i{height:5px;background:var(--cds-border-subtle-01)}.tsprev .nav i:first-child{background:var(--nova-accent);width:70%}
+.tsprev .main{padding:12px;display:flex;flex-direction:column;gap:8px}.tsprev .h{height:12px;width:58%;background:var(--cds-text-primary)}
+.tsprev .h:after{content:"";display:inline-block}.tsprev .card{flex:1;background:var(--cds-layer-01);padding:8px;display:flex;flex-direction:column;gap:5px;justify-content:space-between}
+.tsprev .t{height:5px;width:80%;background:var(--cds-text-secondary)}.tsprev .t.s{width:52%}
+.tsprev .row{display:flex;gap:6px;align-items:center}.tsprev .btn{height:14px;width:40px;background:var(--cds-button-primary)}.tsprev .tag{height:10px;width:26px;border-radius:5px!important;background:var(--cds-tag-background-green)}
+.tsprev .dot{width:8px;height:8px;border-radius:50%!important;background:var(--nova-secondary);margin-left:auto}
+.tsfoot{display:flex;align-items:center;gap:8px;padding:16px 24px;border-top:1px solid var(--cds-border-subtle-01)}.tsfoot #themeState{flex:1;color:var(--cds-text-secondary);font-size:.75rem}
+.tsfoot button{min-width:120px;min-height:48px!important}
+@media(max-width:860px){#themeDlg{width:100vw;max-width:100vw;max-height:92dvh;margin:auto 0 0}.tsgrid{grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+  .tshead{padding:20px 16px 12px}.tsbody{padding:0 16px 8px}.tsfoot{padding:12px 16px max(12px,env(safe-area-inset-bottom))}.tsfoot button{flex:1;min-width:0}.tsfoot #themeState{display:none}
+  .tsprev{height:92px}.tshead h2{font-size:1.5rem}}
+@media(max-width:360px){.tsgrid{grid-template-columns:minmax(0,1fr)}}
 </style>
 </head>
 <body>
@@ -1046,6 +1110,16 @@ body *:not(.pearl):not(.oc):not(.tag):not(.cap):not(.step):not(.chip):not(#mode)
 </aside>
 <div id="scrim"></div>
 <div id="toasts" role="status" aria-live="polite"></div>
+<dialog id="themeDlg" aria-labelledby="themeTitle">
+  <div class="tshead"><div><span class="tseyebrow">Settings · Appearance</span><h2 id="themeTitle">Theme Studio</h2><p>Ten atmospheres, one system. Pick one to preview it on the whole workspace.</p></div>
+    <button class="iconbtn" type="button" id="themeClose" aria-label="Close Theme Studio"><svg class="ic cds" viewBox="0 0 32 32" aria-hidden="true"><path d="M17.4141 16 24 9.4141 22.5859 8 16 14.5859 9.4143 8 8 9.4141 14.5859 16 8 22.5859 9.4143 24 16 17.4141 22.5859 24 24 22.5859 17.4141 16z"/></svg></button></div>
+  <div class="tsbody">
+    <label class="tssys"><span class="sw"><input type="checkbox" id="themeSystem"><b></b></span><span><b>Follow the device</b><small id="themeSysHint">Use one theme by day and another by night.</small></span></label>
+    <section aria-labelledby="tsNova"><h3 id="tsNova">NOVA <small>Original</small></h3><div class="tsgrid" role="radiogroup" aria-labelledby="tsNova" id="tsGridNova"></div></section>
+    <section aria-labelledby="tsCarbon"><h3 id="tsCarbon">IBM Carbon <small>Official themes</small></h3><div class="tsgrid" role="radiogroup" aria-labelledby="tsCarbon" id="tsGridCarbon"></div></section>
+  </div>
+  <div class="tsfoot"><span id="themeState" role="status" aria-live="polite"></span><button type="button" class="ghost" id="themeCancel">Cancel</button><button type="button" class="primary" id="themeApply">Apply theme</button></div>
+</dialog>
 <dialog id="mpDlg" aria-labelledby="mpTitle"><div class="mphead"><b id="mpTitle">Choose a model</b><input id="mpQ" type="search" role="combobox" aria-expanded="true" aria-controls="mpList" aria-autocomplete="list" placeholder="Search by name, provider or ID…" autocomplete="off" spellcheck="false"></div><div id="mpList" role="listbox" aria-label="Models"></div><div class="mpfoot"><span id="mpCount"></span><span class="k">↑↓ move · Enter select · Esc close</span></div></dialog>
 <nav id="bottomNav" class="admin-only" aria-label="Main">
   <button type="button" data-view="home"><svg class="ic cds" viewBox="0 0 32 32" aria-hidden="true" focusable="false"><path d="M16.6123,2.2138a1.01,1.01,0,0,0-1.2427,0L1,13.4194l1.2427,1.5717L4,13.6209V26a2.0041,2.0041,0,0,0,2,2H26a2.0037,2.0037,0,0,0,2-2V13.63L29.7573,15,31,13.4282ZM18,26H14V18h4Zm2,0V18a2.0023,2.0023,0,0,0-2-2H14a2.002,2.002,0,0,0-2,2v8H6V12.0615l10-7.79,10,7.8005V26Z"/></svg><span>Home</span></button>
@@ -1065,7 +1139,7 @@ body *:not(.pearl):not(.oc):not(.tag):not(.cap):not(.step):not(.chip):not(#mode)
     <button type="button" data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Usage</button>
   </div>
   <div class="acctsect"><span class="label">Appearance</span>
-  <div class="seg" id="themeSeg"><button type="button" data-theme-set="">System</button><button type="button" data-theme-set="dark">Dark</button><button type="button" data-theme-set="light">Light</button></div></div>
+  <button type="button" class="themeentry" id="acctTheme"><span class="sw4" id="acctThemeSw" aria-hidden="true"><i></i><i></i><i></i></span><span><b id="acctThemeName">Theme</b><small>Open Theme Studio</small></span></button></div>
   <div class="acctsect"><span class="label">Your name</span>
   <div class="row" style="flex-wrap:nowrap"><input id="meNameIn" maxlength="40" placeholder="Shown in the greeting" autocomplete="off"><button class="ghost" type="button" id="meNameSave">Save</button></div></div>
   <button class="navbtn" id="btnLogout" style="margin-top:6px">Log out</button>
@@ -1198,7 +1272,7 @@ body *:not(.pearl):not(.oc):not(.tag):not(.cap):not(.step):not(.chip):not(#mode)
 
     <section class="admin-only" id="homeCard" data-tab="home">
       <div class="hdr"><button class="iconbtn plain" id="navBack" aria-label="Back" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14.5 6-6 6 6 6"/></svg></button><button class="iconbtn plain" id="navFwd" aria-label="Forward" disabled><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m9.5 6 6 6-6 6"/></svg></button><span class="sp"></span>
-        <button class="iconbtn plain" id="btnSearch" title="Search conversations and projects (Ctrl+K)" aria-label="Search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></button><button class="iconbtn plain" id="btnTheme" title="Switch between dark and light" aria-label="Switch theme"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg></button>
+        <button class="iconbtn plain" id="btnSearch" title="Search conversations and projects (Ctrl+K)" aria-label="Search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></button><button class="iconbtn plain" id="btnTheme" title="Theme Studio" aria-label="Open Theme Studio"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg></button>
         <select id="homeModel" class="modelpill" aria-label="Model"></select></div>
      <div id="homeMain">
       <div class="work-label"><span>NOVA</span> ARTIST DESK</div><div class="hhero"><span class="pearl" id="heroPearl"></span><div><h1 id="greet">Welcome.</h1><p id="heroSub">A little thought. A new possibility.</p></div></div>
@@ -1509,7 +1583,6 @@ body *:not(.pearl):not(.oc):not(.tag):not(.cap):not(.step):not(.chip):not(#mode)
     document.querySelectorAll("[data-theme-set]").forEach(b => b.classList.toggle("on", b.dataset.themeSet === t));
   }
   const themeNow = () => themeChoice() || (matchMedia("(prefers-color-scheme: light)").matches ? "light" : "dark");
-  setTheme(themeChoice());
   const STEPS = ["searching","attaching","provisioning","starting","loading_model","ready"];
   const LABEL = {offline:"Offline",searching:"Searching",attaching:"Connecting",provisioning:"Provisioning",starting:"Starting",
     loading_model:"Loading model",ready:"Ready",processing:"Processing",idle:"Idle",stopping:"Stopping",stopped:"Stopped",failed:"Failed"};
@@ -1524,7 +1597,7 @@ body *:not(.pearl):not(.oc):not(.tag):not(.cap):not(.step):not(.chip):not(#mode)
     return j;
   }
   function render(s) {
-    S = s; sideBudget(s); homeUsage(s); renderKpis(); identity(s);
+    S = s; if (s && s.settings) dispatchEvent(new CustomEvent("nova-settings", { detail: s.settings })); sideBudget(s); homeUsage(s); renderKpis(); identity(s);
     const ph = s.phase, ses = s.session || {};
     const el = $("phase"); el.className = "phase " + (["ready","processing","idle"].includes(ph) ? "ok" : ["failed"].includes(ph) ? "bad" : STEPS.includes(ph) || ph === "stopping" ? "busy" : "");
     $("phaseText").textContent = STEPS.slice(0,5).includes(ph) ? "Starting your AI environment… (" + LABEL[ph] + ")" : (LABEL[ph] || ph);
@@ -1777,12 +1850,12 @@ body *:not(.pearl):not(.oc):not(.tag):not(.cap):not(.step):not(.chip):not(#mode)
   }
   function greet(name) {
     const h = new Date().getHours(), part = h < 5 ? "Good evening" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
-    $("greet").innerHTML = name ? esc(part) + ", <b>" + esc(name) + ".</b>" : esc(part) + ".";
+    $("greet").innerHTML = name ? esc(part) + ", <b>" + esc(name) + '</b><span class="acc">.</span>' : esc(part) + '<span class="acc">.</span>';
   }
   $("meMore").onclick = (e) => { e.stopPropagation(); acctOpen(); };
   document.addEventListener("click", (e) => { const menu = $("meMenu"); if (menu && !$("me").contains(e.target)) menu.hidden = true; });
   document.querySelectorAll("[data-theme-set]").forEach(b => b.onclick = () => setTheme(b.dataset.themeSet, true));
-  $("btnTheme").onclick = () => setTheme(themeNow() === "dark" ? "light" : "dark", true);
+  $("btnTheme").onclick = () => openThemeStudio();
   $("meNameSave").onclick = async () => { try { const st = await send("settings", "PUT", { owner_name: $("meNameIn").value.trim() }); if (S && S.settings) { S.settings.owner_name = st.owner_name; identity(S); } $("meMenu").hidden = true; } catch (e) { toast(e.message); } };
   $("meNameIn").addEventListener("keydown", (e) => { if (e.key === "Enter" && !imeKey(e)) $("meNameSave").click(); });
 
@@ -2871,6 +2944,88 @@ body *:not(.pearl):not(.oc):not(.tag):not(.cap):not(.step):not(.chip):not(#mode)
   }
   const roleShort = (o) => o.textContent.split(" · ")[0];
   ["chatModel", "tModel", "homeModel"].forEach(id => enhanceSelect($(id), { title: "Which model answers", short: roleShort }));
+
+  // ── Theme Studio: ten complete Carbon token sets (nova-themes.css). Cookie for the first paint, server setting
+  // (ui_theme) for every device. "Follow the device" keeps one theme for dark and one for light.
+  const THEMES = [
+    { id: "obsidian", name: "Obsidian × Acid Lime", mode: "dark", group: "nova", note: "Experimental, high contrast, technical." },
+    { id: "oxblood", name: "Oxblood × Electric Ice", mode: "dark", group: "nova", note: "Editorial, avant-garde, unexpected." },
+    { id: "cobalt", name: "Midnight Cobalt × Tangerine", mode: "dark", group: "nova", note: "Energetic, creative, confident." },
+    { id: "petrol", name: "Petrol × Digital Coral", mode: "dark", group: "nova", note: "Warm technology, quiet retrofuturism." },
+    { id: "aubergine", name: "Aubergine × Chartreuse", mode: "dark", group: "nova", note: "Fashion-tech, artistic, unconventional." },
+    { id: "porcelain", name: "Porcelain × Vermilion", mode: "light", group: "nova", note: "Editorial minimalism in light." },
+    { id: "carbon-white", name: "Carbon White", mode: "light", group: "carbon", note: "IBM's official light theme." },
+    { id: "carbon-g10", name: "Carbon Gray 10", mode: "light", group: "carbon", note: "Official light, softer layers." },
+    { id: "carbon-g90", name: "Carbon Gray 90", mode: "dark", group: "carbon", note: "Official dark, lifted layers." },
+    { id: "carbon-g100", name: "Carbon Gray 100", mode: "dark", group: "carbon", note: "Official dark, deepest." },
+  ];
+  const TH = Object.fromEntries(THEMES.map(t => [t.id, t]));
+  const cookieGet = (k) => decodeURIComponent((document.cookie.match(new RegExp("(?:^|; )" + k + "=([^;]*)")) || [])[1] || "");
+  const prefersLight = () => matchMedia("(prefers-color-scheme: light)").matches;
+  const parsePref = (v) => { v = v || "obsidian"; if (v.startsWith("system:")) { const [d, l] = v.slice(7).split("/"); return { system: true, dark: TH[d] ? d : "obsidian", light: TH[l] ? l : "porcelain" }; }
+    const id = TH[v] ? v : "obsidian"; return { system: false, id, dark: TH[id].mode === "dark" ? id : "obsidian", light: TH[id].mode === "light" ? id : "porcelain" }; };
+  const prefString = (p) => p.system ? `system:${p.dark}/${p.light}` : p.id;
+  const resolve = (p) => p.system ? (prefersLight() ? p.light : p.dark) : p.id;
+  let THEME_PREF = parsePref(cookieGet("nova_theme")), TS = null;
+  function paintTheme(id, animate) {
+    const r = document.documentElement, t = TH[id] || TH.obsidian;
+    if (animate) { r.classList.add("theme-switching"); clearTimeout(paintTheme.t); paintTheme.t = setTimeout(() => r.classList.remove("theme-switching"), 320); }
+    r.setAttribute("data-nova-theme", t.id); r.setAttribute("data-theme", t.mode);
+    const meta = document.querySelector('meta[name="theme-color"]') || Object.assign(document.head.appendChild(document.createElement("meta")), { name: "theme-color" });
+    meta.content = getComputedStyle(r).getPropertyValue("--cds-background").trim() || "#141713";
+    if ($("acctThemeName")) $("acctThemeName").textContent = THEME_PREF.system ? "Follows the device · " + t.name : t.name;
+  }
+  function saveTheme(p, toServer) {
+    THEME_PREF = p; const v = prefString(p), mode = (TH[resolve(p)] || TH.obsidian).mode;
+    document.cookie = "nova_theme=" + encodeURIComponent(v) + "; path=/autopilot; max-age=31536000; SameSite=Lax";
+    document.cookie = "vellur_theme=" + mode + "; path=/autopilot; max-age=31536000; SameSite=Lax";   // 3D Studio reads this
+    if (toServer) send("settings", "PUT", { ui_theme: v }).catch(() => toast("The theme is saved on this device; it could not be saved on the server.", "warn"));
+  }
+  matchMedia("(prefers-color-scheme: light)").addEventListener("change", () => { if (THEME_PREF.system && !TS) paintTheme(resolve(THEME_PREF), true); });
+  // the server copy wins on a device that has no cookie yet (first visit on a new phone)
+  addEventListener("nova-settings", (e) => { const v = (e.detail || {}).ui_theme; if (v && !cookieGet("nova_theme")) { saveTheme(parsePref(v), false); paintTheme(resolve(THEME_PREF), true); } });
+  function tsCard(t) {
+    return `<button type="button" class="tscard" role="radio" aria-checked="false" data-id="${t.id}" aria-label="${esc(t.name)}, ${t.mode} theme${t.group === "carbon" ? ", official IBM Carbon" : ""}">
+      <span class="tsprev" data-nova-preview="${t.id}" aria-hidden="true"><span class="nav"><i></i><i></i><i></i><i></i></span><span class="main"><span class="h"></span><span class="card"><span class="t"></span><span class="t s"></span><span class="row"><span class="btn"></span><span class="tag"></span><span class="dot"></span></span></span></span></span>
+      <span class="meta"><b>${esc(t.name)}</b><small>${esc(t.note)}</small></span><span class="slot"></span>
+      <span class="chk" aria-hidden="true"><svg viewBox="0 0 32 32" width="14" height="14" fill="currentColor"><path d="M13 24 4 15l1.414-1.414L13 21.171 26.586 7.586 28 9z"/></svg></span></button>`;
+  }
+  function tsSync() {
+    const p = TS.pref, cur = resolve(p);
+    document.querySelectorAll(".tscard").forEach(c => { const id = c.dataset.id, on = id === cur; c.setAttribute("aria-checked", String(on)); c.tabIndex = on ? 0 : -1;
+      const slot = p.system ? (id === p.dark ? "Night" : id === p.light ? "Day" : "") : ""; if (slot) c.dataset.slot = slot; else delete c.dataset.slot; c.querySelector(".slot").textContent = slot; });
+    $("themeSystem").checked = p.system;
+    $("themeSysHint").textContent = p.system ? `Night: ${TH[p.dark].name} · Day: ${TH[p.light].name}. Choose a dark or a light theme to change either.` : "Use one theme by day and another by night.";
+    const changed = prefString(p) !== prefString(TS.orig);
+    $("themeApply").disabled = !changed; $("themeState").textContent = changed ? "Previewing — apply to keep it, cancel to go back." : "This is your current theme.";
+  }
+  function openThemeStudio() {
+    if (!$("tsGridNova").children.length) { $("tsGridNova").innerHTML = THEMES.filter(t => t.group === "nova").map(tsCard).join(""); $("tsGridCarbon").innerHTML = THEMES.filter(t => t.group === "carbon").map(tsCard).join(""); }
+    TS = { orig: { ...THEME_PREF }, pref: { ...THEME_PREF } }; tsSync();
+    if ($("acctDlg").open) $("acctDlg").close();
+    $("themeDlg").showModal(); const on = document.querySelector('.tscard[aria-checked="true"]'); on && on.focus();
+  }
+  function tsPick(id) {
+    const t = TH[id], p = { ...TS.pref };
+    if (p.system) { p[t.mode] = id; } else { p.id = id; p[t.mode] = id; }
+    TS.pref = p; paintTheme(resolve(p), true); tsSync();
+  }
+  document.addEventListener("click", (e) => { const c = e.target.closest(".tscard"); if (c && TS) tsPick(c.dataset.id); });
+  document.addEventListener("keydown", (e) => {   // radio-group keys: arrows move and preview, Home/End jump
+    const c = e.target.closest && e.target.closest(".tscard"); if (!c || !TS) return;
+    const all = [...document.querySelectorAll(".tscard")], i = all.indexOf(c);
+    const cols = matchMedia("(max-width:360px)").matches ? 1 : matchMedia("(max-width:860px)").matches ? 2 : 3;
+    const to = { ArrowRight: i + 1, ArrowLeft: i - 1, ArrowDown: i + cols, ArrowUp: i - cols, Home: 0, End: all.length - 1 }[e.key];
+    if (to == null) return; e.preventDefault(); const n = all[Math.max(0, Math.min(all.length - 1, to))]; n.focus(); tsPick(n.dataset.id);
+  });
+  $("themeSystem").onchange = () => { const p = { ...TS.pref, system: $("themeSystem").checked }; if (!p.system) p.id = resolve(TS.pref); TS.pref = p; paintTheme(resolve(p), true); tsSync(); };
+  const tsClose = (keep) => { if (!TS) return; if (!keep) paintTheme(resolve(TS.orig), true); TS = null; if ($("themeDlg").open) $("themeDlg").close(); };
+  $("themeApply").onclick = () => { const p = TS.pref; saveTheme(p, true); paintTheme(resolve(p), false); tsClose(true); toast("Theme applied: " + TH[resolve(p)].name + ".", "ok"); };
+  $("themeCancel").onclick = () => tsClose(false); $("themeClose").onclick = () => tsClose(false);
+  $("themeDlg").addEventListener("cancel", (e) => { e.preventDefault(); tsClose(false); });
+  $("themeDlg").addEventListener("click", (e) => { if (e.target === $("themeDlg")) tsClose(false); });
+  if ($("acctTheme")) $("acctTheme").onclick = () => openThemeStudio();
+  paintTheme(resolve(THEME_PREF), false);
   // ── NOVA phase two ──────────────────────────────────────────────────────────────────────────
   const dayKey = (ts) => new Date(ts * 1000).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
   const usd = (v) => "$" + Number(v || 0).toFixed(4);
