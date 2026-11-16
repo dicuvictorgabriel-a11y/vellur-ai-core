@@ -945,8 +945,6 @@ h2{font-size:1.25rem;line-height:1.4;font-weight:400;letter-spacing:0}h3{font-si
 .label,.navgrp,.mpg,.tlday,.kpi .kl,.sidehead{font-family:var(--sans)!important;font-size:.75rem!important;letter-spacing:.32px!important;text-transform:none!important;color:var(--cds-text-secondary)!important;font-weight:400!important}
 .hhero h1{font-size:2.625rem;line-height:1.19;font-weight:300;letter-spacing:0}.hhero p{font-size:1rem;color:var(--cds-text-secondary)}
 /* square geometry everywhere except tags and avatars */
-button,input,select,textarea,dialog,.card,.composer,.hcomp,.workcard,.stsec,.phcard,.klist,.kpi,.mpbtn,.toast,.krow,.seg,.seg button,#agToolsPanel,#meMenu,.sbox,
-#homeCard .hcard,.pc,.tool,.rchain li,.radd,.polstat,.whynote,.kempty,.atts *,.m.user .txt,iframe,img,figure,pre,code,.chips button{border-radius:0!important}
 .oc,.tag,.chips button{border-radius:1rem!important}
 /* buttons: Carbon sizes (md 40 / lg 48), primary / secondary / ghost / danger */
 button{font:400 .875rem/1.28572 var(--sans);letter-spacing:.16px;min-height:40px;padding:0 1rem;border:1px solid transparent;cursor:pointer;transition:background-color 70ms cubic-bezier(0,0,.38,.9),color 70ms}
@@ -957,7 +955,7 @@ button.ghost{background:transparent;color:var(--cds-link-primary);border:0}butto
 button.danger{background:var(--cds-button-danger-primary,#da1e28);color:var(--cds-text-on-color);border:0}
 button:disabled{background:var(--cds-button-disabled)!important;color:var(--cds-text-on-color-disabled)!important;cursor:not-allowed}
 /* icon buttons are square by construction (aspect-ratio + equal min sizes): fixes stretched "circles" */
-.iconbtn{display:inline-flex!important;align-items:center;justify-content:center;flex:none!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;max-height:40px;aspect-ratio:1/1;padding:0!important;border:0!important;background:transparent!important;color:var(--cds-icon-primary)!important;border-radius:0!important}
+.iconbtn{display:inline-flex!important;align-items:center;justify-content:center;flex:none!important;width:40px!important;height:40px!important;min-width:40px!important;min-height:40px!important;max-height:40px;aspect-ratio:1/1;padding:0!important;border:0!important;background:transparent!important;color:var(--cds-icon-primary)!important}
 .iconbtn:hover{background:var(--cds-background-hover)!important}
 .iconbtn.sm{width:32px!important;height:32px!important;min-width:32px!important;min-height:32px!important;max-height:32px}
 svg.ic.cds{fill:currentColor;stroke:none;width:20px;height:20px}.iconbtn svg.ic.cds{width:20px;height:20px}.iconbtn.sm svg.ic.cds{width:16px;height:16px}
@@ -969,13 +967,13 @@ input::placeholder,textarea::placeholder{color:var(--cds-text-placeholder)}
 input[type=checkbox]{accent-color:var(--cds-interactive);width:16px;height:16px}
 /* UI shell: side nav (Carbon side-nav: 256/48 px, 32 px rows, 3 px selected bar) */
 #side{background:var(--cds-background)!important;border-right:1px solid var(--cds-border-subtle-00)!important}
-#tabs button,.navbtn{min-height:32px!important;padding:0 1rem!important;gap:12px!important;color:var(--cds-text-secondary)!important;font-weight:400!important;font-size:.875rem!important;border-radius:0!important;background:transparent!important}
+#tabs button,.navbtn{min-height:32px!important;padding:0 1rem!important;gap:12px!important;color:var(--cds-text-secondary)!important;font-weight:400!important;font-size:.875rem!important;background:transparent!important}
 #tabs button:hover,.navbtn:hover{background:var(--cds-background-hover)!important;color:var(--cds-text-primary)!important}
 #tabs button.on{background:var(--cds-background-selected)!important;color:var(--cds-text-primary)!important;font-weight:600!important;box-shadow:none!important}
-#tabs button.on:before{left:0!important;top:0!important;bottom:0!important;width:3px!important;border-radius:0!important;background:var(--cds-border-interactive)!important;display:block!important}
+#tabs button.on:before{left:0!important;top:0!important;bottom:0!important;width:3px!important;background:var(--cds-border-interactive)!important;display:block!important}
 #tabs button.on svg{color:var(--cds-icon-primary)!important}
 .navgrp{padding:16px 1rem 4px!important}
-#convList button,#taskList button{border-radius:0!important;min-height:32px}
+#convList button,#taskList button{min-height:32px}
 @media(min-width:861px){body.rail #side{width:48px!important;padding:8px 0!important}body.rail #tabs button,body.rail #railToggle{width:48px!important;height:40px!important;padding:0!important;justify-content:center!important}
   body.rail #tabs button.on:before{left:0!important}}
 /* brand: Carbon header name ("IBM [Product]" pattern → NOVA) */
@@ -1007,16 +1005,16 @@ dialog::backdrop{background:var(--cds-overlay)!important}
 /* links and status colours */
 a{color:var(--cds-link-primary)}a:hover{color:var(--cds-link-primary-hover)}
 /* primary send actions: Carbon primary icon-only button, square */
-#homeSend,#btnSend,#agSend{width:48px!important;height:48px!important;min-width:48px;min-height:48px;aspect-ratio:1/1;padding:0!important;border:0!important;border-radius:0!important;background:var(--cds-button-primary)!important;color:var(--cds-text-on-color)!important;display:inline-flex;align-items:center;justify-content:center;flex:none}
+#homeSend,#btnSend,#agSend{width:48px!important;height:48px!important;min-width:48px;min-height:48px;aspect-ratio:1/1;padding:0!important;border:0!important;background:var(--cds-button-primary)!important;color:var(--cds-text-on-color)!important;display:inline-flex;align-items:center;justify-content:center;flex:none}
 #homeSend:hover,#btnSend:hover,#agSend:hover{background:var(--cds-button-primary-hover)!important}
 #homeSend svg,#btnSend svg,#agSend svg{width:20px;height:20px}
-.hbtn{width:40px!important;height:40px!important;min-width:40px;aspect-ratio:1/1;border:0!important;border-radius:0!important;background:transparent!important;color:var(--cds-icon-primary)!important}
+.hbtn{width:40px!important;height:40px!important;min-width:40px;aspect-ratio:1/1;border:0!important;background:transparent!important;color:var(--cds-icon-primary)!important}
 .hbtn:hover{background:var(--cds-background-hover)!important}
 /* page header: title block + actions wrap instead of squeezing (Carbon page header) */
 .pagehead{flex-wrap:wrap;row-gap:16px}.pagehead>div{min-width:0;flex:1 1 280px}
 @media(max-width:672px){.pagehead>*:not(div){flex:none}.pagehead .seg{order:3}}
 #me .who small{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
-.bar,.bar i,#bBar,#bBar i,.umeter .bar{border-radius:0!important}
+.bar,.bar i,#bBar,#bBar i,.umeter .bar{}
 .cap,.step,.chip,#mode,#stCost,.tag{border-radius:1rem!important;font-family:var(--sans)!important;font-size:.75rem!important;letter-spacing:.32px;min-height:24px;display:inline-flex;align-items:center;padding:0 8px!important}
 .return-actions button:first-child,.hrecent button.primary{background:var(--cds-button-primary)!important;color:var(--cds-text-on-color)!important}
 /* Carbon toggle: 48x24 track, 18 px knob, 3 px inset; checked = support-success */
@@ -1027,12 +1025,10 @@ a{color:var(--cds-link-primary)}a:hover{color:var(--cds-link-primary-hover)}
 .krow small,.krow .meta small{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;max-width:100%}
 .iconbtn:disabled{background:transparent!important;color:var(--cds-icon-disabled)!important}
 @media(max-width:860px){#navBack,#navFwd{display:none!important}}
-article,[class*="card"]:not(.oc),[class*="return"]{border-radius:0!important}
 #toasts{gap:8px}#toasts cds-toast-notification{max-width:min(400px,calc(100vw - 32px))}
 .kpi cds-tag{margin:0}
 /* Carbon is square: every surface, control and segment, except circles that carry meaning (avatar, status dots,
    progress-indicator steps, toggle knob, spinners) and tags (pill). Pseudo-elements keep their own geometry. */
-body *:not(.pearl):not(.oc):not(.tag):not(.cap):not(.step):not(.chip):not(#mode):not(#stCost):not(.dot):not(.ring):not(.tlrow i):not(.phases i):not(.sw b):not(.st):not(cds-tag):not(cds-toast-notification):not(cds-inline-loading):not(.chips button){border-radius:0!important}
 /* collapsed rail (48 px): icons only — labels, group names and lists hidden, nothing clipped */
 @media(min-width:861px){
   body.rail #tabs button,body.rail #railToggle{font-size:0!important;gap:0!important;overflow:hidden}
@@ -1094,6 +1090,113 @@ html.theme-switching,html.theme-switching *{transition:background-color 240ms cu
   .tshead{padding:20px 16px 12px}.tsbody{padding:0 16px 8px}.tsfoot{padding:12px 16px max(12px,env(safe-area-inset-bottom))}.tsfoot button{flex:1;min-width:0}.tsfoot #themeState{display:none}
   .tsprev{height:92px}.tshead h2{font-size:1.5rem}}
 @media(max-width:360px){.tsgrid{grid-template-columns:minmax(0,1fr)}}
+
+/* ═══ SOFT INDUSTRIAL — NOVA's material language over the Carbon foundation (docs/DESIGN.md).
+   Carbon keeps behaviour, tokens, states and accessibility; NOVA defines geometry, material and composition.
+   Everything reads theme tokens, so the ten themes are ten finishes of the same object. ═══ */
+:root{--nv-r-xs:8px;--nv-r-sm:12px;--nv-r-md:18px;--nv-r-lg:28px;--nv-pill:999px;
+  --nv-hi:color-mix(in srgb,#fff 7%,transparent);--nv-hi-strong:color-mix(in srgb,#fff 12%,transparent);
+  --nv-edge:color-mix(in srgb,var(--cds-text-primary) 9%,transparent);--nv-edge-strong:color-mix(in srgb,var(--cds-text-primary) 16%,transparent);
+  --nv-shadow:0 1px 1px rgba(0,0,0,.18),0 10px 28px -14px rgba(0,0,0,.55);--nv-shadow-lg:0 2px 3px rgba(0,0,0,.2),0 28px 60px -28px rgba(0,0,0,.7);
+  --nv-surface:linear-gradient(180deg,color-mix(in srgb,var(--cds-layer-01),var(--cds-text-primary) 3%) 0%,var(--cds-layer-01) 60%);
+  --nv-surface-2:linear-gradient(180deg,color-mix(in srgb,var(--cds-layer-02),var(--cds-text-primary) 4%) 0%,var(--cds-layer-02) 70%);
+  --nv-ease:cubic-bezier(.2,.8,.2,1)}
+:root[data-theme="light"]{--nv-hi:color-mix(in srgb,#fff 85%,transparent);--nv-hi-strong:#fff;
+  --nv-edge:color-mix(in srgb,var(--cds-text-primary) 10%,transparent);--nv-edge-strong:color-mix(in srgb,var(--cds-text-primary) 18%,transparent);
+  --nv-shadow:0 1px 1px rgba(20,20,30,.05),0 10px 24px -14px rgba(20,20,30,.22);--nv-shadow-lg:0 2px 3px rgba(20,20,30,.06),0 28px 56px -28px rgba(20,20,30,.3);
+  --nv-surface:linear-gradient(180deg,var(--cds-layer-01) 0%,color-mix(in srgb,var(--cds-layer-01),var(--cds-text-primary) 2%) 100%)}
+/* material: one recipe for every raised surface — hairline edge, top highlight, soft long shadow */
+.card,.kpi,.stsec,.phcard,.workcard,.klist,.polstat,.kempty,#homeCard .hcard,.return-card,#returnCard,.tool,.pc,.rchain li,.sbox{
+  border:1px solid var(--nv-edge)!important;border-radius:var(--nv-r-md)!important;background:var(--nv-surface)!important;
+  box-shadow:inset 0 1px 0 var(--nv-hi),var(--nv-shadow)!important}
+.krow{border-radius:0!important}.klist{overflow:hidden}
+dialog,#mpDlg,#askDlg,#kDlg,#whyDlg,#acctDlg,#themeDlg{border:1px solid var(--nv-edge-strong)!important;border-radius:var(--nv-r-lg)!important;background:var(--nv-surface-2)!important;box-shadow:inset 0 1px 0 var(--nv-hi-strong),var(--nv-shadow-lg)!important;overflow:hidden}
+dialog::backdrop{background:color-mix(in srgb,var(--cds-background) 55%,transparent)!important}
+/* controls */
+button,a.primary,.mpbtn{border-radius:var(--nv-r-sm)!important}
+button.primary,a.primary,#homeSend,#btnSend,#agSend{box-shadow:inset 0 1px 0 color-mix(in srgb,#fff 28%,transparent),0 6px 16px -8px color-mix(in srgb,var(--nova-accent) 70%,transparent)!important}
+input:not([type=checkbox]):not([type=radio]):not([type=file]),select{border-radius:var(--nv-r-sm)!important;border:1px solid var(--nv-edge)!important;background:var(--cds-field-01)!important;box-shadow:inset 0 1px 2px rgba(0,0,0,.12)}
+input:focus-visible,select:focus-visible,textarea:focus-visible{outline:2px solid var(--cds-focus)!important;outline-offset:1px!important}
+.iconbtn,.hbtn{border-radius:50%!important;aspect-ratio:1/1}
+.seg{border-radius:var(--nv-pill)!important;border:1px solid var(--nv-edge)!important;padding:3px!important;background:var(--cds-layer-01)!important;gap:2px!important}
+.seg button{border-radius:var(--nv-pill)!important;border:0!important;min-height:30px!important;padding:0 14px!important}
+.seg button.on{background:var(--cds-text-primary)!important;color:var(--cds-background)!important}
+.oc,.tag,cds-tag,.chips button,.cap,.step,.chip,#mode,#stCost{border-radius:var(--nv-pill)!important}
+.mpbtn{border:1px solid var(--nv-edge)!important;background:var(--cds-layer-01)!important}
+.bar,.bar i,#bBar,#bBar i{border-radius:var(--nv-pill)!important}
+img,figure,.msgimgs img,.m.user .txt{border-radius:var(--nv-r-sm)!important}
+.m.user .txt{border:1px solid var(--nv-edge)!important;background:var(--cds-layer-01)!important}
+/* navigation: soft pills; the selected place carries a small accent dot instead of a hard bar */
+#side{background:linear-gradient(180deg,var(--cds-background),color-mix(in srgb,var(--cds-background),var(--cds-text-primary) 2%))!important;border-right:1px solid var(--nv-edge)!important}
+#tabs{padding:0 8px}#tabs button,.navbtn,#convList button,#taskList button{border-radius:var(--nv-r-sm)!important;min-height:36px!important}
+#tabs button.on{background:var(--cds-layer-01)!important;box-shadow:inset 0 1px 0 var(--nv-hi),0 1px 2px rgba(0,0,0,.15)!important;font-weight:500!important}
+#tabs button.on:before{left:auto!important;right:12px!important;top:50%!important;bottom:auto!important;width:6px!important;height:6px!important;border-radius:50%!important;transform:translateY(-50%);background:var(--nova-accent)!important}
+@media(min-width:861px){body.rail #tabs button,body.rail #railToggle{width:40px!important;height:40px!important;margin:0 auto;border-radius:50%!important}
+  body.rail #tabs button.on:before{right:2px!important;top:6px!important;transform:none;width:5px!important;height:5px!important}}
+/* ── Home: an instrument, not a dashboard ── */
+#homeCard{background:radial-gradient(70% 46% at 50% -6%,color-mix(in srgb,var(--nova-accent) 9%,transparent),transparent 70%)}
+.hhero{align-items:center!important;gap:18px!important;margin:56px 0 28px!important}
+.hhero h1{font-size:clamp(2.5rem,5.2vw,4.25rem)!important;letter-spacing:-.025em!important;font-weight:300!important;line-height:1.02!important}
+.hhero p{font-size:1.0625rem!important;margin-top:10px!important}
+/* NOVA Core — the signature: a small pearl of the theme's own light. It shows the agent's state:
+   idle (still), working (a slow orbit of light), attention (an accent ring). CSS only; no motion when reduced. */
+.nova-core{position:relative;flex:none;width:56px;height:56px;border-radius:50%;aspect-ratio:1/1;align-self:center;
+  background:radial-gradient(circle at 34% 28%,color-mix(in srgb,#fff 92%,var(--nova-accent)) 0 6%,transparent 26%),
+             radial-gradient(circle at 62% 70%,color-mix(in srgb,var(--nova-accent) 55%,transparent),transparent 58%),
+             radial-gradient(circle at 50% 50%,color-mix(in srgb,var(--nova-secondary,var(--cds-text-secondary)) 45%,var(--cds-layer-02)) 0,var(--cds-layer-01) 72%);
+  box-shadow:inset 0 -6px 14px rgba(0,0,0,.35),inset 0 2px 3px var(--nv-hi-strong),0 12px 30px -14px color-mix(in srgb,var(--nova-accent) 60%,transparent)}
+.nova-core i{position:absolute;inset:-5px;border-radius:50%;border:1px solid transparent}
+body[data-agent="working"] .nova-core i{border-top-color:var(--nova-accent);border-right-color:color-mix(in srgb,var(--nova-accent) 40%,transparent);animation:novaOrbit 2.4s linear infinite}
+body[data-agent="attention"] .nova-core i{border-color:var(--nova-accent);box-shadow:0 0 0 3px color-mix(in srgb,var(--nova-accent) 18%,transparent)}
+@keyframes novaOrbit{to{transform:rotate(360deg)}}
+@media(prefers-reduced-motion:reduce){body[data-agent="working"] .nova-core i{animation:none;border-color:var(--nova-accent)}}
+/* the composer: NOVA's signature control */
+.hcomp,.composer{border-radius:var(--nv-r-lg)!important;border:1px solid var(--nv-edge-strong)!important;background:var(--nv-surface-2)!important;
+  box-shadow:inset 0 1px 0 var(--nv-hi-strong),var(--nv-shadow-lg)!important;transition:box-shadow 180ms var(--nv-ease),border-color 180ms var(--nv-ease)}
+.hcomp{padding:22px 22px 16px!important}
+.hcomp:focus-within,.composer:focus-within{border-color:color-mix(in srgb,var(--nova-accent) 55%,var(--nv-edge-strong))!important;
+  box-shadow:inset 0 1px 0 var(--nv-hi-strong),0 0 0 4px color-mix(in srgb,var(--nova-accent) 12%,transparent),var(--nv-shadow-lg)!important}
+#homeIn{font-size:1.125rem!important;line-height:1.5!important}
+#homeSend,#btnSend,#agSend{border-radius:50%!important;width:46px!important;height:46px!important;min-width:46px!important;min-height:46px!important}
+.hmode,#chatMode{border-radius:var(--nv-pill)!important;border:1px solid var(--nv-edge)!important;padding:0 32px 0 14px!important;min-height:36px!important;background-color:var(--cds-layer-01)!important}
+/* activity strip: the four indicators as one quiet instrument readout */
+.kpis{display:flex!important;gap:0!important;margin:22px 0 10px!important;border:1px solid var(--nv-edge);border-radius:var(--nv-pill);background:var(--nv-surface);box-shadow:inset 0 1px 0 var(--nv-hi),var(--nv-shadow);overflow:hidden}
+.kpis .kpi{flex:1 1 0;min-width:0;flex-direction:row!important;align-items:center!important;gap:10px!important;padding:10px 18px!important;border:0!important;border-radius:0!important;background:transparent!important;box-shadow:none!important;min-height:56px!important}
+.kpis .kpi+.kpi{border-left:1px solid var(--nv-edge)!important}
+.kpis .kpi .kl{order:2;flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.kpis .kpi b{order:1;font-size:1.375rem!important;font-weight:400!important;line-height:1!important;font-variant-numeric:tabular-nums}
+.kpis .kpi cds-tag,.kpis .kpi .oc{order:3;flex:none}
+.kpis .kpi:hover{background:color-mix(in srgb,var(--cds-text-primary) 4%,transparent)!important}
+.kpis .kpi cds-tag,.kpis .kpi .oc{display:none!important}           /* state lives in NOVA Core; the strip stays a calm readout */
+body[data-agent="attention"] .kpis .kpi[data-k="att"] b,body[data-agent="working"] .kpis .kpi[data-k="run"] b{color:var(--nova-accent)}
+.result-metrics>div{border-radius:var(--nv-r-sm)!important;border:1px solid var(--nv-edge)!important;background:color-mix(in srgb,var(--cds-background) 55%,transparent)!important}
+#chatMode,.hmode{min-width:104px}
+@media(max-width:860px){#homeCard>.hdr{border-bottom:0!important;background:transparent!important}}
+.copyid{border-radius:0!important}
+/* page headers: editorial weight */
+.pagehead h1,.ph h1{font-weight:300!important;letter-spacing:-.02em!important;font-size:2.25rem!important}
+/* Theme Studio cards: same material */
+.tscard{border-radius:var(--nv-r-md)!important;overflow:hidden;border:1px solid var(--nv-edge)!important;box-shadow:inset 0 1px 0 var(--nv-hi),var(--nv-shadow)!important}
+.tscard[aria-checked="true"]{box-shadow:0 0 0 2px var(--nova-accent),var(--nv-shadow)!important}
+.tscard .chk{border-radius:50%!important}.tscard .slot{border-radius:var(--nv-pill)!important}
+/* ── phone ── */
+@media(max-width:860px){
+  #navOpen{display:none!important}                         /* the bottom bar's Menu is the one way to the menu (no duplicate) */
+  #bottomNav{left:10px!important;right:10px!important;bottom:max(10px,env(safe-area-inset-bottom))!important;padding:6px!important;border:1px solid var(--nv-edge-strong)!important;border-radius:22px!important;background:var(--nv-surface-2)!important;box-shadow:inset 0 1px 0 var(--nv-hi),var(--nv-shadow-lg)!important}
+  #bottomNav button{border-radius:16px!important;min-height:50px!important}#bottomNav button.on{background:var(--cds-layer-01)!important;box-shadow:inset 0 1px 0 var(--nv-hi)!important}
+  #bottomNav button.on svg{color:var(--nova-accent)!important}
+  body.is-admin:not(.typing) main{padding-bottom:calc(92px + env(safe-area-inset-bottom))!important}
+  .hhero{margin:28px 0 20px!important;gap:14px!important}.hhero h1{font-size:2.5rem!important}.nova-core{width:44px;height:44px}
+  .hcomp{padding:16px 16px 12px!important;border-radius:24px!important}
+  .kpis{display:grid!important;grid-template-columns:1fr 1fr;border-radius:var(--nv-r-md)}
+  .kpis .kpi{padding:12px 14px!important;min-height:58px!important}.kpis .kpi:nth-child(3){border-left:0!important}
+  .kpis .kpi:nth-child(n+3){border-top:1px solid var(--nv-edge)!important}
+  .kpis .kpi cds-tag,.kpis .kpi .oc{display:none}
+  /* Theme Studio as a real sheet: fixed height so the gallery always has room */
+  #themeDlg{height:92dvh!important;max-height:92dvh!important;border-radius:24px 24px 0 0!important;border-bottom:0!important}
+  #themeDlg .tsbody{flex:1 1 auto;min-height:0;overflow:auto}
+  #mpDlg,#askDlg{border-radius:24px 24px 0 0!important}
+}
 </style>
 </head>
 <body>
@@ -1275,7 +1378,7 @@ html.theme-switching,html.theme-switching *{transition:background-color 240ms cu
         <button class="iconbtn plain" id="btnSearch" title="Search conversations and projects (Ctrl+K)" aria-label="Search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></button><button class="iconbtn plain" id="btnTheme" title="Theme Studio" aria-label="Open Theme Studio"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg></button>
         <select id="homeModel" class="modelpill" aria-label="Model"></select></div>
      <div id="homeMain">
-      <div class="work-label"><span>NOVA</span> ARTIST DESK</div><div class="hhero"><span class="pearl" id="heroPearl"></span><div><h1 id="greet">Welcome.</h1><p id="heroSub">A little thought. A new possibility.</p></div></div>
+      <div class="work-label"><span>NOVA</span> ARTIST DESK</div><div class="hhero"><span class="pearl" id="heroPearl"></span><span class="nova-core" id="novaCore" role="img" aria-label="NOVA is idle"><i></i></span><div><h1 id="greet">Welcome.</h1><p id="heroSub">A little thought. A new possibility.</p></div></div>
       <div class="hcomp" id="homeComposer">
         <button class="hbtn" type="button" id="homeAttach" title="Attach files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button><button class="hbtn" type="button" id="homeSettings" title="Models and routing" aria-label="Models and routing"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg></button>
         <select id="homeMode" class="hmode" aria-label="What to do"><option value="chat">Chat</option><option value="agent">Agent</option><option value="image">Image</option></select>
@@ -1913,6 +2016,9 @@ html.theme-switching,html.theme-switching *{transition:background-color 240ms cu
       + card("att", "Needs attention", attention.length, attention.length ? "Review" : "Nothing waiting", attention.length ? "warn" : "")
       + card("proj", "Projects", repos.size, "")
       + card("cost", "Spend this month", b ? money(b.total_usd) : "—", b ? `${Math.round(b.percent || 0)}% of ${money(b.budget_usd)}` : "not loaded");
+    const agentState = running.length ? "working" : attention.length ? "attention" : "idle";
+    document.body.dataset.agent = agentState;
+    if ($("novaCore")) $("novaCore").setAttribute("aria-label", { working: `NOVA is working on ${running.length} task${running.length === 1 ? "" : "s"}`, attention: `${attention.length} result${attention.length === 1 ? "" : "s"} need your review`, idle: "NOVA is idle" }[agentState]);
     el.querySelectorAll(".kpi").forEach(c => c.onclick = () => {
       const k = c.dataset.k;
       if (k === "run" && running[0]) openProject(running[0].id); else if (k === "att" && attention[0]) openProject(attention[0].id);
