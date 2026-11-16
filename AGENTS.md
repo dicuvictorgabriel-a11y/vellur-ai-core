@@ -126,3 +126,12 @@ workspace: modes Discover / Build / Review / Ship over one linked task (`#modeBa
 from `Release.delivery()` (`GET /autopilot/api/agent/tasks/{id}/delivery`): task record, GitHub and the installer's
 report; unconfirmed stages are `unknown`, never done. `docs/NOVA.md` lists implemented vs proposed (event ledger,
 cost ledger, router modes, Knowledge are NOT built). Browser journey: `node dev/workspace-smoke.cjs`.
+
+## Task recovery (2026-11-16, docs/RECOVERY.md)
+
+A controller restart no longer kills agent tasks: `AgentManager.recover()` re-attaches to a run that is still going,
+collects one that ended, or resumes the same OpenCode session automatically (max 2, budget/workspace checked);
+publications in progress are paused for the owner. Model tokens persist as hashes; the runner saves the session id at
+once. Restart diagnostics: `app/health.py` (boot records clean/unclean + memory), `/autopilot/api/diagnostics/restarts`.
+Failure injection with the real runner process: `tests/test_recovery_integration.py`. Root cause of the 2026-11-16
+incident is NOT confirmed yet (server logs needed).

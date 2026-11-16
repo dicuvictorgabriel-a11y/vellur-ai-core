@@ -447,6 +447,15 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         db.event("info", "llm", "model routes changed", routes=routes)
         return await llm_state()
 
+    @app.get("/autopilot/api/diagnostics/restarts", dependencies=[Depends(admin)])
+    async def diagnostics_restarts():
+        from .health import Health
+        out = Health(db, lambda: release.state()).report()
+        out["interrupted_tasks"] = db.all("SELECT task_id, ts, data FROM task_events WHERE kind IN ('status','error') AND "
+                                          "(data LIKE '%controller restarted%' OR data LIKE '%server restarted%' OR "
+                                          "data LIKE '%\"recovery\": true%') ORDER BY id DESC LIMIT 40")
+        return out
+
     # ── NOVA timeline and projects ──────────────────────────────────────────────────────────────
     from .timeline import CATEGORIES, Timeline
     timeline = Timeline(db)

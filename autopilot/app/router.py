@@ -417,20 +417,34 @@ class Router:
         return True, "", ""
 
     # ── access tokens for the internal proxy ────────────────────────────────────────────────────
+    # Task tokens survive a controller restart: only their SHA-256 is stored (kv "proxy_token_<hash>" → tag), so an
+    # agent that kept working in its own container can still reach the models after the controller comes back.
+    @staticmethod
+    def _tok_key(tok: str) -> str:
+        import hashlib
+        return "proxy_token_" + hashlib.sha256(tok.encode()).hexdigest()
+
     def issue_token(self, tag: str) -> str:
         tok = "vtask-" + secrets.token_urlsafe(32)
         self.tokens[tok] = tag
+        self.db.kv_set(self._tok_key(tok), tag)
         return tok
 
     def revoke_tag(self, tag: str) -> None:
         for t in [t for t, g in self.tokens.items() if g == tag]:
             self.tokens.pop(t, None)
+        self.db.x("DELETE FROM kv WHERE key LIKE 'proxy_token_%' AND value=?", (json.dumps(tag),))
 
     def authorize(self, bearer: str) -> Optional[str]:
         """Returns the usage tag for this caller, or None if not allowed."""
         internal = self.env.vllm_api_key
         if bearer and bearer in self.tokens:
             return self.tokens[bearer]
+        if bearer and bearer.startswith("vtask-"):
+            tag = self.db.kv_get(self._tok_key(bearer))
+            if tag:
+                self.tokens[bearer] = tag
+                return tag
         if not internal or (bearer and secrets.compare_digest(bearer.encode(), internal.encode())):
             return ""
         return None

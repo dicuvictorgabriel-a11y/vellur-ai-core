@@ -14,6 +14,7 @@ Rules
 """
 from __future__ import annotations
 
+import contextlib
 import json
 import re
 import sqlite3
@@ -220,6 +221,12 @@ class Knowledge:
                 self.db.x("UPDATE knowledge SET body=?, updated=?, version=version+1 WHERE id=?",
                           (r["body"] + f"\nPull request: {url}", time.time(), r["id"]))
 
+    def ensure(self, source: str, record: dict) -> None:
+        """Insert a record shipped with a release once (keyed by its source); never overwrites owner edits."""
+        if not self.db.one("SELECT id FROM knowledge WHERE source=?", (source,)):
+            with contextlib.suppress(KnowledgeError):
+                self.create(record, source=source)
+
     def stats(self) -> dict:
         rows = self.db.all("SELECT namespace, COUNT(*) AS n FROM knowledge GROUP BY namespace")
         return {"namespaces": list(NAMESPACES), "statuses": list(STATUSES), "counts": {r["namespace"]: r["n"] for r in rows},
@@ -228,3 +235,34 @@ class Knowledge:
 
 def dumps(rows: list) -> str:
     return json.dumps(rows, default=str)
+
+
+# Records shipped with the recovery release (2026-11-16). Verified facts are "implemented"; the incident's root cause is
+# "proposed" until the server's logs confirm it (docs/RECOVERY.md lists the commands).
+RELEASE_RECORDS = [
+    ("release:recovery-2026-11-16:architecture", {
+        "namespace": "Architecture", "status": "implemented", "title": "Agent tasks survive controller restarts",
+        "tags": "recovery,reliability,agent", "paths": "autopilot/app/agent.py, agent/runner.py, autopilot/app/router.py",
+        "body": "The runner container executes the agent; the controller watches it. On controller start every in-flight "
+                "task is recovered in the background: re-attach when the run is still going (events from the persisted "
+                "cursor, persisted start time and cost), collect the result when it ended, or resume the same OpenCode "
+                "session automatically (max 2 times, only with the workspace available and budget left) when the agent "
+                "process was interrupted. Publications in progress are paused for the owner, never repeated. The agent's "
+                "model token is persisted as a SHA-256 hash; the runner saves the session id as soon as it is known. "
+                "Validated by tests/test_recovery_integration.py with the real runner process and SIGKILL mid-tool."}),
+    ("release:recovery-2026-11-16:operations", {
+        "namespace": "Operations", "status": "implemented", "title": "How to find out why the controller restarted",
+        "tags": "recovery,diagnostics", "paths": "autopilot/app/health.py, docs/RECOVERY.md",
+        "body": "Activity shows a boot event for every controller start: clean shutdown, or UNCLEAN stop (SIGKILL, "
+                "out-of-memory kill or host crash) with the memory at the last heartbeat and whether the installed release "
+                "changed. GET /autopilot/api/diagnostics/restarts lists the last 30 boots and the interrupted tasks. On the "
+                "server: docker inspect vellur-ai-autopilot (OOMKilled, RestartCount), journalctl -k | grep -i oom."}),
+    ("release:recovery-2026-11-16:incident", {
+        "namespace": "Known Issues", "status": "proposed", "title": "Apartment task stopped twice after a controller restart",
+        "tags": "incident,recovery", "paths": "docs/RECOVERY.md",
+        "body": "Unconfirmed. Evidence in code: the message comes from a controller start; a manual 'continue' worked, so the "
+                "runner kept the session, which points to a controller-only restart. Candidates not yet confirmed: release "
+                "install, out-of-memory kill of the 256 MB controller (the conversation card fetched up to 5000 events "
+                "every 3 s; fixed to fetch only new events), or a crash. Mark this record implemented with the cause once "
+                "the server logs show it."}),
+]

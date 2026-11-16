@@ -369,8 +369,9 @@ async def test_validation_unavailable_and_recovery(agents, rig):
     ctrl.budget.record_provider_charge("mock", "now", 50, time.time())
     assert (await admin.post("/autopilot/api/agent/tasks", headers=WRITE, json={"prompt": "valid prompt"})).json()["error"] == "budget"
     ctrl.db.x("INSERT INTO tasks(created,updated,state,model,prompt) VALUES(1,1,'running','vellur-coder','p')")
-    await mgr.recover()
-    assert ctrl.db.one("SELECT state, error FROM tasks")["state"] == "failed"
+    await mgr.recover()       # recovery runs in the background; with the budget used up it must not resume
+    row = await wait_final(mgr, ctrl.db.one("SELECT id FROM tasks")["id"])
+    assert row["state"] == "failed" and "budget" in row["error"]
     plain = rig()
     m2 = AgentManager(plain, Router(plain))
     assert m2.available()[0] is False

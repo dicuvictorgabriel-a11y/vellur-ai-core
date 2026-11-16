@@ -20,6 +20,11 @@ ApprovalDialog, toasts.
   "Continue where I left off". Home "Recent projects" opens it.
 - **Phone**: bottom navigation (hidden while typing), project/library/activity layouts.
 
+## Reliability fix (branch after #15)
+Automatic task recovery after controller/runner restarts, restart diagnostics, incremental event polling in the
+conversation card. Details and the owner's log commands: `docs/RECOVERY.md`. Open: confirm the incident's cause from
+the server logs and update the Knowledge record `release:recovery-2026-11-16:incident`.
+
 ## Verification
 `bash dev/test.sh` (tests: test_policy, test_knowledge, test_timeline + earlier suites); browser checks with
 `dev/preview.sh` + `node dev/workspace-smoke.cjs` (simulated services) and the phase-two journey (Library, Activity,

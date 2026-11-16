@@ -11,6 +11,7 @@ from .agent import AgentManager
 from .api import build_admin
 from .config import Env
 from .db import DB
+from .health import Health
 from .lifecycle import Controller
 from .notify import Notifier
 from .providers.hyperai import HyperAIProvider
@@ -40,6 +41,9 @@ async def amain() -> None:
     logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     ctrl = build()
     ctrl.db.event("info", "boot", f"controller started (live mode: {ctrl.env.live})")
+    health = Health(ctrl.db, lambda: ctrl.db.kv_get("release") or {})
+    health.boot()                      # clean or unclean previous stop, memory before it, release change
+    beat = asyncio.create_task(health.run())
     await ctrl.recover()
     ctrl.start_background()
     router = Router(ctrl)
@@ -54,6 +58,8 @@ async def amain() -> None:
     try:
         await asyncio.gather(*(s.serve() for s in servers))
     finally:
+        beat.cancel()
+        health.shutdown("signal")      # only reached on a normal stop; a SIGKILL / OOM kill leaves no record
         await agent.close()
         await ctrl.close()
         await ctrl.tunnel.close()
