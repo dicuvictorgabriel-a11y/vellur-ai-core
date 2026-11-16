@@ -302,3 +302,22 @@ assert.equal(facts.checks, "No checks reported");
 '''
     result = subprocess.run(["node", "-e", helper + checks], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_model_picker_is_searchable_accessible_and_keeps_native_state():
+    html = open(PAGE).read()
+    assert 'id="mpDlg"' in html and 'role="combobox"' in html and 'role="listbox"' in html
+    assert "function pickModel(opts)" in html and "function enhanceSelect(sel, opts)" in html
+    for sel in ("chatModel", "tModel", "homeModel"):
+        assert f'"{sel}"' in html.split("function enhanceSelect", 1)[1]
+    assert 'enhanceSelect(row.querySelector(".radd select")' in html          # provider catalog in the route editor
+    assert "nova_models=" in html and "ArrowDown" in html and 'e.key === "Enter"' in html
+    assert "AI Development Engine · Operational" not in html                   # static status claim removed
+
+
+def test_astryx_interaction_rules_are_applied():
+    html = open(PAGE).read()
+    assert "const imeKey = (e) => !!(e && (e.isComposing || e.keyCode === 229));" in html
+    assert "!e.isComposing" not in html                       # every Enter handler uses the two-signal guard
+    assert 'aria-disabled="true"' in html and "function mpMove(to)" in html and '"PageDown"' in html
+    assert "MP.trigger" in html and 'id="homeKpis"' in html and "function renderKpis()" in html

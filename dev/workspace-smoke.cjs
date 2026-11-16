@@ -16,7 +16,7 @@ await p.locator('#stModes [data-mode="discover"]').click();
 await p.reload();await p.locator('#conversationWork').waitFor();console.log('restored',await p.locator('#chatTitle').innerText());
 await p.locator('#chatMode').selectOption('chat');await p.locator('#chatIn').fill('Explain the result simply.');await p.locator('#btnSend').click();await p.getByText('This is the staging preview answer.',{exact:false}).waitFor();await shot('conversation-discuss');
 for(const v of ['models','costs','tools','agent']){await p.locator('#tabs [data-view="'+v+'"]').click();await p.waitForTimeout(500);await shot(v);}
-await p.setViewportSize({width:390,height:844});await p.locator('#navOpen').click();await p.locator('#tabs [data-view="chat"]').click();await p.locator('#chatIn').waitFor();await shot('conversation-mobile');
+await p.setViewportSize({width:390,height:844});await p.evaluate(()=>document.querySelector('#tabs [data-view="chat"]').click());await p.locator('#chatIn').waitFor();await shot('conversation-mobile');
 await p.locator('#convSel').evaluate(e=>{e.value='1';e.dispatchEvent(new Event('change'))});await p.locator('#modeBar').waitFor();
 for(const m of ['review','ship','discover']){await p.locator('#stModes [data-mode="'+m+'"]').click();await p.waitForTimeout(900);await shot('mobile-'+m);}
 await p.setViewportSize({width:820,height:1180});await shot('conversation-tablet');
