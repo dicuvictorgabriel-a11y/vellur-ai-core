@@ -100,13 +100,6 @@ def seed(db) -> tuple[int, int]:
         db.x("INSERT INTO selfdev_runs(title,goal,stage,target_paths,agent_task_id,created,updated) VALUES(?,?,?,?,?,?,?)",
              (title, goal, stage, json.dumps(["autopilot/app/api.py", "autopilot/app/router.py"]), tid + i, now - i * 7200, now - i * 7200))
 
-    # Budget with cumulative €10 cap (using USD values, ~€10 = $10.80)
-    db.x("INSERT INTO ledger(ts,provider,model,cost_usd,confirmed,request_id,created) VALUES(?,?,?,?,?,?,?)",
-         (now, "hyperai", "RedHatAI/Qwen3.8-27B-INT4", 2.5, 1, "demo-req-1", now))
-    db.x("INSERT INTO ledger(ts,provider,model,cost_usd,confirmed,request_id,created) VALUES(?,?,?,?,?,?,?)",
-         (now, "vastai", "meta-llama/Llama-3.1-70B", 3.2, 1, "demo-req-2", now))
-    db.x("INSERT INTO ledger(ts,provider,model,cost_usd,confirmed,request_id,created) VALUES(?,?,?,?,?,?,?)",
-         (now, "hyperai", "RedHatAI/Qwen3.8-27B-INT4", 1.8, 0, "demo-req-3", now))
 
     # Events for live activity feed
     for kind, data in (

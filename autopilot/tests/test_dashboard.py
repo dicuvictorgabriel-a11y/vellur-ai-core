@@ -302,3 +302,14 @@ assert.equal(facts.checks, "No checks reported");
 '''
     result = subprocess.run(["node", "-e", helper + checks], capture_output=True, text=True)
     assert result.returncode == 0, result.stderr
+
+
+def test_model_picker_is_searchable_accessible_and_keeps_native_state():
+    html = open(PAGE).read()
+    assert 'id="mpDlg"' in html and 'role="combobox"' in html and 'role="listbox"' in html
+    assert "function pickModel(opts)" in html and "function enhanceSelect(sel, opts)" in html
+    for sel in ("chatModel", "tModel", "homeModel"):
+        assert f'"{sel}"' in html.split("function enhanceSelect", 1)[1]
+    assert 'enhanceSelect(row.querySelector(".radd select")' in html          # provider catalog in the route editor
+    assert "nova_models=" in html and "ArrowDown" in html and 'e.key === "Enter"' in html
+    assert "AI Development Engine · Operational" not in html                   # static status claim removed

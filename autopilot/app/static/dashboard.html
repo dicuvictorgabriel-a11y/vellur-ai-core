@@ -826,6 +826,27 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 .brandsub{font-size:8.5px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
 .brandmini{font-size:15px!important;font-weight:750!important;letter-spacing:-.02em!important}
 .sidebadge{margin:18px 10px 8px;padding:10px 12px;background:var(--hover);border:1px solid var(--line);border-radius:8px;font:500 11px var(--mono);color:var(--accent);letter-spacing:.06em;text-align:center;opacity:.9}
+
+/* ── Model picker: one searchable selector for roles and the provider catalog ── */
+.mpbtn{display:inline-flex;align-items:center;gap:6px;min-height:36px;max-width:260px;padding:0 10px 0 12px;border:1px solid var(--line2);border-radius:10px;background:var(--panel);color:var(--text);font:500 12.5px var(--sans);cursor:pointer;min-width:0}
+.mpbtn span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0}.mpbtn svg{flex:none;width:14px;height:14px;stroke:currentColor;fill:none;stroke-width:2;opacity:.6}
+.mpbtn:hover{background:var(--hover)}.mpbtn.add{border-style:dashed;color:var(--muted)}
+select.mp-native{position:absolute!important;width:1px!important;height:1px!important;opacity:0!important;pointer-events:none!important;overflow:hidden}
+#mpDlg{border:1px solid var(--line2);border-radius:18px;background:var(--raise);color:var(--text);padding:0;width:min(560px,calc(100vw - 24px));max-height:min(640px,calc(100dvh - 48px));box-shadow:0 24px 64px rgba(0,0,0,.35);overflow:hidden}
+#mpDlg[open]{display:flex;flex-direction:column}#mpDlg::backdrop{background:rgba(8,8,10,.5)}
+.mphead{padding:16px 16px 10px;border-bottom:1px solid var(--line)}.mphead b{display:block;font-weight:500;font-size:15px;margin-bottom:10px}
+#mpQ{width:100%;font-size:15px;min-height:42px}
+#mpList{overflow:auto;flex:1;min-height:120px;padding:6px 8px 10px;overscroll-behavior:contain}
+.mpg{font:500 10.5px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);padding:12px 8px 6px}
+.mpi{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:2px 10px;align-items:center;width:100%;text-align:left;border:0;background:transparent;color:inherit;font:inherit;padding:9px 10px;border-radius:10px;cursor:pointer;min-height:48px}
+.mpi b{font-weight:500;font-size:14px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.mpi small{grid-column:1;color:var(--muted);font-size:12px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.mpi.act,.mpi:hover{background:var(--hover)}.mpi[aria-selected="true"] b:after{content:" ✓";color:var(--accent)}.mpi.off{opacity:.55}
+.mpi .fav{grid-row:1/3;grid-column:2;border:0;background:transparent;color:var(--faint);font-size:17px;cursor:pointer;width:36px;height:36px;border-radius:8px}.mpi .fav.on{color:var(--accent)}
+.mpfoot{padding:8px 16px;border-top:1px solid var(--line);font-size:11.5px;color:var(--faint);display:flex;justify-content:space-between;gap:8px}
+@media(max-width:860px){#mpDlg{width:100vw;max-width:100vw;max-height:88dvh;margin:auto 0 0;border-radius:18px 18px 0 0;border-bottom:0}
+  .mpfoot{padding-bottom:max(8px,env(safe-area-inset-bottom))}.mpfoot .k{display:none}.mpbtn{max-width:52vw;min-height:40px}}
+.rel-meta{display:flex;flex-direction:column;gap:2px;min-width:0;flex:1}.rel-meta small{color:var(--muted)}.rel-row{align-items:center;gap:12px;flex-wrap:nowrap}
+@media(max-width:860px){#stStrip{gap:8px}#stWhy{flex:none}#stCost{font-size:10.5px;padding:3px 8px}.rel-row{flex-wrap:wrap}}
 </style>
 </head>
 <body>
@@ -840,11 +861,10 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     <button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Chat</button>
     <button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Agent</button>
     <button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button>
-    <button data-view="project"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Project</button>
+    
     <button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button>
     <button data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button>
   </nav>
-  <div class="sidebadge">NOVA Core · AI Development Engine · Operational</div>
   <button class="navbtn" type="button" id="railToggle" title="Collapse or expand navigation" aria-label="Collapse or expand navigation"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/><path d="M19 5v14"/></svg>Collapse</button>
   <div class="sidehead"><span id="sideLabel">Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button></div>
   <div id="convList"></div>
@@ -855,6 +875,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 </aside>
 <div id="scrim"></div>
 <div id="toasts" role="status" aria-live="polite"></div>
+<dialog id="mpDlg" aria-labelledby="mpTitle"><div class="mphead"><b id="mpTitle">Choose a model</b><input id="mpQ" type="search" role="combobox" aria-expanded="true" aria-controls="mpList" aria-autocomplete="list" placeholder="Search by name, provider or ID…" autocomplete="off" spellcheck="false"></div><div id="mpList" role="listbox" aria-label="Models"></div><div class="mpfoot"><span id="mpCount"></span><span class="k">↑↓ move · Enter select · Esc close</span></div></dialog>
 <nav id="bottomNav" class="admin-only" aria-label="Main">
 <button type="button" data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg><span>Home</span></button>
   <button type="button" data-view="music"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg><span>Music</span></button>
@@ -1098,7 +1119,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       </div>
       <div id="modeBar" hidden>
         <div class="seg" id="stModes" role="tablist" aria-label="Workspace mode"><button type="button" role="tab" data-mode="discover" title="Conversation and references">Discover</button><button type="button" role="tab" data-mode="build" title="Live preview next to the conversation">Build</button><button type="button" role="tab" data-mode="review" title="Changes, checks and screenshots">Review</button><button type="button" role="tab" data-mode="ship" title="Pull request, merge and deployment">Ship</button></div>
-        <div id="stStrip" role="status"><span class="oc" id="stPill"></span><span id="stNow"></span><span id="stCost"></span><button class="copyid" type="button" id="stWhy">Why this model?</button></div>
+        <div id="stStrip" role="status"><span class="oc" id="stPill"></span><span id="stNow"></span><span id="stCost"></span><button class="copyid" type="button" id="stWhy" title="Why this model? See the routing decision">Why?</button></div>
         <button class="iconbtn plain" type="button" id="stFocus" title="Focus on the work surface" aria-label="Focus on the work surface" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       </div>
       <div class="msgs" id="msgs"></div>
@@ -1582,7 +1603,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     $("greet").innerHTML = name ? esc(part) + ", <b>" + esc(name) + ".</b>" : esc(part) + ".";
   }
   $("meMore").onclick = (e) => { e.stopPropagation(); acctOpen(); };
-  document.addEventListener("click", (e) => { if (!$("me").contains(e.target)) $("meMenu").hidden = true; });
+  document.addEventListener("click", (e) => { const menu = $("meMenu"); if (menu && !$("me").contains(e.target)) menu.hidden = true; });
   document.querySelectorAll("[data-theme-set]").forEach(b => b.onclick = () => setTheme(b.dataset.themeSet, true));
   $("btnTheme").onclick = () => setTheme(themeNow() === "dark" ? "light" : "dark", true);
   $("meNameSave").onclick = async () => { try { const st = await send("settings", "PUT", { owner_name: $("meNameIn").value.trim() }); if (S && S.settings) { S.settings.owner_name = st.owner_name; identity(S); } $("meMenu").hidden = true; } catch (e) { toast(e.message); } };
@@ -2107,7 +2128,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     if (!title) { toast("Give the objective a title."); return; }
     try { await send("mission/objective", "POST", { title, detail: $("mcObjDetailIn").value.trim() }); await loadMission(); } catch (e) { toast(e.message); }
   });
-  document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && document.body.classList.contains("is-admin")) { e.preventDefault(); openSearch(); } else if (e.key === "Escape") { $("searchBox").hidden = true; $("meMenu").hidden = true; } });
+  document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && document.body.classList.contains("is-admin")) { e.preventDefault(); openSearch(); } else if (e.key === "Escape") { $("searchBox").hidden = true; if ($("meMenu")) $("meMenu").hidden = true; } });
 
   // chat
   let CONV = null, chatAtts = [], CONV_LOAD = 0;
@@ -2561,6 +2582,72 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       try { await send("agent/tasks/" + tid + "/publish", "POST", {}); toast("Pull request prepared.", "ok"); await refreshWork(); await shLoad(true); } catch (e) { toast(e.message); shRender(); } });
   }
 
+
+  // ── Model picker (one component): searchable, grouped, favorites + recent kept in a cookie, keyboard ──
+  const MP = { items: [], onPick: null, cur: "", act: 0, shown: [] };
+  const mpStore = () => { try { return JSON.parse(decodeURIComponent((document.cookie.match(/(?:^|; )nova_models=([^;]*)/) || [])[1] || "")) || {}; } catch (e) { return {}; } };
+  const mpSave = (st) => { document.cookie = "nova_models=" + encodeURIComponent(JSON.stringify({ fav: (st.fav || []).slice(0, 20), rec: (st.rec || []).slice(0, 8) })) + "; path=/autopilot; max-age=31536000; SameSite=Lax"; };
+  function pickModel(opts) {
+    MP.items = opts.items; MP.onPick = opts.onPick; MP.cur = opts.current || ""; MP.act = 0;
+    $("mpTitle").textContent = opts.title || "Choose a model"; $("mpQ").value = "";
+    mpRender(); $("mpDlg").showModal(); $("mpQ").focus();
+  }
+  function mpRender() {
+    const q = $("mpQ").value.trim().toLowerCase().split(/\s+/).filter(Boolean), st = mpStore(), fav = st.fav || [], rec = st.rec || [];
+    const match = (it) => q.every(w => (it.label + " " + it.value + " " + (it.group || "") + " " + (it.sub || "")).toLowerCase().includes(w));
+    const hits = MP.items.filter(match), groups = [];
+    if (!q.length) {
+      const f = MP.items.filter(i => fav.includes(i.value)), r = rec.map(v => MP.items.find(i => i.value === v)).filter(i => i && !fav.includes(i.value));
+      if (f.length) groups.push(["Favorites", f]); if (r.length) groups.push(["Recent", r]);
+    }
+    const byGroup = new Map(); hits.forEach(i => { const g = i.group || "Models"; if (!byGroup.has(g)) byGroup.set(g, []); byGroup.get(g).push(i); });
+    byGroup.forEach((v, k) => groups.push([k, v]));
+    MP.shown = []; let html = "", n = 0, LIMIT = 400;
+    for (const [g, list] of groups) {
+      if (n >= LIMIT) break; html += `<div class="mpg" role="presentation">${esc(g)}</div>`;
+      for (const it of list) { if (n >= LIMIT) break; const idx = MP.shown.length; MP.shown.push(it); n++;
+        html += `<div class="mpi${idx === MP.act ? " act" : ""}${it.disabled ? " off" : ""}" role="option" id="mpo${idx}" data-i="${idx}" aria-selected="${it.value === MP.cur}"><b>${esc(it.label)}</b>${it.sub ? `<small>${esc(it.sub)}</small>` : ""}<button type="button" class="fav${fav.includes(it.value) ? " on" : ""}" data-fav="${esc(it.value)}" aria-label="${fav.includes(it.value) ? "Remove from" : "Add to"} favorites" tabindex="-1">${fav.includes(it.value) ? "★" : "☆"}</button></div>`; }
+    }
+    $("mpList").innerHTML = html || `<div class="mpg">No model matches “${esc($("mpQ").value)}”.</div>`;
+    $("mpCount").textContent = hits.length > LIMIT ? `${LIMIT} of ${hits.length} shown · refine the search` : `${hits.length} model${hits.length === 1 ? "" : "s"}`;
+    $("mpQ").setAttribute("aria-activedescendant", MP.shown.length ? "mpo" + MP.act : "");
+  }
+  function mpChoose(it) {
+    if (!it) return; const st = mpStore(); st.rec = [it.value, ...(st.rec || []).filter(v => v !== it.value)]; mpSave(st);
+    $("mpDlg").close(); MP.onPick && MP.onPick(it.value);
+  }
+  $("mpQ").addEventListener("input", () => { MP.act = 0; mpRender(); });
+  $("mpQ").addEventListener("keydown", (e) => {
+    if (e.key === "ArrowDown" || e.key === "ArrowUp") { e.preventDefault(); if (!MP.shown.length) return;
+      MP.act = (MP.act + (e.key === "ArrowDown" ? 1 : -1) + MP.shown.length) % MP.shown.length;
+      $("mpList").querySelectorAll(".mpi").forEach(el => el.classList.toggle("act", +el.dataset.i === MP.act));
+      const el = $("mpo" + MP.act); el && el.scrollIntoView({ block: "nearest" }); $("mpQ").setAttribute("aria-activedescendant", "mpo" + MP.act); }
+    else if (e.key === "Enter") { e.preventDefault(); mpChoose(MP.shown[MP.act]); }
+  });
+  $("mpList").addEventListener("click", (e) => {
+    const f = e.target.closest("[data-fav]");
+    if (f) { const st = mpStore(), v = f.dataset.fav; st.fav = (st.fav || []).includes(v) ? st.fav.filter(x => x !== v) : [v, ...(st.fav || [])]; mpSave(st); mpRender(); $("mpQ").focus(); return; }
+    const o = e.target.closest(".mpi"); if (o) mpChoose(MP.shown[+o.dataset.i]);
+  });
+  $("mpDlg").addEventListener("click", (e) => { if (e.target === $("mpDlg")) $("mpDlg").close(); });
+  // Progressive enhancement of a native <select>: the select stays the state every existing handler reads.
+  function enhanceSelect(sel, opts) {
+    if (!sel || sel.dataset.mp) return; sel.dataset.mp = "1"; opts = opts || {};
+    const btn = document.createElement("button"); btn.type = "button"; btn.className = "mpbtn" + (opts.add ? " add" : "");
+    btn.setAttribute("aria-haspopup", "dialog"); btn.setAttribute("aria-label", sel.getAttribute("aria-label") || "Model");
+    sel.classList.add("mp-native"); sel.tabIndex = -1; sel.setAttribute("aria-hidden", "true"); sel.after(btn);
+    const items = () => [...sel.options].filter(o => o.value).map(o => opts.item ? opts.item(o) : ({ value: o.value, label: o.textContent, sub: o.title, group: o.parentElement.tagName === "OPTGROUP" ? o.parentElement.label : "", disabled: o.disabled }));
+    const sync = () => { const o = sel.selectedOptions[0]; btn.innerHTML = `<span>${esc(opts.add || !o || !o.value ? (opts.placeholder || (o ? o.textContent : "Choose")) : (opts.short ? opts.short(o) : o.textContent))}</span><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m7 10 5 5 5-5"/></svg>`; btn.title = o ? o.title || o.textContent : ""; btn.hidden = sel.hidden; btn.disabled = sel.disabled; };
+    btn.onclick = () => pickModel({ title: opts.title || sel.getAttribute("aria-label") || "Choose a model", items: items(), current: sel.value,
+      onPick: (v) => { sel.value = v; sel.dispatchEvent(new Event("change", { bubbles: true })); sync(); } });
+    new MutationObserver(sync).observe(sel, { childList: true, subtree: true, attributes: true, attributeFilter: ["hidden", "disabled"] });
+    sel.addEventListener("change", sync);
+    const d = Object.getOwnPropertyDescriptor(HTMLSelectElement.prototype, "value");
+    Object.defineProperty(sel, "value", { configurable: true, get() { return d.get.call(this); }, set(v) { d.set.call(this, v); sync(); } });
+    sync();
+  }
+  const roleShort = (o) => o.textContent.split(" · ")[0];
+  ["chatModel", "tModel", "homeModel"].forEach(id => enhanceSelect($(id), { title: "Which model answers", short: roleShort }));
   // ── NOVA phase two ──────────────────────────────────────────────────────────────────────────
   const dayKey = (ts) => new Date(ts * 1000).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
   const usd = (v) => "$" + Number(v || 0).toFixed(4);
@@ -3327,6 +3414,9 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       const role = row.dataset.role, chain = RDRAFT[role] = (RDRAFT[role] || []).slice();
       row.querySelectorAll("[data-mv]").forEach(b => b.onclick = () => { const i = +b.dataset.i, j = i + +b.dataset.mv; [chain[i], chain[j]] = [chain[j], chain[i]]; rDirty(true); renderRouteEditor(); });
       row.querySelectorAll("[data-rm]").forEach(b => b.onclick = () => { chain.splice(+b.dataset.rm, 1); rDirty(true); renderRouteEditor(); });
+      enhanceSelect(row.querySelector(".radd select"), { add: true, placeholder: "+ Add a model", title: "Add a model to " + ROLE_INFO[role],
+        item: (o) => { const m = (MODELS || []).find(x => x.target === o.value) || {}; return { value: o.value, label: shortModel(o.value) || o.value,
+          group: m.provider_display || o.value.split(":")[0], sub: o.value + " · " + (m.target ? priceOf(m) : "") + (m.target && !m.usable ? " · not usable yet" : ""), disabled: m.target && !m.usable }; } });
       row.querySelector("select").onchange = (e) => { if (!e.target.value) return; if (chain.length >= 6) { $("rNote").textContent = "At most 6 models per kind of work."; return; } chain.push(e.target.value); rDirty(true); renderRouteEditor(); };
     });
   }
