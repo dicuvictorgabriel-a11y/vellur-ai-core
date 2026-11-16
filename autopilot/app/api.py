@@ -71,6 +71,7 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     from .agent import AgentManager
     from .attachments import register as register_attachments
     from .images import ImageService, register as register_images
+    from .mission import register as register_mission
     from .router import Router
     from .workspace import register as register_workspace
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
@@ -320,5 +321,6 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     register_attachments(app, ctrl, agent.attachments, admin, admin_write)
     register_images(app, ctrl, router, image_service, admin, admin_write)
     register_workspace(app, ctrl, router, agent, admin, admin_write)
+    register_mission(app, ctrl, router, agent, admin, admin_write)
 
     return app

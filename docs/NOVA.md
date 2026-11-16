@@ -118,3 +118,39 @@ Owner decision: routing is **automatic** within a configured allowance.
 
 Retrieval check: `GET /autopilot/api/knowledge?q=landing` in the preview returns the seeded demo records
 (`search: fts5`); `tests/test_knowledge.py` checks scope, prefix search, versions, locks, secrets and agent prompts.
+
+## Mission Control (2026-11-16): un obiectiv activ, lucrări, runde reale de agent
+
+- `app/mission.py` + tabelele `mission_objectives` / `mission_items` (SQLite): proprietarul are **un singur
+  obiectiv activ** (celelalte stau parcate; reactivatea e explicită). Lucrările parcurg stările
+  `idea → backlog → ready → running → review → verified` (sau `parked`); doar `ready` e eligibilă pentru execuție
+  (`next`), iar dependențele (`depends_on`) blochează lucrările care vin după.
+- „Start" este mereu **acțiune explicită a proprietarului**: creează un task real de agent (lucrarea e legată de
+  `agent_task_id` și deschide proiectul). Runda nu se marchează verificată singură: proprietarul o revizuiește
+  (înapoi cu notă, ori verificată). Starea se citește din înregistrarea agentului, nu se presupune.
+- „Suggest plan" este singurul apel de model al view-ului: trece prin router (rolul `vellur-chat`), costul e
+  înregistrat și afișat (confirmat de cost ledger, ori estimat), iar planul se salvează doar dacă proprietarul
+  îl confirmă în dialog (formă validă: cel puțin 2 pași, cel mult 10).
+- Dashboard: nav + `#missionCard` (cardul obiectivului cu buget lunar și estimare, cardul „Working now", secțiunile
+  Ideas/Backlog/Ready/Working/Awaiting review/Verified/Parked cu acțiuni pe lucrare), 3 dialoguri (obiectiv, plan,
+  return). Mobile-first: nav-ul de jos include Mission, ținte de minim 44 px, fără overflow orizontal.
+- API: `GET /autopilot/api/mission/snapshot`, obiective `POST/PATCH /autopilot/api/mission/objectives`,
+  lucrări `POST /autopilot/api/mission/items`, acțiuni `POST /autopilot/api/mission/items/{id}/start|return|verify|state`,
+  plan `POST /autopilot/api/mission/items/{id}/suggest-plan|save-plan`. Totul în spatele login-ului existent
+  (`admin` / `admin_write`); autentificarea înghețată nu a fost atinsă.
+
+### Verificare (2026-11-16)
+
+- `bash dev/test.sh`: **278 passed** (271 înainte de această felie + 7 noi în `tests/test_mission.py`: un singur
+  obiectiv activ și park/reactivate, stări + next-eligibil cu dependențe, start → task real de agent → decizia
+  proprietarului (înapoi cu notă / verificată), gardurile de ocupat și buget epuizat, validări, suggest-plan cu
+  cost înregistrat).
+- Preview izolat pe port 4174 (`dev/preview_server.py`, runner simulat, cost 0 USD): parcursul browser complet,
+  desktop 1440×1000 și iPhone 390×844 — setare obiectiv, prindere idee, mutare în backlog, sugestie de plan
+  **explicită** (cu cost afișat), confirmare și salvare, Ready, start cu confirmare în `askDlg`, lucrarea în
+  „Working", la finalul rundei trece în „Awaiting review", înapoi în backlog cu notă, a doua rundă, verificare.
+  **0 `pageerror`, 0 erori de consolă, fără overflow orizontal pe iPhone**.
+- `node dev/workspace-smoke.cjs` (port 4173): **22 PASS** — traseele existente (Discover/Build/Review/Ship,
+  desktop/tabletă/telefon, Models, Costs, Tools, Agent) nu au suferit regresii.
+- **Neverificat:** serverul real, modelul real (sugestia de plan a folosit furnizorul simulat local din preview),
+  costurile reale.

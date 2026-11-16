@@ -93,6 +93,33 @@ CREATE TABLE IF NOT EXISTS knowledge (
   paths TEXT DEFAULT '', created REAL NOT NULL, updated REAL NOT NULL, version INTEGER DEFAULT 1, locked INTEGER DEFAULT 0
 );
 CREATE INDEX IF NOT EXISTS knowledge_project ON knowledge(project);
+CREATE TABLE IF NOT EXISTS mission_objectives (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT '',
+  state TEXT NOT NULL DEFAULT 'active',           -- active | parked
+  cost_estimate_usd REAL,
+  created REAL NOT NULL,
+  updated REAL NOT NULL
+);
+CREATE TABLE IF NOT EXISTS mission_items (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  objective_id INTEGER,
+  title TEXT NOT NULL,
+  detail TEXT NOT NULL DEFAULT '',
+  state TEXT NOT NULL DEFAULT 'backlog',          -- idea | backlog | ready | running | review | verified | parked
+  plan TEXT NOT NULL DEFAULT '',
+  blocked_reason TEXT NOT NULL DEFAULT '',
+  repo TEXT NOT NULL DEFAULT '',
+  base TEXT NOT NULL DEFAULT '',
+  cost_estimate_usd REAL,
+  depends_on INTEGER,
+  agent_task_id INTEGER,
+  position REAL NOT NULL DEFAULT 1000,
+  created REAL NOT NULL,
+  updated REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS mission_items_obj ON mission_items(objective_id, position);
 """
 
 # Columns added after the first release (ALTER TABLE ... ADD COLUMN is skipped when the column exists).

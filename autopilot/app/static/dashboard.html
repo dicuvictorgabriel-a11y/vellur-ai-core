@@ -464,6 +464,50 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
 .hrow .st.run{border-color:var(--line2);border-top-color:var(--accent);animation:spin .9s linear infinite}.hrow .st.run:after{display:none}
 .umeter{display:grid;grid-template-columns:86px 1fr auto;align-items:center;gap:12px;padding:8px 0;font-size:14px}.umeter small{color:var(--muted);font-size:12.5px}
 .umeter .bar{margin:0;height:5px;background:var(--line2)}.umeter .bar i{background:linear-gradient(90deg,var(--bar),var(--accent))}
+/* ── Mission Control: the operational brain, one column ─────────────────────────────────────── */
+#missionCard{padding:26px 28px 70px;max-width:880px;margin:0 auto;display:flex;flex-direction:column;gap:16px}
+.mcobj{background:var(--panel);border:1px solid var(--line);border-radius:22px;padding:22px 26px}
+.mcobj-h{display:flex;align-items:center;gap:10px;margin-bottom:12px}
+.mcobj-h .sp{flex:1}
+.mcobj h2{font-size:25px;font-weight:500;letter-spacing:-.02em;margin:0 0 8px}
+.mcobj p{margin:0 0 16px;color:var(--muted);font-size:14.5px;line-height:1.55}
+.mcnums{display:flex;gap:28px;flex-wrap:wrap}
+.mcnums div small{display:block;color:var(--muted);font-size:11px;font-weight:600;letter-spacing:.1em;text-transform:uppercase;margin-bottom:3px}
+.mcnums div b{font-size:16px;font-weight:500}
+.mcpark{display:flex;flex-wrap:wrap;gap:8px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line)}
+.mcpark button{display:flex;flex-direction:column;align-items:flex-start;gap:3px;background:var(--raise);border:1px solid var(--line);color:var(--text);border-radius:14px;padding:10px 14px;text-align:left;font-weight:400}
+.mcpark button:hover{border-color:var(--line3)}
+.mcpark small{color:var(--muted);font-size:11.5px}
+.mcrun{display:flex;align-items:center;gap:12px;background:var(--panel);border:1px solid var(--line2);border-radius:22px;padding:14px 18px}
+.mcrun .hstat{font-size:15px;flex:none}
+.mcrun small{color:var(--muted);font-size:12.5px;flex:none}
+.mcrun-go{flex:1;min-width:0;text-align:left;background:transparent;border:0;color:var(--text);padding:8px 10px;border-radius:12px}
+.mcrun-go:hover{background:var(--hover)}
+.mcrun-go b{display:block;font-size:15px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mcrun-go span{color:var(--accent);font-size:13px}
+.mccap{display:flex;gap:10px}
+.mccap input{flex:1;min-width:0;font-size:16px;padding:13px 18px;border-radius:99px;background:var(--panel);border:1px solid var(--line2)}
+.mccap input:focus{outline:0;border-color:var(--line3)}
+.mccap .primary{flex:none;border-radius:99px}
+.mcsec h3{display:flex;align-items:center;gap:8px;font-size:11.5px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--muted);margin:20px 0 10px}
+.mcsec h3 small{font-weight:500;background:var(--raise);border-radius:99px;padding:2px 8px}
+.mcitem{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:16px 18px;margin-bottom:10px}
+.mcitem.done{opacity:.7}
+.mcitem-h{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.mcitem-h .sp{flex:1}
+.mcitem-h b{font-size:15.5px;font-weight:500}
+.mcitem-h small{color:var(--muted);font-size:12.5px}
+.mcitem-d{margin:8px 0 0;color:var(--soft);font-size:14px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.mcblock{margin:8px 0 0;font-size:13.5px;color:var(--warn)}
+.mcitem-m{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
+.mcitem-m .mcmeta{color:var(--muted);font-size:12.5px;margin-right:auto}
+.mcitem-m button{min-height:38px;padding:0 14px;border-radius:99px}
+#mcPlanDlg,#mcObjDlg,#mcRetDlg{border:0;border-radius:20px;padding:0;background:var(--raise);box-shadow:0 30px 80px rgba(0,0,0,.45);color:var(--text);width:min(560px,calc(100vw - 32px))}
+#mcPlanDlg form,#mcObjDlg form,#mcRetDlg form{padding:22px;display:flex;flex-direction:column;gap:14px}
+#mcPlanDlg h2,#mcObjDlg h2,#mcRetDlg h2{margin:0;font-size:18px;font-weight:500}
+#mcPlanDlg label,#mcObjDlg label{display:flex;flex-direction:column;gap:6px;font-size:13px;color:var(--muted)}
+#mcPlanDlg input,#mcPlanDlg textarea,#mcObjDlg input,#mcObjDlg textarea,#mcRetDlg textarea{background:var(--panel);border:1px solid var(--line2);border-radius:12px;padding:12px 14px;font:14.5px/1.5 var(--sans);color:var(--text);resize:vertical}
+#mcPlanDlg .note{margin:0}
 .toolgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(250px,1fr));gap:16px}
 .tool{display:flex;flex-direction:column;align-items:flex-start;text-align:left;gap:0;background:var(--panel);color:var(--text);border:1px solid var(--line);border-radius:20px;padding:22px 24px;text-decoration:none;font-weight:400;font-size:14px}
 .tool:hover{border-color:var(--line3);background:var(--raise);opacity:1}.tool svg.ic{width:28px;height:28px;stroke-width:1.4;margin-bottom:18px}.tool b{font-size:16px;font-weight:500;margin-bottom:5px}.tool span{color:var(--muted);font-size:13.5px;line-height:1.5}
@@ -676,10 +720,10 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 .polh{margin:24px 0 10px;font-size:12px;font-weight:500;color:var(--muted)}
 #bottomNav{display:none}
 @media(max-width:860px){
-  #bottomNav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:4px 6px max(6px,env(safe-area-inset-bottom))}
+  #bottomNav{display:grid;grid-template-columns:repeat(6,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:4px 4px max(6px,env(safe-area-inset-bottom))}
   body:not(.is-admin) #bottomNav,body.typing #bottomNav,body.staged.stage-full #bottomNav{display:none}
-  #bottomNav button{display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:0;color:var(--faint);font:500 10.5px var(--sans);min-height:52px;justify-content:center;border-radius:12px;padding:0}
-  #bottomNav button.on{color:var(--text)}#bottomNav button.on svg{color:var(--accent)}#bottomNav svg.ic{width:21px;height:21px}
+  #bottomNav button{display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:0;color:var(--faint);font:500 10px var(--sans);min-height:52px;justify-content:center;border-radius:12px;padding:0}
+  #bottomNav button.on{color:var(--text)}#bottomNav button.on svg{color:var(--accent)}#bottomNav svg.ic{width:20px;height:20px}
   body.is-admin:not(.typing) main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
   body.is-admin:not(.typing)[data-view="chat"] main{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
   #toasts{bottom:calc(84px + env(safe-area-inset-bottom))}
@@ -687,6 +731,15 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
   .libbar select{margin-left:0;width:100%}.polseg{display:grid;grid-template-columns:repeat(5,1fr);width:100%}.polseg button{padding:0;font-size:12px;min-height:44px}
   .tlrow{grid-template-columns:16px minmax(0,1fr)}.tlrow time{grid-column:2}
   #kDlg form,#whyDlg form{padding:20px}.kacts button{min-height:44px}
+  #missionCard{padding:16px 14px 44px;max-width:100%;gap:12px}
+  .mcobj{padding:18px 16px;border-radius:18px}
+  .mcobj h2{font-size:21px}
+  .mcnums{gap:18px}
+  .mcnums div b{font-size:15px}
+  .mcrun{flex-wrap:wrap;padding:14px 16px;border-radius:18px}
+  .mcitem{padding:14px;border-radius:16px}
+  .mcitem-m button{min-height:44px;padding:0 16px;font-size:14px}
+  .mcsec h3{margin:16px 0 8px}
 }
 </style>
 </head>
@@ -694,7 +747,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 <aside id="side" class="admin-only">
   <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div><span data-brand>NOVA</span><small>ATELIER</small></div></div>
   <nav id="tabs">
-    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Workspace</button><button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Conversations</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Projects</button><button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button><button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button><button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Usage</button>
+    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Workspace</button><button data-view="mission"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/></svg>Mission</button><button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Conversations</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Projects</button><button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button><button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button><button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Usage</button>
   </nav>
   <button class="navbtn" type="button" id="railToggle" title="Collapse or expand navigation" aria-label="Collapse or expand navigation"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/><path d="M19 5v14"/></svg>Collapse</button>
   <div class="sidehead"><span id="sideLabel">Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button></div>
@@ -715,12 +768,16 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 <div id="toasts" role="status" aria-live="polite"></div>
 <nav id="bottomNav" class="admin-only" aria-label="Main">
   <button type="button" data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg><span>Home</span></button>
+  <button type="button" data-view="mission"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/></svg><span>Mission</span></button>
   <button type="button" data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/></svg><span>Chat</span></button>
   <button type="button" data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg><span>Projects</span></button>
   <button type="button" data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg><span>Library</span></button>
   <button type="button" data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Activity</span></button>
 </nav>
 <dialog id="askDlg" aria-labelledby="askTitle"><form method="dialog"><h2 id="askTitle"></h2><div id="askBody"></div><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" id="askOk">Continue</button></div></form></dialog>
+<dialog id="mcObjDlg" aria-labelledby="mcObjDlgTitle"><form method="dialog"><h2 id="mcObjDlgTitle">Objective</h2><label>Title <input id="mcObjTitleIn" maxlength="200" autocomplete="off"></label><label>What “done” looks like <textarea id="mcObjDetailIn" rows="4" maxlength="2000"></textarea></label><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary">Set as active</button></div></form></dialog>
+<dialog id="mcPlanDlg" aria-labelledby="mcPlanTitle"><form method="dialog"><h2 id="mcPlanTitle">Plan</h2><label>Concrete, verifiable steps <textarea id="mcPlanText" rows="10" maxlength="8000" placeholder="One step per line…"></textarea></label><div class="row"><button class="ghost" type="button" id="mcPlanSuggest">Ask NOVA for a plan</button><span class="note" id="mcPlanCost" style="margin:0"></span></div><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary">Save plan</button></div></form></dialog>
+<dialog id="mcRetDlg" aria-label="Send back to backlog"><form method="dialog"><h2>What is not done yet?</h2><p class="note">The item goes back to the backlog; this note is included in the next agent run.</p><textarea id="mcRetText" rows="3" maxlength="1000" placeholder="e.g. tests still failing on X"></textarea><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary">Send back</button></div></form></dialog>
 <main>
 <div id="topbar"><button class="iconbtn" id="navOpen" aria-label="Menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><b id="topTitle">Chat</b><button class="iconbtn" id="topNew" aria-label="New chat"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button></div>
 <div class="wrap">
@@ -867,6 +924,12 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       <div class="hcard"><h3>Activity</h3><div id="hActivity"></div></div>
       <div class="hcard"><h3>Usage</h3><div id="hUsage"></div></div>
      </aside></details>
+    </section>
+    <section class="admin-only" id="missionCard" data-tab="mission">
+      <div class="mcobj" id="mcObj" aria-live="polite"></div>
+      <div class="mcrun" id="mcRun" hidden></div>
+      <div class="mccap"><input id="mcIdea" maxlength="200" placeholder="A new idea, quickly…" aria-label="Capture an idea"><button class="primary" type="button" id="mcIdeaAdd">Capture</button></div>
+      <div id="mcSections"></div>
     </section>
     <div id="searchBox" hidden><div class="sbox" role="dialog" aria-label="Search"><input id="searchIn" placeholder="Search conversations and projects…" autocomplete="off"><div id="searchRes"></div></div></div>
 
@@ -1300,18 +1363,18 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       fillModels($("chatModel")); fillModels($("tModel"), null, "agent"); } catch (e) {}
   }
   let VIEW = "chat";
-  const VIEW_NAMES = { home: "Workspace", chat: "Conversations", agent: "Projects", project: "Project", library: "Library", models: "Models", tools: "Tools", costs: "Usage", gpu: "GPU", activity: "Activity" };
+  const VIEW_NAMES = { home: "Workspace", mission: "Mission", chat: "Conversations", agent: "Projects", project: "Project", library: "Library", models: "Models", tools: "Tools", costs: "Usage", gpu: "GPU", activity: "Activity" };
   const HIST = []; let HPOS = -1;
   function setView(v, fromHistory) {
     if (!VIEW_NAMES[v]) v = "home";
     if (VIEW === "agent" && v !== "agent") closeStream();
-    clearTimeout(WORK_TIMER);
+    clearTimeout(WORK_TIMER); clearTimeout(MISSION.timer);
     if (!fromHistory && HIST[HPOS] !== v) { HIST.splice(HPOS + 1); HIST.push(v); HPOS = HIST.length - 1; }
     $("navBack").disabled = HPOS <= 0; $("navFwd").disabled = HPOS >= HIST.length - 1;
     VIEW = v; document.body.dataset.view = v; if ($("sideLabel")) $("sideLabel").textContent = v === "agent" ? "Agent tasks" : "Conversations"; document.body.classList.remove("nav-open"); $("topTitle").textContent = VIEW_NAMES[v]; $("topNew").style.visibility = ["chat", "agent", "home"].includes(v) ? "" : "hidden"; try { sessionStorage.setItem("vellurView", v); } catch (e) {}
     document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v || (b.dataset.view === "tools" && v === "gpu") || (b.dataset.view === "agent" && v === "project")));
     document.querySelectorAll("section[data-tab]").forEach(sec => { sec.hidden = !sec.dataset.tab.split(" ").includes(v); });
-    return ({ home: loadHome, chat: loadConvs, agent: loadAgent, library: loadLibrary, project: () => loadProjectHome(PROJECT_REPO), models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {}, tools: () => {} })[v]();
+    return ({ home: loadHome, mission: loadMission, chat: loadConvs, agent: loadAgent, library: loadLibrary, project: () => loadProjectHome(PROJECT_REPO), models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {}, tools: () => {} })[v]();
   }
   $("navBack").onclick = () => { if (HPOS > 0) setView(HIST[--HPOS], true); };
   $("navFwd").onclick = () => { if (HPOS < HIST.length - 1) setView(HIST[++HPOS], true); };
@@ -1480,6 +1543,161 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
   $("btnSearch").onclick = openSearch; $("searchIn").addEventListener("input", searchRender);
   $("searchIn").addEventListener("keydown", (e) => { if (e.key === "Enter") { const b = $("searchRes").querySelector("button"); if (b) b.click(); } });
   $("searchBox").addEventListener("click", (e) => { if (e.target === $("searchBox")) $("searchBox").hidden = true; });
+  // ── mission control: one objective, the queue, the work in progress, the real cost. Every fact comes from /autopilot/api/mission. ──
+  const MISSION = { data: null, fail: null, seq: 0, timer: null, planId: null, retId: null };
+  const MC_LABEL = { idea: "Idea", backlog: "Backlog", ready: "Ready", running: "Working", review: "Awaiting review", verified: "Verified", parked: "Parked" };
+  const mcPill = (st) => { const k = (st === "ready" || st === "verified") ? "ok" : st === "running" ? "run" : st === "review" ? "warn" : ""; return `<span class="oc ${k}">${MC_LABEL[st] || st}</span>`; };
+  async function loadMission() {
+    const seq = ++MISSION.seq;
+    let d, fail = null;
+    try { d = await send("mission", "GET"); } catch (e) { fail = e.message; }
+    if (seq !== MISSION.seq) return;
+    MISSION.data = d; MISSION.fail = fail;
+    renderMission(); mcPoll();
+  }
+  function mcPoll() {
+    clearTimeout(MISSION.timer);
+    const busy = !!(MISSION.data && MISSION.data.agent && MISSION.data.agent.running);
+    if (VIEW === "mission" && document.visibilityState === "visible" && busy) MISSION.timer = setTimeout(loadMission, 4000);
+  }
+  function renderMission() {
+    const d = MISSION.data, objEl = $("mcObj"), runEl = $("mcRun"), secEl = $("mcSections");
+    if (!d) {
+      objEl.innerHTML = `<div class="mcobj-h"><span class="label">NOVA · MISSION CONTROL</span></div><div class="hempty">Mission could not be loaded: ${esc(MISSION.fail || "unknown error")}</div>`;
+      runEl.hidden = true; secEl.innerHTML = ""; return;
+    }
+    const o = d.objective, g = d.budget.global;
+    const nums = `<div class="mcnums"><div><small>Estimated</small><b>${money(d.budget.objective_estimate_usd)}</b></div><div><small>Confirmed</small><b>${money(d.budget.objective_spent_usd)}</b></div><div><small>Monthly budget</small><b>${money(g.total_usd)} / ${money(g.budget_usd)}</b></div></div>`;
+    const parked = d.parked_objectives.length ? `<div class="mcpark">${d.parked_objectives.map(p => `<button type="button" data-react="${p.id}"><b>${esc(p.title)}</b><small>parked · ${agoShort(p.updated)}</small></button>`).join("")}</div>` : "";
+    objEl.innerHTML = o ? `<div class="mcobj-h"><span class="label">NOVA · MISSION CONTROL</span>${o.state === "active" ? '<span class="oc ok">Active objective</span>' : '<span class="oc warn">No active objective</span>'}<span class="sp"></span><button class="ghost" type="button" data-obj="edit">${o.state === "active" ? "Change" : "New objective"}</button>${o.state === "active" ? '<button class="ghost" type="button" data-obj="park">Park</button>' : ""}</div><h2>${esc(o.title)}</h2>${o.detail ? `<p>${esc(o.detail)}</p>` : ""}${nums}${parked}` : `<div class="mcobj-h"><span class="label">NOVA · MISSION CONTROL</span></div><div class="hempty"><b>No objective yet.</b><p style="margin:8px 0 14px">Set one and NOVA shows the whole work here: ideas, the next task, what is running, the cost.</p><button class="primary" type="button" data-obj="new">Set objective</button></div>${parked}`;
+    const r = d.agent.running;
+    runEl.hidden = !r;
+    if (r) runEl.innerHTML = `<span class="hstat live"><span class="ring"></span>Working now</span><small>${esc(r.state)} · ${money(r.cost_usd)}</small><button type="button" class="mcrun-go" data-open="${r.id}"><b>${esc(r.title)}</b><span>Open in Projects ↗</span></button>`;
+    const order = [["running", "Working"], ["review", "Awaiting review"], ["ready", "Ready"], ["backlog", "Backlog"], ["idea", "Ideas"], ["parked", "Parked"], ["verified", "Verified"]];
+    secEl.innerHTML = order.map(([st, title]) => {
+      const list = d.items.filter(i => i.effective_state === st);
+      return list.length ? `<div class="mcsec"><h3>${title}<small>${list.length}</small></h3>${list.map(mcItem).join("")}</div>` : "";
+    }).join("") || '<div class="hempty">Nothing captured yet. Write an idea above — it appears here, no project needed.</div>';
+  }
+  function mcItem(i) {
+    const d = MISSION.data, st = i.effective_state;
+    const next = d.next && d.next.id === i.id ? '<span class="oc">Next eligible</span>' : "";
+    const bits = [];
+    if (i.cost_estimate_usd != null) bits.push("≈ " + money(i.cost_estimate_usd) + " estimated");
+    if (i.agent_task) bits.push(money(i.agent_task.cost_usd) + " confirmed");
+    if (i.depends_on) bits.push("waits for #" + i.depends_on);
+    const steps = i.plan ? i.plan.split("\n").filter(x => x.trim()).length : 0;
+    if (steps) bits.push(steps + " step" + (steps > 1 ? "s" : "") + " planned");
+    const busy = d.agent.running;
+    const acts = [];
+    if (["idea", "backlog", "ready"].includes(st)) acts.push(`<button class="primary" type="button" data-act="start" ${busy ? "disabled" : ""}>Start agent</button>`);
+    if (st === "idea") acts.push('<button class="ghost" type="button" data-act="backlog">To backlog</button>');
+    if (st === "backlog") acts.push('<button class="ghost" type="button" data-act="ready">Move to ready</button>');
+    if (st === "ready") acts.push('<button class="ghost" type="button" data-act="backlog">To backlog</button>');
+    if (st === "review") acts.push('<button class="primary" type="button" data-act="verify">Mark verified</button><button class="ghost" type="button" data-act="ret">Send back</button>');
+    if (["idea", "backlog", "ready", "parked"].includes(st)) acts.push('<button class="ghost" type="button" data-act="park">Park</button>');
+    if (st === "parked") acts.push('<button class="ghost" type="button" data-act="unpark">To backlog</button>');
+    acts.push('<button class="ghost" type="button" data-act="plan">Plan</button>');
+    if (i.agent_task) acts.push('<button class="ghost" type="button" data-act="open">Open project</button>');
+    return `<div class="mcitem ${st === "verified" ? "done" : ""}" data-id="${i.id}">
+      <div class="mcitem-h">${next}${mcPill(st)}<b>${esc(i.title)}</b></div>
+      ${i.detail ? `<p class="mcitem-d">${esc(i.detail)}</p>` : ""}
+      ${i.blocked_reason ? `<p class="mcblock">Obstacle: ${esc(i.blocked_reason)}</p>` : ""}
+      <div class="mcitem-m"><span class="mcmeta">${bits.join(" · ")}</span>${acts.join("")}</div></div>`;
+  }
+  $("mcObj").addEventListener("click", async (e) => {
+    const p = e.target.closest("[data-react]");
+    if (p) {
+      const t = p.querySelector("b").textContent;
+      if (!await ask("Activate this parked objective?\nThe current active one is parked, not deleted.")) return;
+      try { await send("mission/objective", "POST", { id: Number(p.dataset.react) }); await loadMission(); } catch (err) { toast(err.message); }
+      return;
+    }
+    const b = e.target.closest("[data-obj]");
+    if (!b) return;
+    const o = MISSION.data && MISSION.data.objective;
+    if (b.dataset.obj === "park") {
+      if (!await ask("Park the active objective?\nIts items stay in the list; nothing is deleted.")) return;
+      try { await send("mission/objective/park", "POST", {}); await loadMission(); } catch (err) { toast(err.message); }
+      return;
+    }
+    $("mcObjDlgTitle").textContent = o ? "Change objective" : "Set objective";
+    $("mcObjTitleIn").value = o ? o.title : "";
+    $("mcObjDetailIn").value = o ? o.detail : "";
+    $("mcObjDlg").showModal();
+  });
+  $("mcRun").addEventListener("click", (e) => { const b = e.target.closest("[data-open]"); if (b) openProject(Number(b.dataset.open)); });
+  $("mcSections").addEventListener("click", (e) => {
+    const b = e.target.closest("button[data-act]");
+    if (!b) return;
+    mcAct(Number(b.closest(".mcitem").dataset.id), b.dataset.act, b);
+  });
+  async function mcAct(id, act, btn) {
+    const d = MISSION.data;
+    if (!d) return;
+    const it = d.items.find(x => x.id === id);
+    if (!it) return;
+    const post = (path, body) => send(path, "POST", body || {});
+    try {
+      if (act === "start") {
+        if (!await ask("Start this work now?\nA real agent task runs; the confirmed cost is written on this item.")) return;
+        btn.disabled = true;
+        const r = await post("mission/items/" + id + "/start");
+        toast("Agent started for this item.", "ok");
+        await loadMission();
+        openProject(r.agent_task_id);
+      } else if (act === "verify") {
+        if (!await ask("Mark this item verified?\nUse it only after you checked the result yourself — tests, preview, code.")) return;
+        await post("mission/items/" + id + "/verify");
+        toast("Item verified.", "ok");
+        await loadMission();
+      } else if (act === "ret") {
+        MISSION.retId = id; $("mcRetText").value = it.blocked_reason || "";
+        $("mcRetDlg").showModal();
+      } else if (act === "plan") {
+        MISSION.planId = id; $("mcPlanTitle").textContent = "Plan — " + it.title;
+        $("mcPlanText").value = it.plan || ""; $("mcPlanCost").textContent = ""; $("mcPlanSuggest").disabled = false;
+        $("mcPlanDlg").showModal();
+      } else if (act === "open") {
+        openProject(it.agent_task.id);
+      } else {
+        await post("mission/items/" + id, { state: { park: "parked", unpark: "backlog", ready: "ready", backlog: "backlog" }[act] });
+        await loadMission();
+      }
+    } catch (err) { toast(err.message); if (btn) btn.disabled = false; }
+  }
+  const mcAddIdea = async () => {
+    const el = $("mcIdea"), v = el.value.trim();
+    if (!v) return;
+    try { await send("mission/items", "POST", { title: v, state: "idea" }); el.value = ""; await loadMission(); } catch (e) { toast(e.message); }
+  };
+  $("mcIdeaAdd").onclick = mcAddIdea;
+  $("mcIdea").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); mcAddIdea(); } });
+  $("mcPlanSuggest").onclick = async () => {
+    if (MISSION.planId == null) return;
+    const b = $("mcPlanSuggest");
+    b.disabled = true; $("mcPlanCost").textContent = "NOVA is writing the plan…";
+    try {
+      const r = await send("mission/items/" + MISSION.planId + "/suggest-plan", "POST", {});
+      $("mcPlanText").value = r.plan || "";
+      $("mcPlanCost").textContent = r.cost_usd > 0 ? "$" + Number(r.cost_usd).toFixed(4) + " — confirmed by the cost ledger" : "no price recorded (free model or unknown price)";
+    } catch (e) { $("mcPlanCost").textContent = e.message; }
+    b.disabled = false;
+  };
+  $("mcPlanDlg").addEventListener("close", async () => {
+    if ($("mcPlanDlg").returnValue !== "yes" || MISSION.planId == null) return;
+    try { await send("mission/items/" + MISSION.planId, "POST", { plan: $("mcPlanText").value }); await loadMission(); } catch (e) { toast(e.message); }
+  });
+  $("mcRetDlg").addEventListener("close", async () => {
+    if ($("mcRetDlg").returnValue !== "yes" || MISSION.retId == null) return;
+    try { await send("mission/items/" + MISSION.retId + "/return", "POST", { note: $("mcRetText").value.trim() }); toast("Back in the backlog with your note."); await loadMission(); } catch (e) { toast(e.message); }
+  });
+  $("mcObjDlg").addEventListener("close", async () => {
+    if ($("mcObjDlg").returnValue !== "yes") return;
+    const title = $("mcObjTitleIn").value.trim();
+    if (!title) { toast("Give the objective a title."); return; }
+    try { await send("mission/objective", "POST", { title, detail: $("mcObjDetailIn").value.trim() }); await loadMission(); } catch (e) { toast(e.message); }
+  });
   document.addEventListener("keydown", (e) => { if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === "k" && document.body.classList.contains("is-admin")) { e.preventDefault(); openSearch(); } else if (e.key === "Escape") { $("searchBox").hidden = true; $("meMenu").hidden = true; } });
 
   // chat
