@@ -532,29 +532,44 @@ SCENE_LLM_SYSTEM = (
 
 
 async def maybe_llm_scene(router, prompt: str, current_scene: dict | None = None) -> tuple[dict | None, str]:
+    """AI Assist: ask the routed coding model for a full scene JSON. Returns (scene, note). On any failure the scene is
+    None and the note says why in plain words, so the caller can fall back to the procedural rules *and tell the user*.
+    (Before 2026-11-16 this called a non-existent router.complete() and failed silently.)"""
     if router is None:
-        return None, ""
+        return None, "AI Assist is not available here (no model router)."
     user_msg = prompt if current_scene is None else (
         f"Current scene JSON:\n{json.dumps(current_scene, separators=(',', ':'))}\n\nApply edit instruction:\n{prompt}"
     )
+    body = {"model": "vellur-coder", "stream": False, "max_tokens": 2400,
+            "messages": [{"role": "system", "content": SCENE_LLM_SYSTEM}, {"role": "user", "content": user_msg}]}
     try:
-        res = await router.complete(
-            "vellur-coder",
-            [{"role": "system", "content": SCENE_LLM_SYSTEM}, {"role": "user", "content": user_msg}],
-            max_tokens=1600,
-            tag="studio3d",
-            mode="auto",
-        )
-        text = str(res.get("content") or "").strip()
-        m = re.search(r"\{.*\}", text, flags=re.S)
-        if not m:
-            return None, ""
+        resp = await router.handle("POST", "chat/completions", "", {}, json.dumps(body).encode(), "studio3d")
+        data = b"".join([c async for c in resp.stream]) if resp.stream is not None else (resp.content or b"")
+    except Exception as e:  # noqa: BLE001 - network/provider problems become a readable note
+        return None, f"AI Assist failed ({e.__class__.__name__})."
+    if resp.status != 200:
+        try:
+            msg = json.loads(data)["error"]["message"]
+        except Exception:  # noqa: BLE001
+            msg = data.decode(errors="replace")[:200]
+        return None, f"AI Assist unavailable: {msg}"[:300]
+    try:
+        payload = json.loads(data)
+        text = str(payload["choices"][0]["message"].get("content") or "").strip()
+        target = resp.headers.get("X-Vellur-Target", "") if isinstance(resp.headers, dict) else ""
+    except (ValueError, KeyError, IndexError, TypeError):
+        return None, "AI Assist: the model's answer could not be read."
+    m = re.search(r"\{.*\}", text, flags=re.S)
+    if not m:
+        return None, "AI Assist: the model did not return scene JSON."
+    try:
         parsed = json.loads(m.group(0))
-        if isinstance(parsed, dict) and isinstance(parsed.get("objects"), list) and parsed["objects"]:
-            return normalize_scene(parsed, (current_scene or {}).get("title") or "AI Scene"), f"Synthesized with {res.get('target', 'vellur-coder')}."
-    except Exception:
-        return None, ""
-    return None, ""
+    except ValueError:
+        return None, "AI Assist: the model returned invalid JSON."
+    if not (isinstance(parsed, dict) and isinstance(parsed.get("objects"), list) and parsed["objects"]):
+        return None, "AI Assist: the model's scene had no objects."
+    return normalize_scene(parsed, (current_scene or {}).get("title") or "AI Scene"), \
+        f"Built by AI Assist ({target or 'vellur-coder'})."
 
 
 class CreateSceneBody(BaseModel):
@@ -741,10 +756,12 @@ def register(app: FastAPI, ctrl, router, agent, admin, admin_write) -> Studio3DS
                 return bad("Prompt must be under 4000 characters.")
             ai_scene, ai_note = (await maybe_llm_scene(router, prompt)) if body.use_ai else (None, "")
             if ai_scene:
-                sc, summary, mode = ai_scene, ai_note, "ai+procedural"
+                sc, summary, mode = ai_scene, ai_note, "ai"
             else:
                 sc, summary = generate_scene_from_prompt(prompt)
                 mode = "procedural"
+                if body.use_ai:
+                    summary = f"{ai_note} Used the built-in rules instead. {summary}"
             title = (body.title or sc.get("title") or "Generated Scene").strip()
             entry = {"ts": now, "kind": "prompt_create", "mode": mode, "prompt": prompt, "summary": summary}
             return store.create_scene(title, sc, body.description or prompt[:240], entry, body.task_id)
@@ -779,10 +796,12 @@ def register(app: FastAPI, ctrl, router, agent, admin, admin_write) -> Studio3DS
             return bad("Prompt must be between 2 and 4000 characters.")
         ai_scene, ai_note = (await maybe_llm_scene(router, prompt, cur["scene"])) if body.use_ai else (None, "")
         if ai_scene:
-            updated_sc, summary, mode = ai_scene, ai_note, "ai+procedural"
+            updated_sc, summary, mode = ai_scene, ai_note, "ai"
         else:
             updated_sc, changes = mutate_scene_from_prompt(cur["scene"], prompt)
             summary, mode = " ".join(changes), "procedural"
+            if body.use_ai:
+                summary = f"{ai_note} Used the built-in rules instead. {summary}"
         entry = {"ts": time.time(), "kind": "prompt_edit", "mode": mode, "prompt": prompt, "summary": summary}
         out = store.update_scene(scene_id, updated_sc, history_entry=entry)
         ctrl.db.event("info", "studio3d", f"3D scene {scene_id} edited via prompt ({mode}): {prompt[:70]}")

@@ -60,7 +60,7 @@ Limits: 12 lights, 80 objects. Material presets: see `MATERIAL_PRESETS` in `stud
 | Open page, WebGL viewport, orbit/zoom/pan | **Working** (desktop) | Page loads, canvas renders (1148×842), no JS errors; `OrbitControls` in `studio3d.js` |
 | Create scene from preset / prompt (procedural) | **Working** | `POST studio3d/scenes` with the demo prompt → 9 objects; `test_3d.py::…two_prompt…` |
 | Edit scene by prompt (procedural keyword rules) | **Working, limited** | "more transparent / move the sphere left / adjust camera" → v2 with the expected changes. Only phrases covered by `mutate_scene_from_prompt` do anything. |
-| **"AI Assist" (LLM scene synthesis)** | **Broken** | `maybe_llm_scene` calls `router.complete(...)`, which does not exist on `Router`; the exception is swallowed and the request silently falls back to procedural (`use_ai:true` returned `mode: procedural`). |
+| **"AI Assist" (LLM scene synthesis)** | **Working (fixed 2026-11-16)** | `maybe_llm_scene` sends the scene-compiler prompt through `router.handle("POST","chat/completions",…)` with model `vellur-coder` (automatic routing, budget and cost recording apply); history `mode: "ai"`. If the model is unavailable the edit falls back to the procedural rules and the history summary says why ("AI Assist unavailable: …"). `tests/test_3d.py::test_ai_assist_uses_the_router_and_explains_fallbacks`. Not verified with a real provider. |
 | Save / reopen / version history | **Working** | PUT/prompt bump `version`; reopen returned v2 with 9 objects; UI shows "Scene #4 · v2 · 9 objects". |
 | Object selection + inspector (position, scale, rotation Y, colour, preset, roughness, metalness, transmission, opacity) | **Working in code, partly verified** | `populateInspector` / `applyLiveObjectEdits` in `scene_studio.js`; selection exercised in the UI, field edits not re-verified on 2026-11-16. |
 | Add primitive / delete object | **Not yet verified** | `#addPrimSelect`, `#insDelObj` exist. |
@@ -113,9 +113,8 @@ The coding agent can produce model *files* in a task workspace, which 3D Studio 
 - CSP (`STUDIO3D_HEADERS` in `api.py`): scripts and styles from self only; no CDNs.
 
 ## G. Known limitations / technical debt
-1. AI Assist is broken (`router.complete` missing) and fails silently — the UI checkbox suggests a capability that does
-   not run. Fix belongs to a backend task: call `router.handle("POST","chat/completions",…)` like `workspace.py` does,
-   and surface failures.
+1. AI Assist was broken until 2026-11-16 (it called a non-existent `router.complete`); fixed, tested with a mocked
+   provider only. Model quality for scene JSON is unverified.
 2. Procedural prompt editing understands a fixed set of phrases only.
 3. No transform gizmos, no light editor, no undo/redo in scene mode.
 4. Server preview PNG is an approximation; faithful captures need a browser with WebGL.
