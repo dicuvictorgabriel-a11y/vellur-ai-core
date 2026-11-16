@@ -66,8 +66,28 @@ and where the implementation deliberately differs. Status words: **implemented**
   The preview uses simulated services (label "DEMO / SIMULATED SERVICES").
 - **Not verified:** the real server, real models, real GitHub pull requests, real provider costs.
 
-## Knowledge
+## Phase two (2026-11-16): routing, Knowledge, timeline, projects
 
-The repository has no Knowledge store or retrieval API yet (§23 is proposed). Until it exists, this file,
-`docs/ATELIER.md`, `docs/AGENT.md` and `AGENTS.md` are the record; retrieval check:
-`grep -rn "delivery" docs/NOVA.md AGENTS.md`.
+Owner decision: routing is **automatic** within a configured allowance.
+
+- `app/policy.py`: modes auto / economy / balanced / quality / manual. Pool = every target saved in the routes (no new
+  provider or charge category appears by itself). Hard filters: required capabilities (tools, vision, image output,
+  context), known price for paid models. Ranking evidence: judged task outcomes and call errors over 30 days, ignored
+  below 5 calls / 3 tasks (neutral prior). Expected cost (price × expected tokens ÷ call success) is reserved
+  atomically against `auto_allowance_usd` (month) and `auto_task_limit_usd` (per task) and released when the call is
+  recorded. At most 3 attempts. Each decision is stored in `routing_decisions` and explained at
+  `/autopilot/api/routing/decisions/{id}` (reason, ranked candidates, rejected models, cheaper alternative).
+  Until an allowance is set, auto uses the saved routes exactly as before (no new paid automation).
+  Limitation: reservations are in-process (single controller process, as deployed); a multi-process deployment would
+  need them in SQLite.
+- `app/knowledge.py`: Knowledge store (SQLite FTS5, LIKE fallback). Agent first prompts and conversation replies get
+  decided/locked records plus the best matches for the project. Automatic writes only for verified runs
+  (outcome completed and every reported check passed). UI: Library.
+- `app/timeline.py`: one derived event history keyed by source ids (idempotent, replayable). GitHub/installer rows are
+  written only from `Release.delivery()` observations. UI: Activity, project home.
+- Project home (`/autopilot/api/projects/overview`): last work, unfinished tasks, costs, live version, knowledge,
+  timeline, "Continue where I left off".
+- Phones: bottom navigation, hidden while typing.
+
+Retrieval check: `GET /autopilot/api/knowledge?q=landing` in the preview returns the seeded demo records
+(`search: fts5`); `tests/test_knowledge.py` checks scope, prefix search, versions, locks, secrets and agent prompts.

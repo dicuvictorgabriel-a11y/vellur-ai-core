@@ -69,6 +69,13 @@ def seed(db) -> tuple[int, int]:
         db.x("INSERT INTO task_events(task_id,ts,run,kind,data) VALUES(?,?,?,?,?)", (tid, now, 1, kind, json.dumps(data)))
     db.x("UPDATE tasks SET report=? WHERE id=?", (json.dumps(report), tid))
     db.kv_set(f"conversation_task_{cid}", tid)
+    from app.knowledge import Knowledge
+    k = Knowledge(db)
+    k.create({"project": "demo/project", "namespace": "Decisions", "status": "decided", "title": "Landing page keeps one call to action",
+              "body": "Demo record: the owner decided the landing page has exactly one primary button."}, source="owner (demo)")
+    k.create({"namespace": "Constraints", "title": "No localStorage in dashboards",
+              "body": "Demo record: dashboards keep state on the server or in cookies, never in localStorage."}, source="owner (demo)")
+    k.record_run({"id": tid, "repo": "demo/project", "prompt": "Demo task: restyle the landing page"}, 1, report)
     return cid, tid
 
 
@@ -153,7 +160,8 @@ def configure_demo(ctrl, router: Router) -> None:
                                      "vellur-max": ["preview:demo-chat"], "vellur-image": ["preview:demo-image"]},
                           "prices": {"preview:demo-chat": [0, 0]},
                           "image_prices": {"preview:demo-image": 0.02},
-                          "image_confirm_paid": True, "agent_image_generation": True, "agent_auto_publish": False})
+                          "image_confirm_paid": True, "agent_image_generation": True, "agent_auto_publish": False,
+                          "auto_allowance_usd": 1.0})
 
 
 def seed_demo_image(app, db, cid: int, tid: int) -> None:
