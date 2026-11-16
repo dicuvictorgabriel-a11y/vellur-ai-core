@@ -170,9 +170,16 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
             tid = db.kv_get(f"conversation_task_{cid}")
             try:
                 visual, shots = visual_prefs(body)
+                task = None
                 if tid:
-                    task = await agent.message(tid, body.prompt, body.model, visual, shots, body.attachments)
-                else:
+                    try:
+                        task = await agent.message(tid, body.prompt, body.model, visual, shots, body.attachments)
+                    except AgentError as e:
+                        # A linked task that never started an agent session (runner down, budget stop before start)
+                        # cannot be continued; without this the conversation would be stuck on it forever.
+                        if e.code != "expired":
+                            raise
+                if task is None:
                     history = db.all("SELECT role,content FROM messages WHERE conv_id=? ORDER BY id DESC LIMIT 20", (cid,))
                     context = "\n\n".join(f"{m['role']}: {m['content']}" for m in reversed(history))[-8000:]
                     prompt = ("Conversation context (background):\n" + context + "\n\nOwner's task:\n" if context else "") + body.prompt
