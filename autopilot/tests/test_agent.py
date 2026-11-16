@@ -830,3 +830,17 @@ async def test_conversation_work_guards_missing_image_and_busy_requests(agents):
     assert len((await admin.get(f'/autopilot/api/conversations/{cid}', headers=ADMIN)).json()['messages']) == 1
     await mgr.cancel(tid)
     await wait_final(mgr, tid)
+
+
+async def test_conversation_work_relinks_when_linked_task_never_started(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    cid = (await admin.post('/autopilot/api/conversations', headers=WRITE, json={})).json()['id']
+    url = f'/autopilot/api/conversations/{cid}/work'
+    tid = (await admin.post(url, headers=WRITE, json={'prompt': 'Build a small demo'})).json()['task_id']
+    await wait_final(mgr, tid)
+    ctrl.db.x("UPDATE tasks SET started=NULL WHERE id=?", (tid,))  # as if the runner never opened a session
+    r = await admin.post(url, headers=WRITE, json={'prompt': 'Try again'})
+    assert r.status_code == 200, r.text
+    new = r.json()['task_id']
+    assert new != tid and ctrl.db.kv_get(f'conversation_task_{cid}') == new
+    await wait_final(mgr, new)
