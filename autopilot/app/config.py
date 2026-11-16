@@ -75,6 +75,11 @@ DEFAULT_SETTINGS: dict = {
     "max_session_usd": 5.0,          # a GPU session is released when its estimated cost reaches this
     # Model routing: public model name → ordered targets ("provider:model-id" or "gpu"). First usable target wins.
     "routes": {"vellur-coder": [], "vellur-chat": [], "vellur-max": [], "vellur-image": []},
+    # NOVA routing (app/policy.py). auto|economy|balanced|quality|manual. Automatic modes reorder the models saved in
+    # the routes and stay off for paid models until an allowance (USD per month, inside the budget) is set.
+    "routing_mode": "auto",
+    "auto_allowance_usd": 0.0,
+    "auto_task_limit_usd": 0.5,
     # Manual prices, USD per million tokens: {"provider:model-id": [input, output]} (catalog prices are used otherwise)
     "prices": {},
     # Manual image prices, USD per generated image (catalog prices are used otherwise).

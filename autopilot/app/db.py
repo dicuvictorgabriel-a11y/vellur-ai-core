@@ -73,6 +73,26 @@ CREATE TABLE IF NOT EXISTS generated_images (
 );
 CREATE INDEX IF NOT EXISTS generated_images_conv ON generated_images(conv_id);
 CREATE INDEX IF NOT EXISTS generated_images_task ON generated_images(task_id);
+CREATE TABLE IF NOT EXISTS routing_decisions (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, ts REAL NOT NULL, tag TEXT DEFAULT '', role TEXT NOT NULL, mode TEXT NOT NULL,
+  policy TEXT NOT NULL, required TEXT DEFAULT '[]', chosen TEXT DEFAULT '', reason TEXT DEFAULT '',
+  candidates TEXT DEFAULT '[]', est_usd REAL DEFAULT 0, outcome TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS routing_tag ON routing_decisions(tag);
+CREATE TABLE IF NOT EXISTS timeline (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, event_id TEXT UNIQUE NOT NULL, project TEXT DEFAULT '', task_id INTEGER,
+  conv_id INTEGER, correlation_id TEXT DEFAULT '', occurred_at REAL NOT NULL, observed_at REAL NOT NULL,
+  source TEXT NOT NULL, event_type TEXT NOT NULL, category TEXT NOT NULL, title TEXT NOT NULL,
+  payload_version INTEGER DEFAULT 1, payload TEXT DEFAULT '{}', external_ref TEXT DEFAULT ''
+);
+CREATE INDEX IF NOT EXISTS timeline_task ON timeline(task_id, occurred_at);
+CREATE INDEX IF NOT EXISTS timeline_project ON timeline(project, occurred_at);
+CREATE TABLE IF NOT EXISTS knowledge (
+  id INTEGER PRIMARY KEY AUTOINCREMENT, project TEXT DEFAULT '', namespace TEXT NOT NULL, title TEXT NOT NULL,
+  body TEXT NOT NULL, status TEXT DEFAULT 'implemented', source TEXT DEFAULT '', tags TEXT DEFAULT '',
+  paths TEXT DEFAULT '', created REAL NOT NULL, updated REAL NOT NULL, version INTEGER DEFAULT 1, locked INTEGER DEFAULT 0
+);
+CREATE INDEX IF NOT EXISTS knowledge_project ON knowledge(project);
 """
 
 # Columns added after the first release (ALTER TABLE ... ADD COLUMN is skipped when the column exists).

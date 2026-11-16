@@ -140,6 +140,8 @@ class Router:
                                         timeout=httpx.Timeout(connect=15, read=900, write=120, pool=30))
         self.tokens: dict[str, str] = {}
         self._reconciling: set = set()
+        from .policy import Policy
+        self.policy = Policy(self)
 
     # ── providers ───────────────────────────────────────────────────────────────────────────────
     def providers(self) -> dict:
@@ -555,15 +557,37 @@ class Router:
             elif self._has_image(payload):
                 capability = "vision"
         errors = []
-        for i, target in enumerate(self.chain(role, capability=capability)):
-            ok, code, why = self.usable(target, fallback=i > 0, capability=capability)
+        targets, decision = self.policy.plan(role, capability, payload, tag)
+        auto = decision["policy"] != "manual"
+        did = self.policy.log(tag, role, decision, targets[0] if targets else "") if auto else 0
+        if auto and not targets:
+            return error_response("capability", decision["reason"] + " " + "; ".join(
+                f"{x['target']}: {x['why']}" for x in decision.get("rejected", [])))
+        for i, target in enumerate(targets):
+            # automatic modes: the owner authorised choosing among the pool within the allowance, so a later target is
+            # not a "paid fallback"; the reservation below is the spending guard instead.
+            ok, code, why = self.usable(target, fallback=i > 0 and not auto, capability=capability)
             if not ok:
                 errors.append((target, code, why))
                 continue
+            rid = 0
+            if auto:
+                rid, why = self.policy.reserve(tag, target, self.policy.expected_usd(target, role, payload) or 0.0)
+                if rid is None:
+                    errors.append((target, "allowance", why))
+                    continue
             try:
-                return await self._send(target, role, path, query, headers, payload, tag)
+                resp = await self._send(target, role, path, query, headers, payload, tag, rid, did)
+                if did and i:
+                    self.db.x("UPDATE routing_decisions SET chosen=?, reason=reason||? WHERE id=?",
+                              (target, f" Used {target} after: " + "; ".join(f"{t}: {w}" for t, _, w in errors), did))
+                if did:
+                    resp.headers["X-Vellur-Decision"] = str(did)
+                return resp
             except _Skip as e:
+                self.policy.release(rid)
                 errors.append((target, e.code, e.message))
+        self.policy.outcome(did, "failed")
         if len(errors) == 1:
             target, code, why = errors[0]
             if target == "gpu" and code == "config" and not any(self.key(n) for n in self.providers()):
@@ -572,7 +596,8 @@ class Router:
             return error_response(code, why if target == "gpu" else f"{target}: {why}")
         return error_response("no_backend", "no backend could answer — " + "; ".join(f"{t}: {w}" for t, _, w in errors))
 
-    async def _send(self, target: str, role: str, path: str, query: str, headers: dict, payload: dict, tag: str) -> RouterResponse:
+    async def _send(self, target: str, role: str, path: str, query: str, headers: dict, payload: dict, tag: str,
+                    rid: int = 0, did: int = 0) -> RouterResponse:
         info = self.info(target)
         t0 = time.monotonic()
         up = dict(payload)
@@ -630,6 +655,8 @@ class Router:
                     await scope.__aexit__(None, None, None)
                 usage = sniff.usage()
                 row = self.record(role, target, info, 200 <= status < 300, status, usage, t0, tag)
+                self.policy.release(rid)
+                self.policy.outcome(did, "ok" if 200 <= status < 300 else "failed")
                 if 200 <= status < 300 and provider_usd((usage or {}).get("cost")) is None:
                     self.reconcile_later(row, info, sniff.gen_id)
 

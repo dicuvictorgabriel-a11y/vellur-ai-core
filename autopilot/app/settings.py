@@ -147,6 +147,12 @@ class Settings:
             if not 0 <= clean["max_hourly_usd"] <= self.env.hard_max_hourly_usd:
                 raise SettingsError(f"max hourly rate must be 0–{self.env.hard_max_hourly_usd:g} USD "
                                     "(the ceiling is changed only on the server)")
+        if "routing_mode" in clean and clean["routing_mode"] not in ("auto", "economy", "balanced", "quality", "manual"):
+            raise SettingsError("routing_mode must be auto, economy, balanced, quality or manual")
+        if "auto_allowance_usd" in clean and not 0 <= clean["auto_allowance_usd"] <= self.env.hard_max_monthly_usd:
+            raise SettingsError(f"the automatic spending allowance must be 0–{self.env.hard_max_monthly_usd:g} USD")
+        if "auto_task_limit_usd" in clean and not 0 <= clean["auto_task_limit_usd"] <= 100:
+            raise SettingsError("the per-task limit must be 0–100 USD")
         if "preferred_provider" in clean and clean["preferred_provider"] not in PROVIDERS:
             raise SettingsError("unknown provider")
         if "profile" in clean and clean["profile"] not in PROFILES:

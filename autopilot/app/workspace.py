@@ -443,6 +443,34 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         db.event("info", "llm", "model routes changed", routes=routes)
         return await llm_state()
 
+    # ── NOVA routing: mode, allowance, decisions ("why this model?") ─────────────────────────────
+    @app.get("/autopilot/api/routing", dependencies=[Depends(admin)])
+    async def routing_state():
+        out = router.policy.status()
+        out["decisions"] = db.all("SELECT id,ts,tag,role,mode,policy,chosen,est_usd,outcome FROM routing_decisions "
+                                  "ORDER BY id DESC LIMIT 20")
+        return out
+
+    @app.put("/autopilot/api/routing", dependencies=[Depends(admin_write)])
+    async def routing_put(body: dict):
+        keep = {k: body[k] for k in ("routing_mode", "auto_allowance_usd", "auto_task_limit_usd") if k in body}
+        try:
+            ctrl.settings.update(keep)
+        except SettingsError as e:
+            return JSONResponse(status_code=400, content={"error": "invalid", "message": str(e)})
+        db.event("info", "llm", "routing policy changed", **keep)
+        return router.policy.status()
+
+    @app.get("/autopilot/api/routing/decisions/{did}", dependencies=[Depends(admin)])
+    async def routing_decision(did: int):
+        d = router.policy.explain(decision_id=did)
+        return d or JSONResponse(status_code=404, content={"error": "not_found", "message": "unknown decision"})
+
+    @app.get("/autopilot/api/routing/explain", dependencies=[Depends(admin)])
+    async def routing_explain(tag: str):
+        d = router.policy.explain(tag=tag)
+        return d or JSONResponse(status_code=404, content={"error": "not_found", "message": "no routing decision recorded for this work yet"})
+
     # ── costs ───────────────────────────────────────────────────────────────────────────────────
     @app.get("/autopilot/api/costs", dependencies=[Depends(admin)])
     async def costs():
