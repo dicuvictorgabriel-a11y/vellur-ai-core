@@ -63,7 +63,7 @@ const $ = id => els[id] ||= { checked: false, disabled: true, textContent: "", a
 const document = { addEventListener() {} };
 let AGENT = { self_repo: "owner/vellur" }, fail = false, calls = [];
 let server = { agent_visual_inspection: false, agent_auto_screenshots: false, agent_auto_publish: true, agent_auto_publish_main_repo: "" };
-const confirm = () => true;
+const ask = async () => true;
 const send = async (path, method, body) => { calls.push([path, method, body]); if (fail) throw Error("offline"); Object.assign(server, body); return { ...server }; };
 '''
     checks = '''
@@ -256,6 +256,10 @@ def test_nova_work_surface_is_wired_to_real_endpoints_and_stays_sandboxed():
     assert 'sandbox="allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock"' in frame
     assert "allow-same-origin" not in frame
     assert "alert(e.message)" not in html and "function toast(" in html
+    # approvals happen in the page (ApprovalDialog), never in the browser's blocking confirm()
+    script = html[html.index("<script>"):html.index("</script>")]
+    assert 'id="askDlg"' in html and "function ask(text)" in script
+    assert script.count("confirm(") == 2   # the fallback for browsers without <dialog> + its comment
     stage = html[html.index("  function phaseRows("):html.index("  function toolView(")] if "  function toolView(" in html[html.index("  function phaseRows("):] else ""
     import re
     assert not re.search(r"\d%|percent", stage)   # phases carry real event times, never a percentage

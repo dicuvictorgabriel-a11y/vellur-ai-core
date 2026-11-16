@@ -545,6 +545,11 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
   body.rail #mePearl{cursor:pointer}
   body.rail #meMenu{position:fixed;left:74px;right:auto;bottom:14px;width:264px}
 }
+#askDlg{border:1px solid var(--line2);border-radius:18px;background:var(--raise);color:var(--text);padding:0;width:min(440px,calc(100vw - 32px));box-shadow:0 24px 64px rgba(0,0,0,.35)}
+#askDlg::backdrop{background:rgba(8,8,10,.6)}#askDlg form{padding:24px;margin:0}#askDlg h2{margin:0 0 8px;font-size:17px;font-weight:500;line-height:1.4;overflow-wrap:anywhere}
+#askDlg p{margin:0 0 8px;color:var(--muted);font-size:13.5px;line-height:1.55;white-space:pre-line;overflow-wrap:anywhere}#askDlg .row{justify-content:flex-end;gap:8px;margin-top:20px}
+#askDlg button{min-height:40px}#askDlg button.danger{background:var(--bad-bg);color:var(--bad);border:1px solid var(--bad-line)}
+@media(max-width:860px){#askDlg .row button{flex:1;min-height:48px}}
 /* toasts replace blocking alert() */
 #toasts{position:fixed;z-index:120;right:16px;bottom:max(16px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;max-width:min(420px,calc(100vw - 32px))}
 .toast{background:var(--raise);border:1px solid var(--line2);border-left:3px solid var(--accent);border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.45;color:var(--text);box-shadow:0 12px 32px rgba(0,0,0,.28);overflow-wrap:anywhere;animation:toastin .2s ease-out}
@@ -647,6 +652,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 </aside>
 <div id="scrim"></div>
 <div id="toasts" role="status" aria-live="polite"></div>
+<dialog id="askDlg" aria-labelledby="askTitle"><form method="dialog"><h2 id="askTitle"></h2><div id="askBody"></div><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" id="askOk">Continue</button></div></form></dialog>
 <main>
 <div id="topbar"><button class="iconbtn" id="navOpen" aria-label="Menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><b id="topTitle">Chat</b><button class="iconbtn" id="topNew" aria-label="New chat"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button></div>
 <div class="wrap">
@@ -1056,7 +1062,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     catch (e) { show("Settings not saved: " + e.message, "bad"); }
   };
   $("btnStart").onclick = async () => { try { await api("start", { method: "POST", body: "{}" }); show(""); } catch (e) { show(e.message, "bad"); } };
-  $("btnStop").onclick = async () => { if (!confirm("Stop the GPU now? Active requests will be interrupted.")) return; try { await api("stop", { method: "POST", body: "{}" }); } catch (e) { show(e.message, "bad"); } };
+  $("btnStop").onclick = async () => { if (!await ask("Stop the GPU now? Active requests will be interrupted.")) return; try { await api("stop", { method: "POST", body: "{}" }); } catch (e) { show(e.message, "bad"); } };
   $("btnConnect").onclick = async () => {
     const port = parseInt($("hPort").value, 10); if (!port) return show("Enter the SSH port from the HyperAI SSH panel.", "bad");
     try { await api("hyperai/connect", { method: "POST", body: JSON.stringify({ port, host: $("hHost").value.trim() || null }) }); show("Connecting to the HyperAI workspace…"); } catch (e) { show(e.message, "bad"); }
@@ -1481,7 +1487,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     catch(e) { $("chatFileNote").textContent = e.message; }
     finally { $("convNew").disabled = $("btnSend").disabled = $("chatMode").disabled = false; }
   };
-  $("convDel").onclick = async () => { if (CONV && confirm("Delete this conversation?")) { await send("conversations/" + CONV, "DELETE"); CONV = null; await loadConvs(); } };
+  $("convDel").onclick = async () => { if (CONV && await ask("Delete this conversation?")) { await send("conversations/" + CONV, "DELETE"); CONV = null; await loadConvs(); } };
   const syncImgSize = () => { $("imgSize").hidden = $("chatModel").value !== "vellur-image"; };
   $("chatModel").addEventListener("change", syncImgSize);
   new MutationObserver(syncImgSize).observe($("chatModel"), { childList: true, subtree: true });
@@ -1595,8 +1601,8 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       card.querySelectorAll("details").forEach(d => d.open = opened.has(d.dataset.section));
       stageUpdate(task, events, outcome, state, active);
       card.querySelector("[data-open-work]").onclick = () => openProject(tid);
-      const stop = card.querySelector("[data-stop-work]"); if (stop) stop.onclick = async () => { if (!confirm("Stop this agent task?")) return; try { await send("agent/tasks/" + tid + "/cancel", "POST", {}); await refreshWork(); } catch(e) { $("chatFileNote").textContent = e.message; } };
-      const review = card.querySelector("[data-review-work]"); if (review) review.onclick = async () => { if (!confirm("Create or update the draft pull request with this task's changes?")) return; review.disabled = true; try { await send("agent/tasks/" + tid + "/publish", "POST", {}); await refreshWork(); } catch(e) { $("chatFileNote").textContent = e.message; review.disabled = false; } };
+      const stop = card.querySelector("[data-stop-work]"); if (stop) stop.onclick = async () => { if (!await ask("Stop this agent task?")) return; try { await send("agent/tasks/" + tid + "/cancel", "POST", {}); await refreshWork(); } catch(e) { $("chatFileNote").textContent = e.message; } };
+      const review = card.querySelector("[data-review-work]"); if (review) review.onclick = async () => { if (!await ask("Create or update the draft pull request with this task's changes?")) return; review.disabled = true; try { await send("agent/tasks/" + tid + "/publish", "POST", {}); await refreshWork(); } catch(e) { $("chatFileNote").textContent = e.message; review.disabled = false; } };
       if (task.pr_url && /^https:\/\/github\.com\//.test(task.pr_url)) { const a = document.createElement("a"); a.href = task.pr_url; a.textContent = "View pull request ↗"; a.target = "_blank"; a.rel = "noopener"; card.querySelector(".row").appendChild(a); }
       if (active) WORK_TIMER = setTimeout(refreshWork, 3000);
     } catch(e) { if (cid === CONV && VIEW === "chat") { $("chatFileNote").textContent = "Activity unavailable. Retrying… " + e.message; WORK_TIMER = setTimeout(refreshWork, 5000); } }
@@ -1605,6 +1611,18 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
   // ── NOVA brand: the temporary codename lives here. Renaming the product = these values (+ the static copy). ──
   const BRAND = { name: "NOVA", full: "Neural Orchestration & Virtual Autonomy", title: "NOVA" };
   document.title = BRAND.title; document.querySelectorAll("[data-brand]").forEach(el => el.textContent = BRAND.name);
+  // ApprovalDialog: an in-page question instead of the browser's blocking confirm(). First line = the question,
+  // the rest = what it means. Resolves true only on an explicit "yes"; Escape / Cancel / backdrop = no.
+  function ask(text) {
+    const d = $("askDlg"), [head, ...rest] = String(text).split("\n");
+    if (!d.showModal) return Promise.resolve(window.confirm(text));
+    $("askTitle").textContent = head; $("askBody").innerHTML = rest.join("\n").trim() ? "<p>" + esc(rest.join("\n").trim()) + "</p>" : "";
+    const danger = /^(Delete|Stop|Remove|Return|Replace)\b/.test(head);
+    $("askOk").className = danger ? "danger" : "primary"; $("askOk").textContent = danger ? head.split(" ")[0] : "Continue";
+    d.returnValue = ""; d.showModal(); (danger ? d.querySelector("button[value=no]") : $("askOk")).focus();   // destructive: Enter must not destroy
+    return new Promise(res => d.addEventListener("close", () => res(d.returnValue === "yes"), { once: true }));
+  }
+  { const d = $("askDlg"); d.addEventListener("click", (e) => { if (e.target === d) d.close("no"); }); }
   // Toasts instead of blocking alert(): what happened, in words, without stopping the page.
   function toast(text, kind) {
     const t = document.createElement("div"); t.className = "toast " + (kind || "bad"); t.textContent = String(text || "Something went wrong.");
@@ -1756,7 +1774,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       + `<div class="shmeta"><span>Checked ${esc(clock(d.checked_at))}</span>${d.errors.map(e => `<span class="warnc">${esc(e)}</span>`).join("")}<button class="copyid" type="button" data-recheck>Check again</button></div>`;
     const on = (sel, fn) => $("shBody").querySelectorAll(sel).forEach(b => b.onclick = fn);
     on("[data-recheck]", () => shLoad(true)); on("[data-review]", () => setMode("review", true)); on("[data-deploy]", () => setView("activity"));
-    on("[data-prepare]", async (ev) => { if (!confirm("Create or update the draft pull request with this task's changes?\n\nThis does not merge or install anything.")) return;
+    on("[data-prepare]", async (ev) => { if (!await ask("Create or update the draft pull request with this task's changes?\n\nThis does not merge or install anything.")) return;
       ev.target.disabled = true; ev.target.textContent = "Preparing…";
       try { await send("agent/tasks/" + tid + "/publish", "POST", {}); toast("Pull request prepared.", "ok"); await refreshWork(); await shLoad(true); } catch (e) { toast(e.message); shRender(); } });
   }
@@ -1817,7 +1835,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
   for (const [key, id] of Object.entries(PREF_CONTROLS)) $(id).onchange = async () => {
     const input = $(id), previous = PREFS[key], main = key === "agent_auto_publish_main_repo";
     const value = main ? (input.checked ? AGENT.self_repo : "") : input.checked;
-    if (main && input.checked && previous && previous !== value && !confirm("Replace the existing main-branch opt-in for " + previous + " with " + value + "?")) { syncAgentPrefs(PREFS); return; }
+    if (main && input.checked && previous && previous !== value && !await ask("Replace the existing main-branch opt-in for " + previous + " with " + value + "?")) { syncAgentPrefs(PREFS); return; }
     PREF_PENDING.add(key); input.disabled = true; $("agToolsNote").textContent = "Saving…";
     try { const saved = await send("settings", "PUT", { [key]: value }); PREFS[key] = saved[key]; $("agToolsNote").textContent = "Saved"; }
     catch (e) { PREFS[key] = previous; $("agToolsNote").textContent = "Not saved: " + e.message; }
@@ -1933,11 +1951,11 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       const d = await send("agent/tasks/" + TASK + "/diff", "GET"); pre.innerHTML = (d.diff || "(no diff)").split("\n").map(l => `<span class="${l.startsWith("+") && !l.startsWith("+++") ? "dadd" : l.startsWith("-") && !l.startsWith("---") ? "ddel" : l.startsWith("@@") || l.startsWith("diff ") ? "dhdr" : ""}">${esc(l)}</span>`).join("\n"); pre.style.display = ""; });
     if (CUR.can_publish) add("Publish to " + (CUR.base || "the main branch"), "", async (ev) => {
       const warn = CUR.outcome !== "completed" ? "\n\nNote: the agent did not confirm the task as complete." : "";
-      if (!confirm("Publish these changes directly to “" + CUR.base + "” in " + CUR.repo + "?\n\nIf this project deploys from that branch, the changes go live." + warn)) return;
+      if (!await ask("Publish these changes directly to “" + CUR.base + "” in " + CUR.repo + "?\n\nIf this project deploys from that branch, the changes go live." + warn)) return;
       ev.target.disabled = true; ev.target.textContent = "Publishing…";
       try { await send("agent/tasks/" + TASK + "/publish-direct", "POST", {}); await openTask(TASK); } catch (e) { if (e.message && e.message.includes("changed on GitHub since")) { ev.target.textContent = "Creating pull request…"; try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e2) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; toast(e2.message); } } else { ev.target.disabled = false; ev.target.textContent = "Publish to " + CUR.base; toast(e.message); } } });
     if (CUR.can_publish) add(CUR.pr_url ? "Update pull request" : "Pull request instead", "ghost", async (ev) => {
-      if (!confirm(CUR.pr_url ? "Push these changes to the existing pull request branch?" : "Create a branch and a draft pull request on GitHub with these changes?")) return;
+      if (!await ask(CUR.pr_url ? "Push these changes to the existing pull request branch?" : "Create a branch and a draft pull request on GitHub with these changes?")) return;
       ev.target.disabled = true; ev.target.textContent = "Publishing…";
       try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; toast(e.message); } });
     if (CUR.pr_url) { const l = document.createElement("a"); l.href = CUR.pr_url; l.target = "_blank"; l.rel = "noopener"; l.className = "chip"; l.style.cssText = "display:inline-flex;align-items:center;text-decoration:none"; l.textContent = "Open pull request ↗"; a.appendChild(l); }
@@ -2181,7 +2199,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     l.innerHTML = "";
     r.checkpoints.forEach((c, i) => { const row = div("cp" + (i === 0 ? " cur" : ""), `<div><b>${esc(c.label)}</b><small>${i === 0 ? "current · " : ""}${new Date(c.ts * 1000).toLocaleString([], { dateStyle: "medium", timeStyle: "short" })}</small></div>`);
       if (i > 0) { const b = document.createElement("button"); b.className = "ghost"; b.textContent = "Restore"; b.onclick = async () => {
-          if (!confirm("Return the project to “" + c.label + "”?\n\nThe current state is saved as a checkpoint first, so you can come back to it.")) return;
+          if (!await ask("Return the project to “" + c.label + "”?\n\nThe current state is saved as a checkpoint first, so you can come back to it.")) return;
           b.disabled = true; b.textContent = "Restoring…";
           try { await send("agent/tasks/" + TASK + "/restore", "POST", { id: c.id }); $("cpPanel").hidden = true; await openTask(TASK); } catch (e) { b.disabled = false; b.textContent = "Restore"; toast(e.message); } };
         row.appendChild(b); }
@@ -2206,10 +2224,10 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     $("relInstall").style.display = can ? "" : "none"; $("relInstall").textContent = L ? "Install version " + short(L.sha) : ""; $("relInstall").disabled = !(L && L.ci === "passed");
     $("relNote").textContent = can && L.ci !== "passed" ? "Installing is possible only after the automated tests of that version passed." : "";
     $("relCancel").style.display = r.approved ? "" : "none"; $("relRollback").style.display = r.previous ? "" : "none";
-    $("relInstall").onclick = async () => { if (!confirm("Install version " + short(L.sha) + " on the server?\n\n“" + L.message + "”\n\nThe dashboard restarts for about a minute. If the new version fails its checks, the previous one is restored automatically.")) return;
+    $("relInstall").onclick = async () => { if (!await ask("Install version " + short(L.sha) + " on the server?\n\n“" + L.message + "”\n\nThe dashboard restarts for about a minute. If the new version fails its checks, the previous one is restored automatically.")) return;
       try { await send("release/approve", "POST", { sha: L.sha }); await loadRelease(); } catch (e) { $("relNote").textContent = e.message; } };
     $("relCancel").onclick = async () => { await send("release/cancel", "POST", {}); await loadRelease(); };
-    $("relRollback").onclick = async () => { if (!confirm("Return the server to the previous version of NOVA?")) return; await send("release/rollback", "POST", {}); $("relNote").textContent = "Requested: the server does it within two minutes."; };
+    $("relRollback").onclick = async () => { if (!await ask("Return the server to the previous version of NOVA?")) return; await send("release/rollback", "POST", {}); $("relNote").textContent = "Requested: the server does it within two minutes."; };
   }
   async function catchUp() {      // fetch every event after LAST_EV, in pages (a long run has more than 500)
     for (;;) {
@@ -2237,7 +2255,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     if (document.visibilityState === "visible" && VIEW === "agent" && CUR && !FINAL_STATES.includes(CUR.state) && (!ES || ES.readyState === 2)) live();
   });
   async function agSend() {
-    if (CUR && !FINAL_STATES.includes(CUR.state)) { if (!confirm("Stop the agent now?")) return; await send("agent/tasks/" + TASK + "/cancel", "POST", {}); return; }
+    if (CUR && !FINAL_STATES.includes(CUR.state)) { if (!await ask("Stop the agent now?")) return; await send("agent/tasks/" + TASK + "/cancel", "POST", {}); return; }
     if (!PREFS || PREF_PENDING.has("agent_visual_inspection") || PREF_PENDING.has("agent_auto_screenshots")) { $("agNote").textContent = "Wait for visual preferences to finish loading or saving."; return; }
     const text = $("agIn").value.trim(); if (!text) return;
     if (!attsReady(agentAtts)) { $("agNote").textContent = "Wait for the attachments to finish uploading."; return; }
@@ -2403,7 +2421,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
         const ch = { plan: row.querySelector('[data-f="plan"]').value, monthly_usd: Number(row.querySelector('[data-f="monthly_usd"]').value || 0), base_url: row.querySelector('[data-f="base_url"]').value.trim() };
         const key = row.querySelector('[data-f="api_key"]').value.trim(); if (key) ch.api_key = key;
         renderLLM(await send("llm/providers/" + name, "PUT", ch)); pnote("Saved " + name + ".", "info");
-      } else if (action === "reset") { if (!confirm("Remove the saved key and settings of " + name + "?")) return; renderLLM(await send("llm/providers/" + name, "DELETE"));
+      } else if (action === "reset") { if (!await ask("Remove the saved key and settings of " + name + "?")) return; renderLLM(await send("llm/providers/" + name, "DELETE"));
       } else if (action === "test") {
         const first = MODELS.find(x => x.provider === name);
         if (!first) { pnote("Load the model list first.", "bad"); return; }

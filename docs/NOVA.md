@@ -19,6 +19,8 @@ and where the implementation deliberately differs. Status words: **implemented**
 | Release stepper: Changes saved → PR open → Reviewed → Merged → Deployed | `Release.delivery()` in `autopilot/app/release.py`, `GET /autopilot/api/agent/tasks/{id}/delivery`, JS `shRender` | implemented |
 | "Interrupted · changes saved" when the final report is lost but work exists | JS `refreshWork` (`lost`) and `phaseRows` | implemented |
 | Toasts instead of `alert()` | JS `toast` | implemented |
+| ApprovalDialog instead of `confirm()` (Cancel focused for destructive actions) | `<dialog id="askDlg">`, JS `ask` | implemented |
+| Task cost split: confirmed / estimated / free / unpriced, never "$0 confirmed" for unknown | `Router.tag_costs`, task field `cost`, JS `costChip` | implemented |
 | Rebrand to NOVA | `BRAND` constant + visible copy in `dashboard.html`, studio page titles | implemented |
 | Conversation stuck on a task that never started | `conversation_work` in `workspace.py` relinks a fresh task | implemented |
 | Unified event ledger with idempotency keys (§16), task state machine with leases (§17) | — | proposed |
@@ -49,16 +51,16 @@ and where the implementation deliberately differs. Status words: **implemented**
 - **No on-demand screenshot button / comparison in the stage:** the backend only stores captures the agent takes
   during a run; Review shows those. A capture endpoint is a runner-side change.
 - **No "stopped" preview state:** the preview API does not report it.
-- **Cost chip says "so far / recorded", not "confirmed / pending":** the per-task figure does not carry the
-  provider-confirmation flag yet (cost-ledger wave).
-- **Native `confirm()` remains for approvals** (stop task, prepare PR, install): an in-page ApprovalDialog is proposed.
+- **Cost "pending" is shown as "estimated":** a late OpenRouter report updates the row from `estimate` to `provider`
+  (existing reconciliation); there is no separate "reserved" amount, and budget reservation is not atomic yet (§18).
 - **Navigation labels unchanged** (Workspace, Conversations, Projects, Models, Tools, Usage): Library/Settings pages
   do not exist yet.
 
 ## Verification
 
 - `bash dev/test.sh` (includes `test_delivery_reports_only_what_github_and_the_installer_confirm` and
-  `test_nova_work_surface_is_wired_to_real_endpoints_and_stays_sandboxed`).
+  `test_nova_work_surface_is_wired_to_real_endpoints_and_stays_sandboxed`,
+  `test_task_cost_keeps_confirmed_estimated_and_unknown_apart`).
 - `PORT=4173 bash dev/preview.sh` then `node dev/workspace-smoke.cjs`: desktop 1672×941, tablet 820×1180, phone
   390×844, no horizontal overflow, no page errors; captures in `dev/evidence/` (`stage-*`, `mobile-*` are new).
   The preview uses simulated services (label "DEMO / SIMULATED SERVICES").
