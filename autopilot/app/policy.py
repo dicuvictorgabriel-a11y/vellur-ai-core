@@ -120,8 +120,12 @@ class Policy:
             if upgraded:
                 policy = UPGRADE[policy]
         own = self.r.chain(role)
+        routes = self.r.settings.get()["routes"]
+        image_only = set(routes.get("vellur-image") or []) - {x for r, ts in routes.items() if r != "vellur-image" for x in ts}
         rows, rejected = [], []
         for t in self.pool():
+            if role != "vellur-image" and t in image_only:
+                continue          # a model saved only for images is not a text candidate
             caps = self.r.capabilities(t)
             missing = [c for c in req if c not in caps]
             if role == "vellur-image" and "image_generation" not in caps:

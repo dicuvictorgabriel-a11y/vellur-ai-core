@@ -627,13 +627,67 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
   .stepper li small{white-space:normal;overflow-wrap:anywhere}.shacts>*{flex:1 1 100%;justify-content:center;min-height:48px}
   .sthead h2{font-size:18px}
 }
+
+/* ── NOVA phase two: library, project home, timeline, routing, bottom navigation ── */
+.lib,#tlCard,#projectHome{grid-column:span 12}
+.libbar{display:flex;gap:12px;align-items:center;margin-bottom:12px;flex-wrap:wrap}.libbar input[type=search]{flex:1;min-width:200px}.libbar select{width:auto;min-width:160px;margin-left:auto}
+.chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:16px}.chips button{border:1px solid var(--line2);background:transparent;color:var(--muted);border-radius:99px;padding:6px 12px;font-size:12.5px;cursor:pointer;min-height:34px}
+.chips button.on{background:var(--text);color:var(--bg);border-color:var(--text)}.chips button small{opacity:.6;margin-left:4px;font-family:var(--mono)}
+.klist{display:flex;flex-direction:column;border:1px solid var(--line);border-radius:16px;overflow:hidden;background:var(--panel)}
+.klist:empty{display:none}
+.krow{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:4px 16px;padding:14px 16px;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;text-align:left;font:inherit;cursor:pointer;width:100%;border-radius:0}
+.krow:last-child{border-bottom:0}.krow:hover{background:var(--hover)}.krow b{font-weight:500;font-size:14.5px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.krow p{grid-column:1/-1;margin:0;color:var(--muted);font-size:13px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.krow small{font:11px var(--mono);color:var(--faint);white-space:nowrap}.krow .meta{grid-column:1/-1;display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+.krow .tag{font:500 10.5px var(--mono);border:1px solid var(--line2);border-radius:6px;padding:2px 6px;color:var(--muted)}.krow .tag.lock{color:var(--accent);border-color:var(--accent-line)}
+.kempty{padding:40px 16px;text-align:center;color:var(--muted);font-size:13.5px;border:1px dashed var(--line2);border-radius:16px}
+#kDlg,#whyDlg{border:1px solid var(--line2);border-radius:18px;background:var(--raise);color:var(--text);padding:0;width:min(640px,calc(100vw - 32px));max-height:calc(100dvh - 32px);box-shadow:0 24px 64px rgba(0,0,0,.35)}
+#kDlg::backdrop,#whyDlg::backdrop{background:rgba(8,8,10,.6)}#kDlg form,#whyDlg form{padding:24px;margin:0}#kDlg h2,#whyDlg h2{margin:0 0 16px;font-size:18px;font-weight:500}
+#kDlg label{display:block;font-size:12px;color:var(--muted);margin-bottom:12px}#kDlg label input,#kDlg label select,#kDlg label textarea{margin-top:6px}
+.kacts{gap:8px;margin-top:8px}.kacts .grow{flex:1}
+.whyc{font-size:14.5px;line-height:1.6;margin:0 0 16px}.whyt{width:100%;border-collapse:collapse;font-size:12.5px;margin-bottom:12px}.whyt td,.whyt th{padding:8px 6px;border-bottom:1px solid var(--line);text-align:left}.whyt th{font-weight:500;color:var(--muted);font-size:11.5px}
+.whyt td.m{font-family:var(--mono);font-size:11.5px}.whyt tr.on td{color:var(--text);background:var(--accent-dim)}.whynote{font-size:13px;color:var(--muted);line-height:1.55;margin:0 0 8px;padding:12px;border-radius:12px;background:var(--sunk)}
+/* timeline */
+.tl{display:flex;flex-direction:column}.tlday{font:500 11px var(--mono);letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:24px 0 8px}.tlday:first-child{margin-top:4px}
+.tlrow{display:grid;grid-template-columns:20px minmax(0,1fr) auto;gap:4px 12px;padding:10px 0;border-bottom:1px solid var(--line);align-items:start}
+.tlrow i{width:9px;height:9px;border-radius:50%;margin:6px auto 0;background:var(--line3)}.tlrow i.Work{background:var(--accent)}.tlrow i.Code{background:var(--info)}.tlrow i.Release{background:var(--good)}.tlrow i.Cost{background:var(--warn)}.tlrow i.System{background:var(--bad)}
+.tlrow b{font-weight:450;font-size:14px;overflow-wrap:anywhere}.tlrow time{font:11px var(--mono);color:var(--faint);white-space:nowrap}
+.tlrow .sub{grid-column:2/-1;align-items:baseline;font-size:12px;color:var(--muted);display:flex;gap:10px;flex-wrap:wrap}.tlrow .sub a,.tlrow .sub button{color:var(--muted);font-size:12px}
+/* project home */
+.ph{display:flex;align-items:flex-start;gap:16px;justify-content:space-between;flex-wrap:wrap;margin:0 0 24px;padding-bottom:24px;border-bottom:1px solid var(--line)}
+.ph h1{margin:6px 0 4px;font-size:30px;font-weight:450;letter-spacing:-.03em;overflow-wrap:anywhere}.ph p{margin:0;color:var(--muted);font-size:13.5px}
+.phstats{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.phstats span{font:11px var(--mono);color:var(--muted);border:1px solid var(--line2);border-radius:99px;padding:5px 10px}
+.phgrid{display:grid;grid-template-columns:minmax(0,1.5fr) minmax(0,1fr);gap:16px;align-items:start}#projectHome,.phgrid>div{min-width:0}
+.phcard{border:1px solid var(--line);border-radius:16px;background:var(--panel);padding:20px;margin-bottom:16px}.phcard>h3{margin:0 0 12px;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.02em}
+.phcard .lead{font-size:16px;line-height:1.5;margin:8px 0;overflow-wrap:anywhere}.phcard .why{color:var(--muted);font-size:13.5px;line-height:1.55;margin:0 0 12px;overflow-wrap:anywhere}
+.phlist{display:flex;flex-direction:column}.phlist button{display:flex;gap:10px;align-items:center;border:0;border-bottom:1px solid var(--line);background:transparent;color:inherit;text-align:left;font:inherit;font-size:13.5px;padding:10px 0;cursor:pointer;border-radius:0;min-width:0}
+.phlist button:last-child{border-bottom:0}.phlist button span{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.phlist small{font:11px var(--mono);color:var(--faint);flex:none}
+/* routing */
+.polseg{display:inline-flex;margin:16px 0}.polseg button{min-height:38px;padding:0 16px}
+.polgrid{display:grid;grid-template-columns:1fr 1fr 1.3fr;gap:16px;align-items:end;margin-bottom:16px}.polgrid label{font-size:12.5px;color:var(--soft);margin:0}.polgrid label small{display:block;color:var(--faint);font-size:11px;margin:2px 0 6px}
+.polstat{font:12px/1.7 var(--mono);color:var(--muted);border:1px solid var(--line);border-radius:12px;padding:10px 12px}.polstat b{color:var(--text);font-weight:500}
+.polh{margin:24px 0 10px;font-size:12px;font-weight:500;color:var(--muted)}
+#bottomNav{display:none}
+@media(max-width:860px){
+  #bottomNav{display:grid;grid-template-columns:repeat(5,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:4px 6px max(6px,env(safe-area-inset-bottom))}
+  body:not(.is-admin) #bottomNav,body.typing #bottomNav,body.staged.stage-full #bottomNav{display:none}
+  #bottomNav button{display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:0;color:var(--faint);font:500 10.5px var(--sans);min-height:52px;justify-content:center;border-radius:12px;padding:0}
+  #bottomNav button.on{color:var(--text)}#bottomNav button.on svg{color:var(--accent)}#bottomNav svg.ic{width:21px;height:21px}
+  body.is-admin:not(.typing) main{padding-bottom:calc(76px + env(safe-area-inset-bottom))}
+  body.is-admin:not(.typing)[data-view="chat"] main{padding-bottom:calc(64px + env(safe-area-inset-bottom))}
+  #toasts{bottom:calc(84px + env(safe-area-inset-bottom))}
+  .phgrid,.polgrid{grid-template-columns:minmax(0,1fr)}.ph h1{font-size:24px}.ph .primary{width:100%;justify-content:center;min-height:48px}
+  .libbar select{margin-left:0;width:100%}.polseg{display:grid;grid-template-columns:repeat(5,1fr);width:100%}.polseg button{padding:0;font-size:12px;min-height:44px}
+  .tlrow{grid-template-columns:16px minmax(0,1fr)}.tlrow time{grid-column:2}
+  #kDlg form,#whyDlg form{padding:20px}.kacts button{min-height:44px}
+}
 </style>
 </head>
 <body>
 <aside id="side" class="admin-only">
   <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div><span data-brand>NOVA</span><small>ATELIER</small></div></div>
   <nav id="tabs">
-    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Workspace</button><button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Conversations</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Projects</button><button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button><button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Usage</button>
+    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Workspace</button><button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Conversations</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Projects</button><button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button><button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button><button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Usage</button>
   </nav>
   <button class="navbtn" type="button" id="railToggle" title="Collapse or expand navigation" aria-label="Collapse or expand navigation"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/><path d="M19 5v14"/></svg>Collapse</button>
   <div class="sidehead"><span id="sideLabel">Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button></div>
@@ -652,6 +706,13 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 </aside>
 <div id="scrim"></div>
 <div id="toasts" role="status" aria-live="polite"></div>
+<nav id="bottomNav" class="admin-only" aria-label="Main">
+  <button type="button" data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg><span>Home</span></button>
+  <button type="button" data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/></svg><span>Chat</span></button>
+  <button type="button" data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg><span>Projects</span></button>
+  <button type="button" data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg><span>Library</span></button>
+  <button type="button" data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span>Activity</span></button>
+</nav>
 <dialog id="askDlg" aria-labelledby="askTitle"><form method="dialog"><h2 id="askTitle"></h2><div id="askBody"></div><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" id="askOk">Continue</button></div></form></dialog>
 <main>
 <div id="topbar"><button class="iconbtn" id="navOpen" aria-label="Menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><b id="topTitle">Chat</b><button class="iconbtn" id="topNew" aria-label="New chat"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button></div>
@@ -816,7 +877,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       </div>
       <div id="modeBar" hidden>
         <div class="seg" id="stModes" role="tablist" aria-label="Workspace mode"><button type="button" role="tab" data-mode="discover" title="Conversation and references">Discover</button><button type="button" role="tab" data-mode="build" title="Live preview next to the conversation">Build</button><button type="button" role="tab" data-mode="review" title="Changes, checks and screenshots">Review</button><button type="button" role="tab" data-mode="ship" title="Pull request, merge and deployment">Ship</button></div>
-        <div id="stStrip" role="status"><span class="oc" id="stPill"></span><span id="stNow"></span><span id="stCost"></span></div>
+        <div id="stStrip" role="status"><span class="oc" id="stPill"></span><span id="stNow"></span><span id="stCost"></span><button class="copyid" type="button" id="stWhy">Why this model?</button></div>
         <button class="iconbtn plain" type="button" id="stFocus" title="Focus on the work surface" aria-label="Focus on the work surface" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
       </div>
       <div class="msgs" id="msgs"></div>
@@ -903,8 +964,17 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     </section>
 
     <section class="c12 admin-only pagehead" data-tab="models"><div><span class="label">NOVA · Models</span><h1>Models</h1><p>Which AI answers chat, writes code and creates images, and what each one costs.</p></div></section>
+    <section class="card c12 admin-only" data-tab="models" id="policyCard">
+      <div class="rtop"><div><h2>Routing</h2><p class="sub2" style="margin:0" id="polWhat">NOVA chooses the model for every request from the models in your routes below.</p></div></div>
+      <div class="seg polseg" id="polModes" role="radiogroup" aria-label="Routing mode"></div>
+      <div class="polgrid"><label>Automatic spending allowance <small>USD this month, inside the budget</small><input id="polAllow" type="number" min="0" step="0.5" inputmode="decimal"></label>
+        <label>Per-task limit <small>USD, 0 = none</small><input id="polTask" type="number" min="0" step="0.1" inputmode="decimal"></label>
+        <div class="polstat" id="polStat"></div></div>
+      <div class="row"><button class="primary" type="button" id="polSave">Save routing</button><span class="note" id="polNote" style="margin:0"></span></div>
+      <h3 class="polh">Recent decisions</h3><div id="polDec" class="klist"></div>
+    </section>
     <section class="card c12 admin-only" data-tab="models" id="routeCard">
-      <div class="rtop"><div><h2>Who answers what</h2><p class="sub2" style="margin:0">Each kind of work tries its models from top to bottom. The first one is used; the others are fallbacks (a <em>paid</em> fallback only if “Paid fallback” is on in GPU).</p></div>
+      <div class="rtop"><div><h2>Model pool &amp; manual order</h2><p class="sub2" style="margin:0">Each kind of work tries its models from top to bottom. The first one is used; the others are fallbacks (a <em>paid</em> fallback only if “Paid fallback” is on in GPU).</p></div>
         <div class="row"><span class="note" id="rNote" style="margin:0"></span><button class="ghost" id="rDiscard" hidden>Discard</button><button class="primary" id="rSave" disabled>Save</button></div></div>
       <div id="rEditor"></div>
     </section>
@@ -971,7 +1041,30 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       <dl class="kv" style="margin-top:12px;max-width:460px"><dt>Variable + in-budget fixed</dt><dd id="cTotal">—</dd><dt>Other fixed (outside budget)</dt><dd id="cFixedOut">—</dd><dt>All-in monthly total</dt><dd id="cAll">—</dd></dl>
     </section>
 
-    <section class="c12 admin-only pagehead" data-tab="activity"><div><span class="label">NOVA · Activity</span><h1>Activity</h1><p>Versions of NOVA and the controller's event log.</p></div></section>
+
+    <section class="c12 admin-only pagehead" data-tab="library"><div><span class="label">NOVA · Library</span><h1>Library</h1><p>What NOVA knows about your work: decisions, requirements, constraints and verified history. The agent reads the relevant records before it starts.</p></div><button class="primary" type="button" id="kNew">New record</button></section>
+    <section class="c12 admin-only" data-tab="library"><div class="lib">
+      <div class="libbar"><input id="kQ" type="search" placeholder="Search knowledge…" aria-label="Search knowledge" autocomplete="off"><select id="kProject" aria-label="Project"><option value="">All projects</option></select></div>
+      <div class="chips" id="kNs" role="tablist" aria-label="Namespace"></div>
+      <div id="kList" class="klist"></div><p class="note" id="kMeta"></p>
+    </div></section>
+    <dialog id="kDlg" aria-labelledby="kDlgTitle"><form method="dialog" id="kForm">
+      <h2 id="kDlgTitle">New record</h2>
+      <div class="f2"><label>Namespace<select id="kfNs"></select></label><label>Status<select id="kfStatus"><option>implemented</option><option>decided</option><option>proposed</option><option>deprecated</option></select></label></div>
+      <label>Project<input id="kfProject" list="kProjects" placeholder="owner/repository — empty for every project" autocapitalize="none" spellcheck="false"><datalist id="kProjects"></datalist></label>
+      <label>Title<input id="kfTitle" maxlength="200" required></label>
+      <label>Text<textarea id="kfBody" rows="7" maxlength="20000" required></textarea></label>
+      <label>Tags<input id="kfTags" maxlength="300" placeholder="comma separated"></label>
+      <p class="note" id="kfSource"></p>
+      <div class="row kacts"><button class="danger" type="button" id="kfDel">Delete</button><button class="ghost" type="button" id="kfLock">Lock</button><span class="grow"></span><button class="ghost" value="cancel" formnovalidate>Cancel</button><button class="primary" type="button" id="kfSave">Save</button></div>
+    </form></dialog>
+    <section class="c12 admin-only" data-tab="project" id="projectHome"></section>
+    <dialog id="whyDlg" aria-labelledby="whyTitle"><form method="dialog"><h2 id="whyTitle">Why this model?</h2><div id="whyBody"></div><div class="row" style="justify-content:flex-end;margin-top:16px"><button class="primary" value="ok">Done</button></div></form></dialog>
+    <section class="c12 admin-only pagehead" data-tab="activity"><div><span class="label">NOVA · Activity</span><h1>Activity</h1><p>Everything NOVA did, in one timeline: requests, changes, checks, model choices, pull requests, merges and deployments.</p></div></section>
+    <section class="c12 admin-only" data-tab="activity" id="tlCard">
+      <div class="libbar"><div class="chips" id="tlCats" role="tablist" aria-label="Category"></div><select id="tlProject" aria-label="Project"><option value="">All projects</option></select></div>
+      <div id="tlList" class="tl"></div><p class="note" id="tlMeta"></p>
+    </section>
     <section class="card c12 admin-only" data-tab="activity">
       <h2>NOVA version</h2>
       <p class="sub2">New versions of NOVA are never installed by themselves. You approve an exact version here; the server installs it only after its automated tests passed, and returns to the previous version if the new one fails its checks.</p>
@@ -979,8 +1072,8 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       <div class="row" style="margin-top:10px"><button id="relInstall" style="display:none"></button><button class="ghost" id="relCancel" style="display:none">Cancel approval</button><button class="danger" id="relRollback" style="display:none">Return to the previous version</button><span class="note" id="relNote" style="margin:0"></span></div>
     </section>
     <section class="card c12 admin-only" data-tab="activity">
-      <h2>Activity</h2>
-      <div style="overflow:auto;max-height:340px"><table><thead><tr><th>Time</th><th>Level</th><th>Kind</th><th>Message</th></tr></thead><tbody id="ev"></tbody></table></div>
+      <details><summary>Diagnostics · controller log</summary>
+      <div style="overflow:auto;max-height:340px"><table><thead><tr><th>Time</th><th>Level</th><th>Kind</th><th>Message</th></tr></thead><tbody id="ev"></tbody></table></div></details>
     </section>
   </div>
 </div>
@@ -1199,7 +1292,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       fillModels($("chatModel")); fillModels($("tModel"), null, "agent"); } catch (e) {}
   }
   let VIEW = "chat";
-  const VIEW_NAMES = { home: "Workspace", chat: "Conversations", agent: "Projects", models: "Models", tools: "Tools", costs: "Usage", gpu: "GPU", activity: "Activity" };
+  const VIEW_NAMES = { home: "Workspace", chat: "Conversations", agent: "Projects", project: "Project", library: "Library", models: "Models", tools: "Tools", costs: "Usage", gpu: "GPU", activity: "Activity" };
   const HIST = []; let HPOS = -1;
   function setView(v, fromHistory) {
     if (!VIEW_NAMES[v]) v = "home";
@@ -1208,9 +1301,9 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     if (!fromHistory && HIST[HPOS] !== v) { HIST.splice(HPOS + 1); HIST.push(v); HPOS = HIST.length - 1; }
     $("navBack").disabled = HPOS <= 0; $("navFwd").disabled = HPOS >= HIST.length - 1;
     VIEW = v; document.body.dataset.view = v; if ($("sideLabel")) $("sideLabel").textContent = v === "agent" ? "Agent tasks" : "Conversations"; document.body.classList.remove("nav-open"); $("topTitle").textContent = VIEW_NAMES[v]; $("topNew").style.visibility = ["chat", "agent", "home"].includes(v) ? "" : "hidden"; try { sessionStorage.setItem("vellurView", v); } catch (e) {}
-    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v || (b.dataset.view === "tools" && ["gpu", "activity"].includes(v))));
+    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v || (b.dataset.view === "tools" && v === "gpu") || (b.dataset.view === "agent" && v === "project")));
     document.querySelectorAll("section[data-tab]").forEach(sec => { sec.hidden = !sec.dataset.tab.split(" ").includes(v); });
-    return ({ home: loadHome, chat: loadConvs, agent: loadAgent, models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {}, tools: () => {} })[v]();
+    return ({ home: loadHome, chat: loadConvs, agent: loadAgent, library: loadLibrary, project: () => loadProjectHome(PROJECT_REPO), models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {}, tools: () => {} })[v]();
   }
   $("navBack").onclick = () => { if (HPOS > 0) setView(HIST[--HPOS], true); };
   $("navFwd").onclick = () => { if (HPOS < HIST.length - 1) setView(HIST[++HPOS], true); };
@@ -1321,7 +1414,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     $("recGrid").innerHTML = tasks.length ? tasks.map(t => `<button type="button" class="pc" data-task="${t.id}"><span class="meta">${folder}<div><b>${esc(t.title)}</b><small>${esc((t.repo || "Empty workspace").split("/").pop())} · ${esc(outcome(t))}</small></div></span></button>`).join("")
       : convs.length ? convs.map(c => `<button type="button" class="pc" data-conv="${c.id}"><span class="meta">${folder}<div><b>${esc(c.title)}</b><small>Conversation · ${esc(agoShort(c.updated))}</small></div></span></button>`).join("")
       : HOME.loaded ? '<div class="hempty">Nothing here yet. Your projects and conversations appear here once you start one above.</div>' : "";
-    $("recGrid").querySelectorAll("[data-task]").forEach(b => b.onclick = () => openProject(Number(b.dataset.task)));
+    $("recGrid").querySelectorAll("[data-task]").forEach(b => b.onclick = () => { const t = TASKS.find(x => String(x.id) === b.dataset.task); openRepo(t ? t.repo : ""); });
     $("recGrid").querySelectorAll("[data-conv]").forEach(b => b.onclick = () => openChat(Number(b.dataset.conv)));
     // context panel: only what the server reports. No percentages: the agent does not report one.
     const running = TASKS.filter(t => !FINAL_STATES.includes(t.state)), cur = running[0], last = TASKS[0];
@@ -1778,6 +1871,151 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       ev.target.disabled = true; ev.target.textContent = "Preparing…";
       try { await send("agent/tasks/" + tid + "/publish", "POST", {}); toast("Pull request prepared.", "ok"); await refreshWork(); await shLoad(true); } catch (e) { toast(e.message); shRender(); } });
   }
+
+  // ── NOVA phase two ──────────────────────────────────────────────────────────────────────────
+  const dayKey = (ts) => new Date(ts * 1000).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
+  const usd = (v) => "$" + Number(v || 0).toFixed(4);
+  // bottom navigation (phones): same views as the rail; hidden while typing so the composer is never covered
+  document.querySelectorAll("#bottomNav button").forEach(b => b.onclick = () => setView(b.dataset.view));
+  const syncBottom = () => document.querySelectorAll("#bottomNav button").forEach(b => b.classList.toggle("on", b.dataset.view === VIEW || (b.dataset.view === "agent" && VIEW === "project")));
+  new MutationObserver(syncBottom).observe(document.body, { attributes: true, attributeFilter: ["data-view"] });
+  document.addEventListener("focusin", (e) => { if (e.target.matches("textarea, input[type=text], input:not([type])") && matchMedia("(max-width:860px)").matches) document.body.classList.add("typing"); });
+  document.addEventListener("focusout", () => setTimeout(() => { if (!document.activeElement || !document.activeElement.matches("textarea, input")) document.body.classList.remove("typing"); }, 60));
+
+  // ── Why this model? — answered from the logged routing decision, with the cheaper alternative ──
+  async function showWhy(q) {
+    let d; try { d = await send("routing/" + q, "GET"); } catch (e) { return toast(e.message); }
+    const ev = (x) => x.calls || x.tasks ? `${x.tasks_completed}/${x.tasks} tasks · ${x.errors}/${x.calls} errors` : "no history";
+    $("whyBody").innerHTML = `<p class="whyc">${esc(d.reason)}</p>`
+      + (d.required.length ? `<p class="note">Required: ${esc(d.required.join(", ").replace(/_/g, " "))}</p>` : "")
+      + (d.ranked.length ? `<table class="whyt"><thead><tr><th>Model</th><th>This request</th><th>Evidence (30 days)</th></tr></thead><tbody>${d.ranked.map(x => `<tr class="${x.target === d.chosen ? "on" : ""}"><td class="m">${esc(x.target)}</td><td class="m">${x.usd ? "≈" + usd(x.usd) : "free"}</td><td>${esc(ev(x))}</td></tr>`).join("")}</tbody></table>` : "")
+      + (d.cheaper ? `<p class="whynote"><b>Cheaper option:</b> ${esc(d.cheaper.note)}</p>` : `<p class="whynote">No cheaper capable model was in the pool for this request.</p>`)
+      + (d.rejected.length ? `<details><summary class="note">Not eligible (${d.rejected.length})</summary>${d.rejected.map(x => `<p class="note">${esc(x.target)}: ${esc(x.why)}</p>`).join("")}</details>` : "")
+      + `<p class="note">Decision #${d.id} · ${esc(new Date(d.ts * 1000).toLocaleString())} · ${esc(d.outcome || "result pending")}</p>`;
+    $("whyDlg").showModal();
+  }
+  $("stWhy").onclick = () => WORK_TASK && showWhy("explain?tag=" + encodeURIComponent("task:" + WORK_TASK));
+
+  // ── Routing policy (Models) ──
+  const MODE_TEXT = { auto: "Auto picks a policy per request: chat → Economy, code → Balanced, Max → Quality, upgraded for large contexts or after a failure.",
+    economy: "Economy: the lowest expected cost among capable models.", balanced: "Balanced: the best recorded success per dollar.",
+    quality: "Maximum quality: the best recorded task success; price is ignored inside the allowance.", manual: "Manual: exactly the order of each route below." };
+  let POL = null;
+  async function loadPolicy() {
+    try { POL = await send("routing", "GET"); } catch (e) { $("polStat").textContent = e.message; return; }
+    $("polModes").innerHTML = POL.modes.map(m => `<button type="button" role="radio" data-m="${m}" class="${m === POL.mode ? "on" : ""}" aria-checked="${m === POL.mode}">${m === "quality" ? "Max quality" : m[0].toUpperCase() + m.slice(1)}</button>`).join("");
+    $("polModes").querySelectorAll("button").forEach(b => b.onclick = () => { POL.mode = b.dataset.m; $("polModes").querySelectorAll("button").forEach(x => { x.classList.toggle("on", x === b); x.setAttribute("aria-checked", String(x === b)); }); $("polWhat").textContent = MODE_TEXT[POL.mode]; });
+    $("polWhat").textContent = MODE_TEXT[POL.mode];
+    $("polAllow").value = POL.allowance_usd; $("polTask").value = POL.task_limit_usd;
+    $("polStat").innerHTML = (POL.active ? "<b>Automatic routing is on.</b>" : POL.mode === "manual" ? "<b>Manual routing.</b>" : "<b>Waiting for an allowance:</b> saved routes are used.")
+      + `<br>Spent this month (model APIs): ${usd(POL.spent_month_usd)}<br>Reserved now: ${usd(POL.reserved_usd)} · ${POL.reserved_calls} calls<br>Available to Auto: ${usd(POL.available_usd)}<br>Pool: ${POL.pool.length} models`;
+    $("polDec").innerHTML = (POL.decisions || []).map(d => `<button type="button" class="krow" data-d="${d.id}"><b>${esc(d.chosen || "no model")}</b><small>${esc(agoShort(d.ts))}</small><div class="meta"><span class="tag">${esc(d.policy)}</span><span class="tag">${esc(d.role)}</span><small>${esc(d.tag || "proxy")}${d.est_usd ? " · ≈" + usd(d.est_usd) : ""}${d.outcome ? " · " + esc(d.outcome) : ""}</small></div></button>`).join("")
+      || '<div class="kempty">No automatic decisions yet. They appear here, each with its reason.</div>';
+    $("polDec").querySelectorAll("[data-d]").forEach(b => b.onclick = () => showWhy("decisions/" + b.dataset.d));
+  }
+  $("polSave").onclick = async () => {
+    try { await send("routing", "PUT", { routing_mode: POL.mode, auto_allowance_usd: Number($("polAllow").value || 0), auto_task_limit_usd: Number($("polTask").value || 0) });
+      $("polNote").textContent = "Saved"; toast("Routing saved.", "ok"); await loadPolicy(); } catch (e) { $("polNote").textContent = e.message; }
+  };
+
+  // ── Library (Knowledge) ──
+  let KN = { ns: "", rec: null, data: null }, KN_T = null;
+  async function loadLibrary() {
+    const q = $("kQ").value.trim(), pr = $("kProject").value;
+    let d; try { d = await send("knowledge?q=" + encodeURIComponent(q) + (pr ? "&project=" + encodeURIComponent(pr) : "") + (KN.ns ? "&namespace=" + encodeURIComponent(KN.ns) : ""), "GET"); }
+    catch (e) { $("kList").innerHTML = ""; $("kMeta").textContent = e.message; return; }
+    KN.data = d;
+    const total = Object.values(d.counts).reduce((a, b) => a + b, 0);
+    $("kNs").innerHTML = `<button type="button" data-ns="" class="${KN.ns ? "" : "on"}">All<small>${total}</small></button>` + d.namespaces.map(n => `<button type="button" data-ns="${esc(n)}" class="${KN.ns === n ? "on" : ""}">${esc(n)}${d.counts[n] ? `<small>${d.counts[n]}</small>` : ""}</button>`).join("");
+    $("kNs").querySelectorAll("button").forEach(b => b.onclick = () => { KN.ns = b.dataset.ns; loadLibrary(); });
+    const cur = $("kProject").value; $("kProject").innerHTML = '<option value="">All projects</option>' + d.projects.map(p => `<option>${esc(p)}</option>`).join(""); $("kProject").value = cur;
+    $("kProjects").innerHTML = d.projects.map(p => `<option value="${esc(p)}">`).join("");
+    $("kList").innerHTML = d.records.map(r => `<button type="button" class="krow" data-k="${r.id}"><b>${esc(r.title)}</b><small>${esc(agoShort(r.updated))}</small><p>${r.snippet ? esc(r.snippet).replace(/\[/g, "<mark>").replace(/\]/g, "</mark>") : esc(r.body)}</p><div class="meta"><span class="tag">${esc(r.namespace)}</span><span class="tag">${esc(r.status)}</span>${r.locked ? '<span class="tag lock">locked</span>' : ""}<small>${esc(r.project || "all projects")} · ${esc(r.source)}</small></div></button>`).join("");
+    if (!d.records.length) $("kList").insertAdjacentHTML("afterend", "");
+    $("kMeta").innerHTML = d.records.length ? `${d.records.length} record${d.records.length === 1 ? "" : "s"} · search: ${esc(d.search)}` : `<div class="kempty">${q || KN.ns ? "Nothing matches. Try fewer words." : "No knowledge yet. Add a decision or requirement, or let NOVA record verified work automatically."}</div>`;
+    $("kList").querySelectorAll("[data-k]").forEach(b => b.onclick = () => kOpen(d.records.find(r => String(r.id) === b.dataset.k)));
+  }
+  $("kQ").addEventListener("input", () => { clearTimeout(KN_T); KN_T = setTimeout(loadLibrary, 250); });
+  $("kProject").onchange = loadLibrary;
+  function kOpen(r) {
+    KN.rec = r || null;
+    $("kfNs").innerHTML = (KN.data ? KN.data.namespaces : []).map(n => `<option>${esc(n)}</option>`).join("");
+    $("kDlgTitle").textContent = r ? "Edit record" : "New record";
+    $("kfNs").value = r ? r.namespace : (KN.ns || "Decisions"); $("kfStatus").value = r ? r.status : "decided";
+    $("kfProject").value = r ? r.project : ($("kProject").value || ""); $("kfTitle").value = r ? r.title : ""; $("kfBody").value = r ? r.body : ""; $("kfTags").value = r ? r.tags : "";
+    $("kfSource").textContent = r ? `Source: ${r.source} · version ${r.version} · updated ${new Date(r.updated * 1000).toLocaleString()}` : "Saved as a record from you (source: owner).";
+    $("kfDel").hidden = $("kfLock").hidden = !r; $("kfLock").textContent = r && r.locked ? "Unlock" : "Lock";
+    ["kfNs", "kfStatus", "kfProject", "kfTitle", "kfBody", "kfTags", "kfSave", "kfDel"].forEach(id => $(id).disabled = !!(r && r.locked));
+    $("kDlg").showModal();
+  }
+  $("kNew").onclick = () => { if (!KN.data) loadLibrary().then(() => kOpen(null)); else kOpen(null); };
+  $("kfSave").onclick = async () => {
+    const body = { namespace: $("kfNs").value, status: $("kfStatus").value, project: $("kfProject").value.trim(), title: $("kfTitle").value.trim(), body: $("kfBody").value.trim(), tags: $("kfTags").value.trim() };
+    if (!body.title || !body.body) return toast("A title and some text are required.");
+    try { if (KN.rec) await send("knowledge/" + KN.rec.id, "PUT", { ...body, version: KN.rec.version }); else await send("knowledge", "POST", body);
+      $("kDlg").close(); toast("Saved to the Library.", "ok"); loadLibrary(); } catch (e) { toast(e.message); }
+  };
+  $("kfLock").onclick = async () => { try { await send("knowledge/" + KN.rec.id + "/lock", "POST", { locked: !KN.rec.locked }); $("kDlg").close(); loadLibrary(); } catch (e) { toast(e.message); } };
+  $("kfDel").onclick = async () => { if (!await ask("Delete this record?\nThe agent will no longer read it. This cannot be undone.")) return; try { await send("knowledge/" + KN.rec.id, "DELETE"); $("kDlg").close(); loadLibrary(); } catch (e) { toast(e.message); } };
+
+  // ── Timeline (Activity, project home) ──
+  const TL_ICON = { request: "Request", file_change: "Change", check: "Check", run_result: "Result", model_selected: "Model", pr_opened: "Pull request", pr_updated: "Pull request", pr_approved: "Review", merged: "Merge", deployed: "Deploy", publication: "Publish", failure: "Failure", release: "Release", llm: "Settings" };
+  function renderTimeline(el, events, opts) {
+    let day = "", html = "";
+    for (const e of events) {
+      const k = dayKey(e.occurred_at); if (k !== day) { day = k; html += `<div class="tlday">${esc(k)}</div>`; }
+      const p = e.payload || {}, link = e.external_ref && /^https:\/\/github\.com\//.test(e.external_ref) ? `<a href="${esc(e.external_ref)}" target="_blank" rel="noopener">GitHub ↗</a>` : "";
+      const extra = [TL_ICON[e.event_type] || e.event_type, e.project && !(opts && opts.noProject) ? e.project : "", p.why ? p.why : "", p.cost_run_usd ? "cost " + usd(p.cost_run_usd) : ""].filter(Boolean).map(esc).join(" · ");
+      html += `<div class="tlrow"><i class="${esc(e.category)}"></i><b>${esc(e.title)}</b><time>${esc(new Date(e.occurred_at * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }))}</time><div class="sub"><span>${extra}</span>${link}${p.decision ? `<button class="copyid" type="button" data-why="${p.decision}">Why?</button>` : ""}${e.conv_id && e.event_type === "request" ? `<button class="copyid" type="button" data-conv="${e.conv_id}">Open conversation</button>` : ""}</div></div>`;
+    }
+    el.innerHTML = html || '<div class="kempty">Nothing recorded yet.</div>';
+    el.querySelectorAll("[data-why]").forEach(b => b.onclick = () => showWhy("decisions/" + b.dataset.why));
+    el.querySelectorAll("[data-conv]").forEach(b => b.onclick = () => openChat(Number(b.dataset.conv)));
+  }
+  let TL_CAT = "";
+  async function loadTimeline() {
+    let d; try { d = await send("timeline?limit=200" + (TL_CAT ? "&category=" + TL_CAT : "") + ($("tlProject").value ? "&project=" + encodeURIComponent($("tlProject").value) : ""), "GET"); }
+    catch (e) { $("tlMeta").textContent = e.message; return; }
+    $("tlCats").innerHTML = ["", ...d.categories].map(c => `<button type="button" data-c="${c}" class="${c === TL_CAT ? "on" : ""}">${c || "All"}</button>`).join("");
+    $("tlCats").querySelectorAll("button").forEach(b => b.onclick = () => { TL_CAT = b.dataset.c; loadTimeline(); });
+    renderTimeline($("tlList"), d.events);
+    $("tlMeta").textContent = `Synced ${new Date(d.synced_at * 1000).toLocaleTimeString()} · ${d.events.length} events · GitHub and deployment rows appear when they are confirmed.`;
+    try { const pj = await send("projects", "GET"), cur = $("tlProject").value; $("tlProject").innerHTML = '<option value="">All projects</option>' + pj.projects.filter(p => p.repo).map(p => `<option>${esc(p.repo)}</option>`).join(""); $("tlProject").value = cur; } catch (e) {}
+  }
+  $("tlProject").onchange = loadTimeline;
+  const _loadHistory = loadHistory; loadHistory = function () { _loadHistory(); loadTimeline(); };
+
+  // ── Project home: what happened, what is live, what it cost, and one obvious next action ──
+  let PROJECT_REPO = "";
+  function openRepo(repo) { PROJECT_REPO = repo || ""; try { sessionStorage.setItem("novaProject", PROJECT_REPO); } catch (e) {} setView("project"); }
+  try { PROJECT_REPO = sessionStorage.getItem("novaProject") || ""; } catch (e) {}
+  async function loadProjectHome(repo) {
+    const el = $("projectHome"); el.innerHTML = '<div class="kempty">Loading project…</div>';
+    let o; try { o = await send("projects/overview?repo=" + encodeURIComponent(repo), "GET"); } catch (e) { el.innerHTML = `<div class="kempty">${esc(e.message)}</div>`; return; }
+    const L = o.last, oc = !FINAL_STATES.includes(L.state) ? ["Working", ""] : (OUTCOME[L.outcome] || ["Result not verified", "warn"]);
+    const cost = o.tasks.reduce((a, t) => ({ c: a.c + t.cost.confirmed_usd, e: a.e + t.cost.estimated_usd, u: a.u + t.cost.unpriced_requests }), { c: 0, e: 0, u: 0 });
+    const tests = L.tests || [], passed = tests.filter(t => t.exit === 0).length;
+    $("topTitle").textContent = (repo || "Empty workspace").split("/").pop();
+    el.innerHTML = `<div class="ph"><div><span class="label">NOVA · Project</span><h1>${esc(repo || "Empty workspace")}</h1><p>${o.tasks.length} task${o.tasks.length === 1 ? "" : "s"} · last activity ${esc(agoShort(o.tasks[0].updated))}</p>
+        <div class="phstats"><span>${usd(cost.c)} confirmed</span>${cost.e ? `<span>≈${usd(cost.e)} estimated</span>` : ""}${cost.u ? `<span>${cost.u} unpriced calls</span>` : ""}${o.tracks_deploy ? `<span>Live: ${o.installed ? esc(o.installed.slice(0, 7)) : "not recorded"}</span>` : ""}<span>${o.knowledge.length} knowledge records</span></div></div>
+        <button class="primary" type="button" id="phContinue">${L.conversation ? "Continue where I left off" : "Open the last task"}</button></div>
+      <div class="phgrid"><div>
+        <div class="phcard"><h3>Last work</h3><span class="oc ${oc[1]}">${esc(oc[0])}</span><p class="lead">${esc(L.prompt || "")}</p><p class="why">${esc(L.why || "")}</p>
+          ${L.not_done ? `<p class="why"><b>Not done:</b> ${esc(L.not_done)}</p>` : ""}
+          <div class="phstats"><span>${(L.files || []).length} files changed</span><span>${tests.length ? passed + "/" + tests.length + " checks passed" : "no checks reported"}</span>${L.pr_url ? `<a class="tag" href="${esc(L.pr_url)}" target="_blank" rel="noopener">Pull request ↗</a>` : ""}</div></div>
+        <div class="phcard"><h3>Timeline</h3><div class="tl" id="phTl"></div></div>
+      </div><div>
+        ${o.unfinished.length ? `<div class="phcard"><h3>Unfinished</h3><div class="phlist">${o.unfinished.map(t => `<button type="button" data-t="${t.id}" data-c="${t.conversation || ""}"><span>${esc(t.prompt)}</span><small>${esc((OUTCOME[t.outcome] || [t.state])[0])}</small></button>`).join("")}</div></div>` : ""}
+        <div class="phcard"><h3>Tasks</h3><div class="phlist">${o.tasks.map(t => `<button type="button" data-t="${t.id}" data-c="${t.conversation || ""}"><span>${esc(t.prompt)}</span><small>${esc(!FINAL_STATES.includes(t.state) ? "working" : (OUTCOME[t.outcome] || [t.state])[0])}</small></button>`).join("")}</div></div>
+        <div class="phcard"><h3>Knowledge</h3><div class="phlist">${o.knowledge.map(k => `<button type="button" data-k="${k.id}"><span>${esc(k.title)}</span><small>${esc(k.namespace)}</small></button>`).join("") || '<p class="why">No records for this project yet.</p>'}</div><button class="ghost" type="button" id="phAddK" style="margin-top:12px">Add a decision</button></div>
+      </div></div>`;
+    renderTimeline($("phTl"), o.events, { noProject: true });
+    $("phContinue").onclick = () => L.conversation ? openChat(L.conversation) : openProject(L.id);
+    el.querySelectorAll("[data-t]").forEach(b => b.onclick = () => b.dataset.c ? openChat(Number(b.dataset.c)) : openProject(Number(b.dataset.t)));
+    el.querySelectorAll("[data-k]").forEach(b => b.onclick = async () => { await loadLibraryData(repo); kOpen(o.knowledge.find(k => String(k.id) === b.dataset.k)); });
+    $("phAddK").onclick = async () => { await loadLibraryData(repo); kOpen(null); $("kfProject").value = repo; };
+  }
+  async function loadLibraryData(repo) { if (!KN.data) { try { KN.data = await send("knowledge?project=" + encodeURIComponent(repo), "GET"); } catch (e) {} } }
   // Cost chip: confirmed (provider-reported), estimated, and unknown are never merged into one "confirmed" number.
   function costChip(task, active) {
     const c = task.cost; if (!c) return task.cost_usd == null ? "Cost unavailable" : money4(task.cost_usd) + (active ? " so far" : "");
@@ -2408,6 +2646,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     document.querySelectorAll("#provs button").forEach(b => b.onclick = () => provAction(b.closest("tr"), b.dataset.a));
   }
   async function loadLLM() {
+    loadPolicy();
     const [l, m, img] = await Promise.all([send("llm", "GET"), send("llm/models", "GET"), send("images/status", "GET")]);
     renderLLM(l); renderModels(m, img);
     $("imageMaxUsd").value = l.images.max_usd; $("agentImageMaxUsd").value = l.images.agent_max_usd;
