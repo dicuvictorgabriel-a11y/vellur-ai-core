@@ -23,6 +23,8 @@ and where the implementation deliberately differs. Status words: **implemented**
 | Task cost split: confirmed / estimated / free / unpriced, never "$0 confirmed" for unknown | `Router.tag_costs`, task field `cost`, JS `costChip` | implemented |
 | Rebrand to NOVA | `BRAND` constant + visible copy in `dashboard.html`, studio page titles | implemented |
 | Conversation stuck on a task that never started | `conversation_work` in `workspace.py` relinks a fresh task | implemented |
+| Home return brief for current work / latest result | `HOME.focus`, `renderHomeBrief`, `openHomeResult`; nullable `conversation_id` in task detail | implemented |
+| Outcome-first conversation workcard | `resultFacts`, `resultMetrics`; Evidence before Activity; Review or live-workspace primary action | implemented |
 | Unified event ledger with idempotency keys (§16), task state machine with leases (§17) | — | proposed |
 | Immutable cost ledger, atomic budget reservation (§18), router modes Economy/Balanced/Quality (§19) | — | proposed |
 | Knowledge namespaces and retrieval (§23), Library | — | proposed |
@@ -45,6 +47,11 @@ and where the implementation deliberately differs. Status words: **implemented**
 6. **Names kept for compatibility:** domain, `/autopilot/` paths, cookies (`vellur_theme`), model ids
    (`vellur-coder` …), the `X-Vellur-*` headers, the hidden login username, repository and server paths, and
    server-side error prefixes / agent prompt text ("VELLUR AI (…)", covered by existing tests).
+7. **Rezultatul este înaintea jurnalului tehnic.** Home alege prima lucrare activă, altfel ultima lucrare, și citește
+   rezultatul real prin API. Cardul din conversație arată întâi rezultatul, fișierele, verificările și costul; fazele
+   și evenimentele rămân în Activity. Un exit `null` este „unverified”, iar lipsa verificărilor este afișată explicit,
+   fără succes inventat. Dacă legătura cu conversația lipsește sau detaliul nu poate fi încărcat, rămâne jurnalul
+   proiectului.
 
 ## Deviations from the blueprint (and why)
 
@@ -65,6 +72,26 @@ and where the implementation deliberately differs. Status words: **implemented**
   390×844, no horizontal overflow, no page errors; captures in `dev/evidence/` (`stage-*`, `mobile-*` are new).
   The preview uses simulated services (label "DEMO / SIMULATED SERVICES").
 - **Not verified:** the real server, real models, real GitHub pull requests, real provider costs.
+
+## Verificare — rezultat la revenire (2026-11-16)
+
+- `bash dev/test.sh tests/test_dashboard.py tests/test_agent.py::test_conversation_work_keeps_context_task_and_followups`:
+  **17 passed**; apoi `bash dev/test.sh`: **271 passed in 33.81s**.
+- `node dev/workspace-smoke.cjs`, cu Playwright din mediul temporar și preview-ul demo direct: toate traseele existente
+  au trecut (dark/light, conversații active/finalizate/eșuate, Build/Review/Ship, desktop/tabletă/telefon și celelalte
+  pagini). Capturile binare regenerate de acest smoke-test nu fac parte din diff.
+- Parcurs suplimentar pe un preview izolat, `PORT=4174 .venv/bin/python dev/preview_server.py`, cu runnerul temporar
+  `/tmp/opencode/nova-browser/after.cjs`: desktop 1440×1000 și Playwright iPhone 13 (390×844). Au trecut Home → Review,
+  Review → Discover → jurnalul proiectului, lucrare activă → progres → rezultat fără verificări și afișarea metricilor
+  înaintea Evidence/Activity. Rezultat: **11 capturi, zero overflow, zero `pageerror` și zero erori de consolă**.
+- Dovezi: `/tmp/opencode/nova-browser-evidence/baseline.json`, cinci capturi `before-*.png`,
+  `/tmp/opencode/nova-browser-evidence/after.json` și 11 capturi `after-*.png`. Modelul nu poate inspecta vizual
+  imaginile; afirmațiile verificate sunt cele DOM, de navigare, consolă și dimensiuni, nu o apreciere estetică.
+- Preview-ul proprietarului pe `/tasks/21/preview/autopilot/` trebuie repornit după schimbări Python; butonul Reload nu
+  repornește procesul. Imaginea demo folosește un URL absolut `/autopilot/api/images/…`, care primește 401 prin acest
+  prefix. Validarea fără erori a folosit preview-ul direct izolat; această limitare existentă nu este ascunsă de test.
+- Costul validării: **0 USD**, fără apeluri către modele sau servicii plătite; runnerul este simulat. Soldul, tarifele
+  furnizorilor și cheltuielile reale nu au fost verificate. Serverul real, modelele reale și GitHub rămân neverificate.
 
 ## Phase two (2026-11-16): routing, Knowledge, timeline, projects
 

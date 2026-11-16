@@ -1,6 +1,7 @@
 # NOVA handoff — where the work stands
 
-Branch: `claude/eager-goodall-uj35ck` (restarted from `main` cc8389c after PR #14 merged). Details: `docs/NOVA.md`.
+Sesiune curentă: branch local `nova/self-evolution`, pornit de la `11d1201`; fără commit, push sau deploy.
+Istoric: `claude/eager-goodall-uj35ck` (repornit din `main` cc8389c după PR #14). Detalii: `docs/NOVA.md`.
 
 ## Phase one (merged in #14)
 Shell + tokens, Discover/Build/Review/Ship work surface, delivery endpoint + release stepper, honest cost chip,
@@ -25,10 +26,27 @@ Automatic task recovery after controller/runner restarts, restart diagnostics, i
 conversation card. Details and the owner's log commands: `docs/RECOVERY.md`. Open: confirm the incident's cause from
 the server logs and update the Knowledge record `release:recovery-2026-11-16:incident`.
 
+## Rezultat la revenire (această sesiune)
+- Home arată lucrarea activă sau ultimul rezultat: titlu, stare, rezumat real, fișiere, verificări, cost și acțiuni
+  separate pentru Review/progres și jurnalul proiectului.
+- Cardul din conversație pune rezultatul și metricile înaintea Evidence și Activity. La final deschide Review; în timpul
+  rulării deschide spațiul live. Jurnalul complet și oprirea lucrării rămân disponibile.
+- API-ul de detaliu al taskului returnează `conversation_id` nullable din legătura persistentă SQLite. Fără legătură sau
+  la eroare de încărcare, interfața nu inventează un rezultat și oferă jurnalul proiectului.
+- Autentificarea înghețată, recuperarea, publicarea și controalele de siguranță nu au fost modificate.
+
 ## Verification
-`bash dev/test.sh` (tests: test_policy, test_knowledge, test_timeline + earlier suites); browser checks with
-`dev/preview.sh` + `node dev/workspace-smoke.cjs` (simulated services) and the phase-two journey (Library, Activity,
-Routing, Why dialog, project home; desktop + 390 px). Nothing validated against real providers, GitHub or the VPS.
+- `bash dev/test.sh`: **271 passed in 33.81s**; testele țintite pentru dashboard și legătura conversației: **17 passed**.
+- `node dev/workspace-smoke.cjs`: toate traseele existente au trecut pe servicii simulate. Parcursul suplimentar
+  Home/Review/Discover/jurnal și activ/final fără verificări a trecut pe desktop 1440×1000 și iPhone 13 390×844:
+  **11 capturi, zero overflow și zero erori JavaScript/consolă**.
+- Dovezi în `/tmp/opencode/nova-browser-evidence/`: `baseline.json`, `after.json`, cinci `before-*.png` și 11
+  `after-*.png`. Capturile nu au fost inspectate vizual de model; verificarea este DOM/browser, nu o evaluare estetică.
+- Preview-ul cu prefix are o limitare separată: imaginea demo absolută `/autopilot/api/images/…` primește 401. Testul
+  final a folosit un preview direct izolat. După schimbări Python, preview-ul proprietarului necesită repornirea
+  procesului, nu doar Reload.
+- Cost al validării: **0 USD**, fără apeluri plătite. Soldul, prețurile și consumul real sunt necunoscute. Nimic nu a
+  fost validat cu provideri reali, GitHub sau VPS; nimic nu a fost commit-uit, publicat sau instalat.
 
 ## Next, in order
 1. Visual reference loop: attach a reference image in Build → agent captures the preview, compares, fixes; bounded to

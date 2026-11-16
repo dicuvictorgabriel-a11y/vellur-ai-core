@@ -799,6 +799,8 @@ async def test_conversation_work_keeps_context_task_and_followups(agents):
     await wait_final(mgr, tid)
     assert 'Use accessible controls.' in runner.meta['prompt']
     assert (await admin.get(f'/autopilot/api/conversations/{cid}', headers=ADMIN)).json()['task_id'] == tid
+    detail = (await admin.get(f'/autopilot/api/agent/tasks/{tid}', headers=ADMIN)).json()
+    assert detail['conversation_id'] == cid
     # Rebuilding the API does not lose the link; it lives in SQLite, not in the browser.
     fresh = httpx.AsyncClient(transport=httpx.ASGITransport(app=build_admin(ctrl, router=router, agent=mgr)), base_url='https://ai.example')
     try:

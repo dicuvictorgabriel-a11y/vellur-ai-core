@@ -263,3 +263,36 @@ def test_nova_work_surface_is_wired_to_real_endpoints_and_stays_sandboxed():
     stage = html[html.index("  function phaseRows("):html.index("  function toolView(")] if "  function toolView(" in html[html.index("  function phaseRows("):] else ""
     import re
     assert not re.search(r"\d%|percent", stage)   # phases carry real event times, never a percentage
+
+
+def test_return_brief_and_outcome_first_workcard_are_wired():
+    html = open(PAGE).read()
+    assert 'id="homeBrief" aria-label="Latest project result" hidden' in html
+    home = html[html.index("  function renderHomeBrief()"):html.index("  async function refreshWork()")]
+    assert 'data-home-result' in home and 'data-home-log' in home and 'task.conversation_id' in home
+    assert 'setMode(FINAL_STATES.includes(task.state) ? "review" : "discover", true)' in home
+    start = html.index("      card.innerHTML = `<header>")
+    work = html[start:html.index("      card.querySelectorAll(\"details\")", start)]
+    assert work.index("${resultMetrics(task)}") < work.index('data-section="evidence"') < work.index('data-section="activity"')
+    assert 'data-review-result' in work and 'data-open-work' in work
+    assert 'setMode("review", true)' in html[html.index("      card.querySelectorAll(\"details\")", start):html.index("  document.addEventListener(\"visibilitychange\"", start)]
+
+
+@pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")
+def test_result_facts_distinguish_passed_failed_and_unverified_checks():
+    html = open(PAGE).read()
+    helper = html[html.index("  function resultFacts(task)"):html.index("  function resultMetrics(task)")]
+    checks = '''
+const assert = require("assert");
+let facts = resultFacts({ files_changed: 7, report: { files: [{ path: "a.py" }], tests: [{ exit: 0 }, { exit: 1 }, { exit: null }] } });
+assert.equal(facts.fileCount, 1);
+assert.equal(facts.checks, "1 passed · 1 failed · 1 unverified");
+facts = resultFacts({ files_changed: 2, report: {} });
+assert.equal(facts.fileCount, 2);
+assert.equal(facts.checks, "No checks reported");
+facts = resultFacts({ files_changed: -2, report: { files: {}, tests: {} } });
+assert.equal(facts.fileCount, 0);
+assert.equal(facts.checks, "No checks reported");
+'''
+    result = subprocess.run(["node", "-e", helper + checks], capture_output=True, text=True)
+    assert result.returncode == 0, result.stderr

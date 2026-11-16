@@ -612,7 +612,11 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     @app.get("/autopilot/api/agent/tasks/{tid}", dependencies=[Depends(admin)])
     async def task_detail(tid: int):
         try:
-            return agent.detail(tid)
+            detail = agent.detail(tid)
+            row = db.one("SELECT key FROM kv WHERE key LIKE 'conversation_task_%' AND value=? ORDER BY key LIMIT 1",
+                         (json.dumps(tid),))
+            detail["conversation_id"] = int(row["key"].rsplit("_", 1)[1]) if row else None
+            return detail
         except AgentError as e:
             return err(e)
 
