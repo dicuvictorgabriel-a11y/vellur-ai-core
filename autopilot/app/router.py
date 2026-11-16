@@ -504,6 +504,25 @@ class Router:
         r = self.db.one("SELECT SUM(cost_usd) AS c FROM usage WHERE tag=?", (tag,))
         return float((r or {}).get("c") or 0)
 
+    def tag_costs(self, tag: str) -> dict:
+        """The same money as tag_cost, split by how sure we are: provider-reported (confirmed), our own estimate,
+        free (plan / own GPU), and requests whose price is unknown (counted, never shown as $0 confirmed)."""
+        out = {"confirmed_usd": 0.0, "estimated_usd": 0.0, "free_requests": 0, "unpriced_requests": 0, "requests": 0}
+        for r in self.db.all("SELECT cost_source, COUNT(*) AS n, SUM(cost_usd) AS c FROM usage WHERE tag=? GROUP BY cost_source", (tag,)):
+            src, n, c = r["cost_source"] or "", int(r["n"] or 0), float(r["c"] or 0)
+            out["requests"] += n
+            if src == "provider":
+                out["confirmed_usd"] += c
+            elif src in ("plan", "gpu"):
+                out["free_requests"] += n
+            elif src == "estimate":
+                out["estimated_usd"] += c
+            else:
+                out["unpriced_requests"] += n
+                out["estimated_usd"] += c
+        out["confirmed_usd"], out["estimated_usd"] = round(out["confirmed_usd"], 4), round(out["estimated_usd"], 4)
+        return out
+
     # ── dispatch ────────────────────────────────────────────────────────────────────────────────
     @staticmethod
     def _has_image(payload: dict) -> bool:

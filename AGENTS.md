@@ -117,3 +117,12 @@ Tests: `cd autopilot && pytest -q` (no network: guarded). Never let tests reach 
 - Frozen: `autopilot/app/auth.py`, the login and password-change markup and their script block in `dashboard.html`
   (`tests/test_auth_frozen.py` fails if they change). Keep `localStorage` out of the dashboard (a test checks it).
 - The dashboard is one static file without a build step; keep it that way.
+
+## NOVA (2026-11-16, docs/NOVA.md)
+
+The product's visible name is the temporary codename **NOVA** (`BRAND` constant in `dashboard.html`); technical
+identifiers stay `vellur` (domain, paths, cookies, model ids, headers, repository). The conversation view is the
+workspace: modes Discover / Build / Review / Ship over one linked task (`#modeBar`, `#stage`). Release status comes
+from `Release.delivery()` (`GET /autopilot/api/agent/tasks/{id}/delivery`): task record, GitHub and the installer's
+report; unconfirmed stages are `unknown`, never done. `docs/NOVA.md` lists implemented vs proposed (event ledger,
+cost ledger, router modes, Knowledge are NOT built). Browser journey: `node dev/workspace-smoke.cjs`.

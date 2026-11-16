@@ -4,10 +4,10 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>VELLUR AI Core</title>
+<title>NOVA</title>
 <style>
 :root{
-  /* VELLUR PEARL: graphite and nacre. One lavender accent; green/amber/red only for state. Dark is the default. */
+  /* NOVA PEARL: graphite and nacre. One lavender accent; green/amber/red only for state. Dark is the default. */
   --bg:#151719;--side:#101214;--panel:#1b1e20;--raise:#24282b;--sunk:#121416;--hover:#202426;--code:#1c2023;--line:#2a2e31;--line2:#3b4145;--line3:#555e64;
   --text:#eeeae2;--soft:#c8cccd;--muted:#9ba5aa;--faint:#879297;
   --accent:#c7d6cf;--lime:#c7d6cf;--accent-ink:#18231f;--accent-dim:rgba(160,190,174,.11);--accent-line:rgba(160,190,174,.34);
@@ -484,7 +484,7 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
   #me{padding-bottom:max(4px,env(safe-area-inset-bottom))}
 }
 
-/* VELLUR Atelier. Calm surfaces, a reading-first canvas and tools revealed on demand. */
+/* NOVA Atelier. Calm surfaces, a reading-first canvas and tools revealed on demand. */
 :root{--r:12px;--reading:760px;--focus:var(--accent);--shadow:0 4px 18px rgba(0,0,0,.08)}
 body{letter-spacing:-.012em}button{min-height:36px}button.primary{background:var(--accent)}
 button:focus-visible,a:focus-visible,summary:focus-visible,select:focus-visible{outline:2px solid var(--focus);outline-offset:3px}
@@ -513,14 +513,124 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
 
 #tabs button{color:var(--muted)}#tabs button.on{background:var(--hover);color:var(--text);box-shadow:none}#tabs button.on:before{display:block}#convList button.on,#taskList button.on{background:var(--hover);color:var(--text);box-shadow:none}.hacts button,.hrec .pc{box-shadow:none}.hrec .pc{border-bottom-color:var(--line)}.hacts button:hover{background:var(--hover)}
 @media(max-width:860px){#side{transform:translateX(-100%);box-shadow:none}body.nav-open #side{transform:translateX(0);box-shadow:20px 0 60px rgba(0,0,0,.2)}}
+
+/* ── NOVA / Atelier layer (blueprint v1.0). Tokens first; everything below reads them. 90% neutral, 10% character. ── */
+:root{--bg:#121316;--side:#0e0f12;--panel:#1b1d21;--raise:#22252a;--sunk:#0f1013;--hover:#1f2226;--code:#191b1f;--line:#26292f;--line2:#30333a;--line3:#4a4e57;
+  --text:#f5f3ef;--soft:#cfcdc9;--muted:#9a9ea6;--faint:#767b82;
+  --accent:#b6a7c7;--lime:#b6a7c7;--accent-ink:#1a1620;--accent-dim:rgba(182,167,199,.10);--accent-line:rgba(182,167,199,.36);--nacre:#ddd3e3;--bar:#b6a7c7;
+  --send:#f5f3ef;--send-ink:#121316;--r:18px;--rc:11px;--glass:rgba(18,19,22,.72)}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f5f3ef;--side:#efece7;--panel:#fbfaf7;--raise:#ffffff;--sunk:#ece9e3;--hover:#e9e6e0;--code:#efede8;--line:#e2dfd8;--line2:#cfcbc3;--line3:#a9a59d;
+  --text:#1b1d21;--soft:#3a3d43;--muted:#5d6168;--faint:#767b82;
+  --accent:#6b5a80;--lime:#6b5a80;--accent-ink:#ffffff;--accent-dim:rgba(107,90,128,.09);--accent-line:rgba(107,90,128,.34);--nacre:#8d7aa3;--bar:#6b5a80;
+  --send:#1b1d21;--send-ink:#f5f3ef;--glass:rgba(245,243,239,.78)}}
+:root[data-theme="light"]{--bg:#f5f3ef;--side:#efece7;--panel:#fbfaf7;--raise:#ffffff;--sunk:#ece9e3;--hover:#e9e6e0;--code:#efede8;--line:#e2dfd8;--line2:#cfcbc3;--line3:#a9a59d;
+  --text:#1b1d21;--soft:#3a3d43;--muted:#5d6168;--faint:#767b82;
+  --accent:#6b5a80;--lime:#6b5a80;--accent-ink:#ffffff;--accent-dim:rgba(107,90,128,.09);--accent-line:rgba(107,90,128,.34);--nacre:#8d7aa3;--bar:#6b5a80;
+  --send:#1b1d21;--send-ink:#f5f3ef;--glass:rgba(245,243,239,.78)}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+/* navigation rail: 64 px on desktop, the full list one click away; the drawer on phones is unchanged */
+#railToggle{margin-top:6px;color:var(--faint)}#railToggle svg{transition:transform .2s}
+@media(max-width:860px){#railToggle{display:none}}
+@media(min-width:861px){
+  body.rail #side{width:64px;padding:16px 10px;align-items:center}
+  body.rail .logo{padding:0 0 22px;justify-content:center;gap:0}body.rail .logo>div{display:none}
+  body.rail #tabs{width:100%;align-items:center;gap:4px}
+  body.rail #tabs button,body.rail #railToggle{font-size:0;gap:0;justify-content:center;padding:0;width:44px;height:44px;border-radius:12px}
+  body.rail #tabs button.on:before{left:-10px;top:12px;bottom:12px}
+  body.rail #tabs .sep{width:24px;margin:8px auto}
+  body.rail #railToggle svg{transform:rotate(180deg)}
+  body.rail .sidehead{padding:10px 0 0;justify-content:center}body.rail #sideLabel{display:none}
+  body.rail #convList,body.rail #taskList{display:none!important}
+  body.rail #me{margin-top:auto;width:100%;justify-content:center;padding:14px 0 2px;gap:0}body.rail #me .who,body.rail #meMore{display:none}
+  body.rail #mePearl{cursor:pointer}
+  body.rail #meMenu{position:fixed;left:74px;right:auto;bottom:14px;width:264px}
+}
+/* toasts replace blocking alert() */
+#toasts{position:fixed;z-index:120;right:16px;bottom:max(16px,env(safe-area-inset-bottom));display:flex;flex-direction:column;gap:8px;max-width:min(420px,calc(100vw - 32px))}
+.toast{background:var(--raise);border:1px solid var(--line2);border-left:3px solid var(--accent);border-radius:12px;padding:12px 14px;font-size:13.5px;line-height:1.45;color:var(--text);box-shadow:0 12px 32px rgba(0,0,0,.28);overflow-wrap:anywhere;animation:toastin .2s ease-out}
+.toast.bad{border-left-color:var(--bad)}.toast.ok{border-left-color:var(--good)}@keyframes toastin{from{opacity:0;transform:translateY(6px)}}
+/* workspace modes + status strip: one bar for the whole task, on every screen size */
+#modeBar{display:flex;align-items:center;gap:16px;padding:8px 28px;border-bottom:1px solid var(--line);min-height:52px}
+#modeBar[hidden]{display:none}
+#stModes{flex:none}#stModes button{min-height:34px;padding:0 14px;font-size:12.5px}
+#stStrip{display:flex;align-items:center;gap:10px;min-width:0;flex:1;font-size:12.5px;color:var(--muted)}
+#stNow{white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-width:0}
+#stCost{margin-left:auto;flex:none;font:11px var(--mono);color:var(--muted);border:1px solid var(--line2);border-radius:99px;padding:4px 10px;white-space:nowrap}
+#stStrip .oc{flex:none;font-size:11px}#stStrip.working .oc:before{content:"";display:inline-block;width:6px;height:6px;border-radius:50%;margin-right:6px;background:var(--accent);animation:workpulse 1.8s ease-in-out infinite}
+#stage{display:none;min-width:0;min-height:0;border-left:1px solid var(--line);background:var(--sunk);flex-direction:column}
+#stage>section{flex:1;min-height:0;display:flex;flex-direction:column}#stage>section[hidden]{display:none}
+@media(min-width:861px){
+  body.staged #chatCard{display:grid;grid-template-columns:minmax(320px,400px) minmax(0,1fr);grid-template-rows:auto auto minmax(0,1fr) auto auto}
+  body.staged #chatCard>.chathead,body.staged #modeBar{grid-column:1/-1}
+  body.staged #chatCard>.msgs{grid-column:1;grid-row:3;padding:24px 20px 16px}body.staged #chatCard>.composer{grid-column:1;grid-row:4;width:calc(100% - 32px)}body.staged #chatCard>.chatfoot{grid-column:1;grid-row:5}
+  body.staged #stage{display:flex;grid-column:2;grid-row:3/6}
+  body.staged.stage-focus #chatCard{grid-template-columns:0 minmax(0,1fr)}
+  body.staged.stage-focus #chatCard>.msgs,body.staged.stage-focus #chatCard>.composer,body.staged.stage-focus #chatCard>.chatfoot{display:none}
+  body.staged.stage-focus #stage{border-left:0}
+  body.staged .workcard{padding:16px}
+}
+#stFocus{flex:none}body:not(.staged) #stFocus{visibility:hidden}
+.stbar{display:flex;align-items:center;gap:8px;padding:8px 16px;border-bottom:1px solid var(--line);min-height:48px;background:var(--bg)}
+.stbar .url{flex:1;min-width:0;font:11.5px var(--mono);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.stbar .dot{width:7px;height:7px;border-radius:50%;background:var(--line3);flex:none}.stbar .dot.ready{background:var(--good)}.stbar .dot.starting{background:var(--warn);animation:workpulse 1.4s ease-in-out infinite}.stbar .dot.error{background:var(--bad)}
+.stbar .seg button{min-height:30px;padding:0 10px;font-size:11.5px}
+#spStage{flex:1;min-height:0;position:relative;display:flex;justify-content:center;padding:16px;overflow:auto}
+#spFrame{width:100%;height:100%;border:1px solid var(--line2);border-radius:12px;background:#fff;display:none;transition:width .25s ease}
+#spState{position:absolute;inset:0;display:grid;place-content:center;justify-items:center;text-align:center;gap:8px;padding:32px;color:var(--muted);font-size:13.5px;line-height:1.55;background:var(--sunk)}
+#spState[hidden]{display:none}#spState b{color:var(--text);font-size:16px;font-weight:500}#spState p{margin:0;max-width:420px;overflow-wrap:anywhere}#spState button{margin-top:8px}
+#spState .ring{width:26px;height:26px;border-radius:50%;border:2px solid var(--line2);border-top-color:var(--accent);animation:spin 1s linear infinite}@keyframes spin{to{transform:rotate(360deg)}}
+.stscroll{flex:1;min-height:0;overflow:auto;padding:28px max(24px,calc(50% - 380px))}
+.sthead{display:flex;align-items:flex-start;gap:12px;margin-bottom:24px}.sthead h2{margin:0 0 4px;font-size:19px;font-weight:500;letter-spacing:-.01em}.sthead p{margin:0;color:var(--muted);font-size:13.5px;line-height:1.55;overflow-wrap:anywhere}.sthead .oc{margin-top:3px;flex:none}
+.stsec{border:1px solid var(--line);border-radius:16px;background:var(--panel);margin-bottom:16px;overflow:hidden}
+.stsec>h3{margin:0;padding:12px 16px;font-size:12px;font-weight:500;color:var(--muted);letter-spacing:.02em;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px}
+.strow{display:flex;align-items:center;gap:12px;padding:10px 16px;border-bottom:1px solid var(--line);font-size:13px;min-width:0}.strow:last-child{border-bottom:0}
+.strow .p{flex:1;min-width:0;font:12px var(--mono);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}.strow small{flex:none;font:11px var(--mono);color:var(--muted)}
+.strow .add{color:var(--good)}.strow .del{color:var(--bad)}.strow .tag{flex:none;font:500 10.5px var(--mono);border-radius:6px;padding:3px 7px;border:1px solid var(--line2);color:var(--muted)}
+.strow .tag.ok{color:var(--good);border-color:transparent;background:var(--accent-dim)}.strow .tag.bad{color:var(--bad);border-color:var(--bad-line);background:var(--bad-bg)}
+.stempty{padding:16px;color:var(--muted);font-size:13px}
+.stshots{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:12px;padding:16px}.stshots figure{margin:0}.stshots img{width:100%;border-radius:10px;border:1px solid var(--line)}.stshots figcaption{font:11px var(--mono);color:var(--muted);margin-top:4px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stsec details summary{cursor:pointer;padding:12px 16px;font-size:13px;color:var(--soft)}.stsec pre.diff{margin:0;padding:12px 16px;border-top:1px solid var(--line);font:11.5px/1.6 var(--mono);overflow:auto;max-height:520px;white-space:pre;background:var(--code)}
+/* release stepper: five stages, each one only as far as a real source confirms it */
+.stepper{list-style:none;margin:0 0 20px;padding:0;display:grid;grid-template-columns:repeat(5,1fr);gap:0}
+.stepper li{position:relative;padding-top:26px;font-size:12.5px;color:var(--faint);min-width:0}.stepper li b{display:block;font-weight:500;color:inherit}.stepper li small{display:block;font:11px/1.4 var(--mono);margin-top:3px;color:var(--faint);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;padding-right:8px}
+.stepper li:before{content:"";position:absolute;top:8px;left:0;right:0;height:2px;background:var(--line2)}
+.stepper li:after{content:"";position:absolute;top:2px;left:0;width:14px;height:14px;border-radius:50%;background:var(--bg);border:2px solid var(--line3);box-sizing:border-box}
+.stepper li.done{color:var(--text)}.stepper li.done:before{background:var(--accent)}.stepper li.done:after{background:var(--accent);border-color:var(--accent)}
+.stepper li.current{color:var(--text)}.stepper li.current:after{border-color:var(--accent);box-shadow:0 0 0 4px var(--accent-dim)}
+.stepper li.failed:after{border-color:var(--bad);background:var(--bad)}.stepper li.failed{color:var(--bad)}
+.stepper li.unknown:after{border-style:dashed;border-color:var(--warn)}.stepper li.unknown small{color:var(--warn)}
+.stepper li.skipped:before,.stepper li.skipped:after{opacity:.45}
+.shsay{font-size:15px;line-height:1.6;color:var(--text);margin:0 0 8px;overflow-wrap:anywhere}.shsay code{font-size:12.5px}.shnote{font-size:12.5px;color:var(--muted);margin:0 0 16px;line-height:1.55}
+.shacts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:20px}.shacts a{text-decoration:none}
+.shmeta{font:11px var(--mono);color:var(--faint);display:flex;gap:12px;flex-wrap:wrap;align-items:center}.shmeta .warnc{color:var(--warn)}
+button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px solid var(--send);border-radius:var(--rc);padding:9px 16px;font:500 13px var(--sans);cursor:pointer;display:inline-flex;align-items:center;gap:6px}
+/* timeline phases inside the conversation card: real event times, no percentages */
+.phases{list-style:none;margin:14px 0 0;padding:0;border-top:1px solid var(--line)}
+.phases li{display:flex;align-items:center;gap:10px;padding:8px 0;border-bottom:1px solid var(--line);font-size:13px;color:var(--soft)}
+.phases li:last-child{border-bottom:0}.phases li i{width:7px;height:7px;border-radius:50%;background:var(--accent);flex:none}.phases li.now i{animation:workpulse 1.4s ease-in-out infinite}.phases li.warn i{background:var(--warn)}
+.phases li time{margin-left:auto;font:11px var(--mono);color:var(--faint);flex:none}
+.copyid{font:inherit;line-height:1.3;background:transparent;border:0;border-bottom:1px dashed var(--line3);color:inherit;padding:0;cursor:pointer;border-radius:0}
+@media(max-width:860px){
+  #modeBar{flex-wrap:wrap;gap:8px;padding:8px 16px;position:sticky;top:0;z-index:5;background:var(--bg)}
+  #stModes{display:grid;grid-template-columns:repeat(4,1fr);width:100%}#stModes button{min-height:48px;padding:0;font-size:13px}
+  #stStrip{width:100%;flex:none;min-height:24px}#stFocus{display:none}
+  body.staged #chatCard>.msgs,body.staged #chatCard>.composer,body.staged #chatCard>.chatfoot{display:none}
+  body.staged #stage{display:flex;flex:1;border-left:0}
+  .stscroll{padding:20px 16px}.stbar{padding:8px 16px;flex-wrap:wrap}.stbar .url{flex-basis:100%;order:3}
+  .stbar .seg button,.stbar .iconbtn{min-height:44px;min-width:44px}
+  #spStage{padding:8px}.stepper{grid-template-columns:1fr;gap:0}.stepper li{padding:0 0 16px 28px}.stepper li:before{top:0;bottom:0;left:6px;right:auto;width:2px;height:auto}.stepper li:after{top:1px}
+  .stepper li small{white-space:normal;overflow-wrap:anywhere}.shacts>*{flex:1 1 100%;justify-content:center;min-height:48px}
+  .sthead h2{font-size:18px}
+}
 </style>
 </head>
 <body>
 <aside id="side" class="admin-only">
-  <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div>VELLUR<small>AI CORE</small></div></div>
+  <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div><span data-brand>NOVA</span><small>ATELIER</small></div></div>
   <nav id="tabs">
     <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Workspace</button><button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Conversations</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Projects</button><button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button><button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Usage</button>
   </nav>
+  <button class="navbtn" type="button" id="railToggle" title="Collapse or expand navigation" aria-label="Collapse or expand navigation"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/><path d="M19 5v14"/></svg>Collapse</button>
   <div class="sidehead"><span id="sideLabel">Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button></div>
   <div id="convList"></div>
   <div id="taskList"></div>
@@ -536,17 +646,18 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
   </div>
 </aside>
 <div id="scrim"></div>
+<div id="toasts" role="status" aria-live="polite"></div>
 <main>
 <div id="topbar"><button class="iconbtn" id="navOpen" aria-label="Menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><b id="topTitle">Chat</b><button class="iconbtn" id="topNew" aria-label="New chat"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button></div>
 <div class="wrap">
   <div class="pubhead">
-  <div class="brand">VELLUR</div>
-  <h1>AI Core</h1>
+  <div class="brand">NOVA</div>
+  <h1>Atelier</h1>
   <p class="sub">Your private AI workspace: chat, coding agent, model routing and cost control. <a href="/" style="color:var(--muted)">Status page</a></p>
   </div>
 
   <div class="grid">
-    <section class="c12 admin-only pagehead" data-tab="gpu"><div><span class="label">VELLUR · GPU</span><h1>GPU</h1><p>Optional private GPU. Nothing paid starts unless you allow it.</p></div></section>
+    <section class="c12 admin-only pagehead" data-tab="gpu"><div><span class="label">NOVA · GPU</span><h1>GPU</h1><p>Optional private GPU. Nothing paid starts unless you allow it.</p></div></section>
     <section class="card c12" data-tab="gpu">
       <div class="hero">
         <div>
@@ -603,7 +714,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
       </dl>
     </section>
 
-    <section class="c12 admin-only pagehead" data-tab="costs"><div><span class="label">VELLUR · Costs</span><h1>Costs</h1><p>Every request is recorded. Provider-reported costs are kept apart from VELLUR's own estimates.</p></div></section>
+    <section class="c12 admin-only pagehead" data-tab="costs"><div><span class="label">NOVA · Costs</span><h1>Costs</h1><p>Every request is recorded. Provider-reported costs are kept apart from NOVA's own estimates.</p></div></section>
     <section class="card c4" data-tab="gpu costs">
       <h2>Budget — <span id="bMonth"></span></h2>
       <div style="font-size:22px;font-weight:600"><span id="bTotal">$0.00</span> <span style="color:var(--muted);font-size:14px">of <span id="bBudget">$0</span></span></div>
@@ -662,7 +773,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
         <button class="iconbtn plain" id="btnSearch" title="Search conversations and projects (Ctrl+K)" aria-label="Search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></button><button class="iconbtn plain" id="btnTheme" title="Switch between dark and light" aria-label="Switch theme"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg></button>
         <select id="homeModel" class="modelpill" aria-label="Model"></select></div>
      <div id="homeMain">
-      <div class="work-label">PERSONAL WORKSPACE <span>VELLUR / AI CORE</span></div><div class="hhero"><span class="pearl" id="heroPearl"></span><div><h1 id="greet">Welcome.</h1><p>A little thought. A new possibility.</p></div></div>
+      <div class="work-label">PERSONAL WORKSPACE <span>NOVA / ATELIER</span></div><div class="hhero"><span class="pearl" id="heroPearl"></span><div><h1 id="greet">Welcome.</h1><p>A little thought. A new possibility.</p></div></div>
       <div class="hcomp" id="homeComposer">
         <button class="hbtn" type="button" id="homeAttach" title="Attach files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button><button class="hbtn" type="button" id="homeSettings" title="Models and routing" aria-label="Models and routing"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg></button>
         <select id="homeMode" class="hmode" aria-label="What to do"><option value="chat">Chat</option><option value="agent">Agent</option><option value="image">Image</option></select>
@@ -684,12 +795,12 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
     </section>
     <div id="searchBox" hidden><div class="sbox" role="dialog" aria-label="Search"><input id="searchIn" placeholder="Search conversations and projects…" autocomplete="off"><div id="searchRes"></div></div></div>
 
-    <section class="c12 admin-only pagehead" data-tab="tools"><div><span class="label">VELLUR · Tools</span><h1>Tools</h1><p>Creative studios and the system behind the workspace.</p></div></section>
+    <section class="c12 admin-only pagehead" data-tab="tools"><div><span class="label">NOVA · Tools</span><h1>Tools</h1><p>Creative studios and the system behind the workspace.</p></div></section>
     <section class="c12 admin-only" data-tab="tools"><div class="toolgrid">
       <a class="tool" href="/autopilot/studio/"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19l7-7 3 3-7 7-3-3z"/><path d="M18 13l-1.5-7.5L2 2l3.5 14.5L13 18l5-5z"/><circle cx="11" cy="11" r="2"/></svg><b>Precision Studio</b><span>Trace an image into an editable vector outline and export SVG.</span></a>
       <a class="tool" id="nav3D" href="/autopilot/3d/" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg><b>3D Studio</b><span>View GLB, glTF, OBJ and STL models from a project or from this device.</span></a>
       <button class="tool" type="button" data-go="gpu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg><b>GPU</b><span>Optional private GPU, budget and limits.</span></button>
-      <button class="tool" type="button" data-go="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><b>Activity</b><span>Installed version of VELLUR and the event log.</span></button>
+      <button class="tool" type="button" data-go="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><b>Activity</b><span>Installed version of NOVA and the event log.</span></button>
     </div></section>
     <section class="admin-only" id="chatCard" data-tab="chat">
       <div class="chathead">
@@ -697,11 +808,16 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
         <span class="note" id="chatTarget" style="margin:0"></span>
         <button class="ghost" id="convNew">New chat</button><button class="iconbtn" id="convDel" title="Delete this conversation" aria-label="Delete this conversation"><svg class="ic" viewBox="0 0 24 24"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6"/></svg></button>
       </div>
+      <div id="modeBar" hidden>
+        <div class="seg" id="stModes" role="tablist" aria-label="Workspace mode"><button type="button" role="tab" data-mode="discover" title="Conversation and references">Discover</button><button type="button" role="tab" data-mode="build" title="Live preview next to the conversation">Build</button><button type="button" role="tab" data-mode="review" title="Changes, checks and screenshots">Review</button><button type="button" role="tab" data-mode="ship" title="Pull request, merge and deployment">Ship</button></div>
+        <div id="stStrip" role="status"><span class="oc" id="stPill"></span><span id="stNow"></span><span id="stCost"></span></div>
+        <button class="iconbtn plain" type="button" id="stFocus" title="Focus on the work surface" aria-label="Focus on the work surface" aria-pressed="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9V4h5M20 9V4h-5M4 15v5h5M20 15v5h-5"/></svg></button>
+      </div>
       <div class="msgs" id="msgs"></div>
       <div class="composer">
         <div id="workContext" hidden><label>Repository <input id="workRepo" list="workRepos" placeholder="owner / repository" aria-label="Work repository" autocapitalize="none" spellcheck="false"><datalist id="workRepos"></datalist></label><label>Branch <input id="workBranch" placeholder="Default branch" aria-label="Work branch" autocapitalize="none" spellcheck="false"></label><p class="note" id="workHint">Choose a repository, or leave blank for an empty workspace. Sending starts agent work.</p></div>
         <div class="atts" id="chatAtts" aria-live="polite"></div>
-        <textarea id="chatIn" rows="1" placeholder="Message VELLUR AI…"></textarea>
+        <textarea id="chatIn" rows="1" placeholder="Message NOVA…"></textarea>
         <div class="cbar">
           <label class="iconbtn" for="chatFile" title="Attach images, PDFs, documents, code or 3D files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24"><path d="m21.44 11.05-9.19 9.19a6 6 0 0 1-8.49-8.49l8.57-8.57A4 4 0 1 1 18 8.84l-8.59 8.57a2 2 0 0 1-2.83-2.83l8.49-8.48"/></svg></label><input type="file" id="chatFile" multiple accept="image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.json,.xml,.yaml,.yml,.toml,.py,.js,.ts,.tsx,.jsx,.css,.html,.sh,.sql,.zip,.glb,.gltf,.obj,.stl,.blend">
           <select id="chatMode" aria-label="Conversation mode"><option value="chat">Discuss</option><option value="work">Build</option></select><select id="chatModel" class="modelpick" aria-label="Model"></select><select id="imgSize" class="modelpick" aria-label="Image format" hidden><option value="1024x1024" title="Square">1:1</option><option value="832x1248" title="Portrait">2:3</option><option value="768x1344" title="Tall">9:16</option><option value="1248x832" title="Landscape">3:2</option><option value="1344x768" title="Wide">16:9</option></select>
@@ -709,6 +825,17 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
           <button id="btnSend" aria-label="Send"><svg class="ic" viewBox="0 0 24 24"><path d="m5 12 7-7 7 7M12 19V5"/></svg></button>
         </div>
       </div>
+      <aside id="stage" aria-label="Work surface">
+        <section data-stage="build" hidden>
+          <div class="stbar"><i class="dot" id="spDot"></i><span class="url" id="spUrl">Preview</span>
+            <div class="seg" id="spSizes" aria-label="Viewport"><button type="button" data-w="390">Phone</button><button type="button" data-w="820">Tablet</button><button type="button" data-w="" class="on">Desktop</button></div>
+            <button class="iconbtn" type="button" id="spReload" title="Reload the preview" aria-label="Reload the preview"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12a9 9 0 1 1-3-6.7"/><path d="M21 4v5h-5"/></svg></button>
+            <a class="iconbtn" id="spOpen" title="Open in a new tab" aria-label="Open in a new tab" target="_blank" rel="noopener"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M19 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V6a1 1 0 0 1 1-1h5"/></svg></a></div>
+          <div id="spStage"><div id="spState"></div><iframe id="spFrame" title="Preview of this task" sandbox="allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock" referrerpolicy="no-referrer"></iframe></div>
+        </section>
+        <section data-stage="review" hidden><div class="stscroll" id="rvBody"></div></section>
+        <section data-stage="ship" hidden><div class="stscroll" id="shBody"></div></section>
+      </aside>
       <div class="chatfoot"><details><summary>Project memory</summary>
         <textarea id="memory" rows="3" placeholder="Notes added to every chat and agent task, e.g. Answer in Romanian."></textarea>
         <div class="row" style="margin-top:8px"><button class="ghost" id="memSave">Save memory</button><span class="note" id="memNote" style="margin:0"></span></div>
@@ -740,8 +867,8 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
             <label><input type="checkbox" id="agInspect" disabled> <span>AI visual inspection <small>(requires model image support below)</small></span></label>
             <label><input type="checkbox" id="agAutoShots" disabled> <span>Automatic screenshots</span></label>
             <label><input type="checkbox" id="agAutoPublish" disabled> <span>Automatic publishing preference</span></label>
-            <label><input type="checkbox" id="agMainPublish" disabled> <span>Allow auto-publishing to main for <b id="agMainRepo">VELLUR</b></span></label>
-            <div class="note">Preferences are saved on the server. Publishing requires server support; installing VELLUR still requires approval.</div>
+            <label><input type="checkbox" id="agMainPublish" disabled> <span>Allow auto-publishing to main for <b id="agMainRepo">NOVA</b></span></label>
+            <div class="note">Preferences are saved on the server. Publishing requires server support; installing NOVA still requires approval.</div>
             <div class="note" id="agToolsNote" role="status" aria-live="polite"></div>
           </div></details>
           <select id="tModel" class="modelpick" aria-label="Model"></select>
@@ -769,7 +896,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
      </aside>
     </section>
 
-    <section class="c12 admin-only pagehead" data-tab="models"><div><span class="label">VELLUR · Models</span><h1>Models</h1><p>Which AI answers chat, writes code and creates images, and what each one costs.</p></div></section>
+    <section class="c12 admin-only pagehead" data-tab="models"><div><span class="label">NOVA · Models</span><h1>Models</h1><p>Which AI answers chat, writes code and creates images, and what each one costs.</p></div></section>
     <section class="card c12 admin-only" data-tab="models" id="routeCard">
       <div class="rtop"><div><h2>Who answers what</h2><p class="sub2" style="margin:0">Each kind of work tries its models from top to bottom. The first one is used; the others are fallbacks (a <em>paid</em> fallback only if “Paid fallback” is on in GPU).</p></div>
         <div class="row"><span class="note" id="rNote" style="margin:0"></span><button class="ghost" id="rDiscard" hidden>Discard</button><button class="primary" id="rSave" disabled>Save</button></div></div>
@@ -784,7 +911,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
     </section>
     <section class="card c12 admin-only" data-tab="models">
       <h2>Image generation</h2>
-      <p class="sub2">Optional and off until an image-output model is configured. The model must declare image output; VELLUR does not guess. Paid images need confirmation and are capped per request.</p>
+      <p class="sub2">Optional and off until an image-output model is configured. The model must declare image output; NOVA does not guess. Paid images need confirmation and are capped per request.</p>
       <div id="imageStatus" class="note"></div>
       <div class="label" style="margin-top:16px">Verified image models</div>
       <div class="suggest" id="imageSuggest"></div>
@@ -819,7 +946,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
       <div class="row" style="margin-top:8px"><button class="ghost" id="pricesSave">Save prices</button></div>
     </section>
     <section class="card c8 admin-only" data-tab="costs">
-      <div class="rtop"><div><h2 id="dayTitle">Spend per day</h2><p class="sub2" style="margin:0">Model and image requests recorded by VELLUR, by day (UTC). Fixed monthly costs are not included.</p></div><div class="daytot"><span class="label">This month</span><b id="dayTotal">—</b></div></div>
+      <div class="rtop"><div><h2 id="dayTitle">Spend per day</h2><p class="sub2" style="margin:0">Model and image requests recorded by NOVA, by day (UTC). Fixed monthly costs are not included.</p></div><div class="daytot"><span class="label">This month</span><b id="dayTotal">—</b></div></div>
       <div class="daychart" id="dayChart" role="img" aria-label="Spend per day"></div>
       <div class="daytip" id="dayTip" hidden></div>
       <details class="adv"><summary>Show as table</summary><div style="overflow:auto"><table><thead><tr><th>Day</th><th>Requests</th><th>Tokens</th><th>Cost</th></tr></thead><tbody id="dayTable"></tbody></table></div></details>
@@ -838,10 +965,10 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
       <dl class="kv" style="margin-top:12px;max-width:460px"><dt>Variable + in-budget fixed</dt><dd id="cTotal">—</dd><dt>Other fixed (outside budget)</dt><dd id="cFixedOut">—</dd><dt>All-in monthly total</dt><dd id="cAll">—</dd></dl>
     </section>
 
-    <section class="c12 admin-only pagehead" data-tab="activity"><div><span class="label">VELLUR · Activity</span><h1>Activity</h1><p>Versions of VELLUR and the controller's event log.</p></div></section>
+    <section class="c12 admin-only pagehead" data-tab="activity"><div><span class="label">NOVA · Activity</span><h1>Activity</h1><p>Versions of NOVA and the controller's event log.</p></div></section>
     <section class="card c12 admin-only" data-tab="activity">
-      <h2>VELLUR version</h2>
-      <p class="sub2">New versions of VELLUR are never installed by themselves. You approve an exact version here; the server installs it only after its automated tests passed, and returns to the previous version if the new one fails its checks.</p>
+      <h2>NOVA version</h2>
+      <p class="sub2">New versions of NOVA are never installed by themselves. You approve an exact version here; the server installs it only after its automated tests passed, and returns to the previous version if the new one fails its checks.</p>
       <div id="relBox" class="note">Loading…</div>
       <div class="row" style="margin-top:10px"><button id="relInstall" style="display:none"></button><button class="ghost" id="relCancel" style="display:none">Cancel approval</button><button class="danger" id="relRollback" style="display:none">Return to the previous version</button><span class="note" id="relNote" style="margin:0"></span></div>
     </section>
@@ -1137,12 +1264,12 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
   document.addEventListener("click", (e) => { if (!$("me").contains(e.target)) $("meMenu").hidden = true; });
   document.querySelectorAll("[data-theme-set]").forEach(b => b.onclick = () => setTheme(b.dataset.themeSet, true));
   $("btnTheme").onclick = () => setTheme(themeNow() === "dark" ? "light" : "dark", true);
-  $("meNameSave").onclick = async () => { try { const st = await send("settings", "PUT", { owner_name: $("meNameIn").value.trim() }); if (S && S.settings) { S.settings.owner_name = st.owner_name; identity(S); } $("meMenu").hidden = true; } catch (e) { alert(e.message); } };
+  $("meNameSave").onclick = async () => { try { const st = await send("settings", "PUT", { owner_name: $("meNameIn").value.trim() }); if (S && S.settings) { S.settings.owner_name = st.owner_name; identity(S); } $("meMenu").hidden = true; } catch (e) { toast(e.message); } };
   $("meNameIn").addEventListener("keydown", (e) => { if (e.key === "Enter") $("meNameSave").click(); });
 
   // ── workspace: one place to start a conversation, an agent task or an image ─────────────────
   const agoShort = (t) => { const d = Date.now() / 1000 - (t || 0); return d < 90 ? "just now" : d < 3600 ? Math.round(d / 60) + " min ago" : d < 86400 ? Math.round(d / 3600) + " h ago" : Math.round(d / 86400) + " d ago"; };
-  const HOME_MODELS = [["vellur-chat", "VELLUR Chat"], ["vellur-max", "VELLUR Max"], ["vellur-coder", "VELLUR Coder"]];
+  const HOME_MODELS = [["vellur-chat", "NOVA Chat"], ["vellur-max", "NOVA Max"], ["vellur-coder", "NOVA Coder"]];
   const HOME_ACTS = { build: ["agent", "Describe the app or feature to build…"], automate: ["agent", "Describe the task to run from start to finish…"],
     create: ["image", "Describe the image to create…"], explore: ["chat", "Ask a question or explore an idea…"] };
   let HOME = { convs: [], loaded: false };
@@ -1271,7 +1398,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
   }
   function addMsg(role, text, atts, images, meta) {
     const d = document.createElement("div"); d.className = "m " + role;
-    d.innerHTML = '<div class="who">' + (role === "user" ? "You" : "VELLUR AI") + '</div><div class="txt"></div>';
+    d.innerHTML = '<div class="who">' + (role === "user" ? "You" : "NOVA") + '</div><div class="txt"></div>';
     const imageOnly = images && images.length && /^Generated image/.test(text || "");
     const body = role === "user" ? esc(text || "") : (imageOnly ? "" : md(text || ""));
     d.querySelector(".txt").innerHTML = body + msgAtts(atts) + (images && images.length ? '<div class="imgcard done">' + msgImgs(images) + "</div>" : "");
@@ -1287,7 +1414,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
     ["Analyse", "Summarise the attached file and list the three things that matter most."],
     ["Image", "Generate an image of a minimalist obsidian desk lamp on a dark stone table, soft studio light."]];
   function chatEmpty() {
-    $("msgs").innerHTML = `<div class="chatempty"><span class="label">VELLUR · Workspace</span><h3>What are we working on?</h3><p>Ask, write, analyse a file or describe an image to create. Answers stream in and every conversation is saved.</p><div class="starters">${STARTERS.map(([k, t]) => `<button class="starter" type="button"><b>${k}</b>${esc(t)}</button>`).join("")}</div></div>`;
+    $("msgs").innerHTML = `<div class="chatempty"><span class="label">NOVA · Workspace</span><h3>What are we working on?</h3><p>Ask, write, analyse a file or describe an image to create. Answers stream in and every conversation is saved.</p><div class="starters">${STARTERS.map(([k, t]) => `<button class="starter" type="button"><b>${k}</b>${esc(t)}</button>`).join("")}</div></div>`;
     $("msgs").querySelectorAll(".starter").forEach((b, i) => b.onclick = () => {
       $("chatIn").value = STARTERS[i][1]; grow(); $("chatIn").focus();
       if (STARTERS[i][0] === "Analyse") $("chatFile").click();
@@ -1342,7 +1469,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
     CONV = c.id; try { sessionStorage.setItem("vellurConversation", String(c.id)); } catch(e) {} $("convSel").value = c.id; fillModels($("chatModel"), c.model); $("chatTitle").textContent = c.title;
     $("msgs").innerHTML = ""; c.messages.forEach(m => { const meta = m.meta || {}; addMsg(m.role, m.content, meta.attachments || [], meta.images || [], m.role === "assistant" ? meta : null); });
     if (!c.messages.length) chatEmpty();
-    WORK_TASK = c.task_id || null; setWorkMode(WORK_TASK ? "work" : "chat");
+    WORK_TASK = c.task_id || null; setWorkMode(WORK_TASK ? "work" : "chat"); stageOpen();
     if (WORK_TASK) await refreshWork();
   }
   $("convSel").onchange = () => openConv($("convSel").value);
@@ -1410,7 +1537,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
   let WORK_TASK = null, WORK_TIMER = null, WORK_SENDING = false;
   function setWorkMode(mode) {
     $("chatMode").value = mode; $("workContext").hidden = mode !== "work";
-    $("chatIn").placeholder = mode === "work" ? (WORK_TASK ? "Continue working on this project…" : "Describe what you want built or changed…") : "Message VELLUR AI…";
+    $("chatIn").placeholder = mode === "work" ? (WORK_TASK ? "Continue working on this project…" : "Describe what you want built or changed…") : "Message NOVA…";
     $("workContext").classList.toggle("linked", !!WORK_TASK);
     $("workRepo").disabled = $("workBranch").disabled = !!WORK_TASK;
     $("workHint").textContent = WORK_TASK ? "Connected to this conversation's workspace. Follow-ups continue the same task." : "Choose a repository, or leave blank for an empty workspace. Sending starts agent work.";
@@ -1446,15 +1573,16 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
       let card = $("conversationWork");
       if (!card) { card = document.createElement("article"); card.id = "conversationWork"; card.className = "workcard"; $("msgs").appendChild(card); }
       const signature = JSON.stringify([task.state, task.outcome, task.cost_usd, task.report, task.pr_url, task.can_publish, task.runs, events]);
-      if (card.dataset.signature === signature) { if (active) WORK_TIMER = setTimeout(refreshWork, 3000); return; }
+      if (card.dataset.signature === signature) { STAGE.task = task; if (active) WORK_TIMER = setTimeout(refreshWork, 3000); return; }
       card.dataset.signature = signature; $("chatFileNote").textContent = "";
       const opened = new Set([...card.querySelectorAll("details[open]")].map(d => d.dataset.section));
       card.classList.toggle("working", active);
-      const report = task.report || {}, outcome = active ? ["Working", ""] : (OUTCOME[task.outcome] || ["Result not verified", ""]);
+      const lost = !active && (task.files_changed || task.pr_url) && !events.some(e => e.kind === "report" && (e.run || 1) === run);   // the run ended without its final report, but the work exists
+      const report = task.report || {}, outcome = active ? ["Working", ""] : lost ? ["Interrupted · changes saved", "warn"] : (OUTCOME[task.outcome] || ["Result not verified", ""]);
       const meaningful = events.filter(e => ["tool", "status", "error", "notice", "text", "shot", "pr", "report", "publication"].includes(e.kind));
       const last = [...meaningful].reverse().find(e => e.kind === "tool" || e.kind === "status");
       const state = active ? (last ? (last.kind === "tool" ? toolView(last.data).verb : last.data.text) : "Waiting for the agent") : report.why || task.error || "Review the recorded result below.";
-      card.innerHTML = `<header><span class="oc ${outcome[1]}">${esc(outcome[0])}</span><h3>Project work</h3><small>${task.cost_usd == null ? "Cost unavailable" : money4(task.cost_usd)} · Run ${run}</small></header><p class="work-status" role="status">${esc(state)}</p>`
+      card.innerHTML = `<header><span class="oc ${outcome[1]}">${esc(outcome[0])}</span><h3>Project work</h3><small title="${esc(costTitle(task))}">${esc(costChip(task, active))} · Run ${run}</small></header><p class="work-status" role="status">${esc(state)}</p>${phaseRows(events, task, active)}`
         + `<details data-section="activity"><summary>Activity · ${meaningful.length} recorded events${data.has_more ? " (more in workspace)" : ""}</summary><div>${meaningful.map(e => {
           const d = e.data || {};
           if (e.kind === "tool") { const v = toolView(d); return `<div class="workstep">${esc(v.verb)}<small>${esc(v.obj)}</small></div>`; }
@@ -1465,6 +1593,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
         + `<details data-section="evidence"><summary>Files & checks</summary><div class="workstep">${(report.files || []).map(f => esc(f.path)).join("<br>") || "No changed files reported."}</div><div class="workstep">${(report.tests || []).map(t => `${t.exit === 0 ? "Passed" : Number.isInteger(t.exit) ? "Failed" : "Unverified"}: ${esc(t.command)}`).join("<br>") || "No checks reported."}</div>${report.sections?.not_done ? `<p>${esc(report.sections.not_done)}</p>` : ""}</details>`
         + `<div class="row"><button class="ghost" data-open-work>Open workspace & preview ↗</button>${active ? '<button class="danger" data-stop-work>Stop task</button>' : ''}${task.can_publish ? '<button class="ghost" data-review-work>Create / update draft PR</button>' : ''}</div>`;
       card.querySelectorAll("details").forEach(d => d.open = opened.has(d.dataset.section));
+      stageUpdate(task, events, outcome, state, active);
       card.querySelector("[data-open-work]").onclick = () => openProject(tid);
       const stop = card.querySelector("[data-stop-work]"); if (stop) stop.onclick = async () => { if (!confirm("Stop this agent task?")) return; try { await send("agent/tasks/" + tid + "/cancel", "POST", {}); await refreshWork(); } catch(e) { $("chatFileNote").textContent = e.message; } };
       const review = card.querySelector("[data-review-work]"); if (review) review.onclick = async () => { if (!confirm("Create or update the draft pull request with this task's changes?")) return; review.disabled = true; try { await send("agent/tasks/" + tid + "/publish", "POST", {}); await refreshWork(); } catch(e) { $("chatFileNote").textContent = e.message; review.disabled = false; } };
@@ -1473,6 +1602,198 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
     } catch(e) { if (cid === CONV && VIEW === "chat") { $("chatFileNote").textContent = "Activity unavailable. Retrying… " + e.message; WORK_TIMER = setTimeout(refreshWork, 5000); } }
   }
   document.addEventListener("visibilitychange", () => { if (!document.hidden && VIEW === "chat" && WORK_TASK) refreshWork(); });
+  // ── NOVA brand: the temporary codename lives here. Renaming the product = these values (+ the static copy). ──
+  const BRAND = { name: "NOVA", full: "Neural Orchestration & Virtual Autonomy", title: "NOVA" };
+  document.title = BRAND.title; document.querySelectorAll("[data-brand]").forEach(el => el.textContent = BRAND.name);
+  // Toasts instead of blocking alert(): what happened, in words, without stopping the page.
+  function toast(text, kind) {
+    const t = document.createElement("div"); t.className = "toast " + (kind || "bad"); t.textContent = String(text || "Something went wrong.");
+    $("toasts").appendChild(t); setTimeout(() => t.remove(), 7000);
+  }
+  // Navigation rail (desktop): collapsed by default, the choice is kept in a cookie like the theme.
+  const railSaved = (document.cookie.match(/(?:^|; )nova_rail=(0|1)/) || [])[1];
+  document.body.classList.toggle("rail", railSaved !== "0");
+  $("railToggle").onclick = () => { const on = document.body.classList.toggle("rail"); document.cookie = "nova_rail=" + (on ? 1 : 0) + "; path=/autopilot; max-age=31536000; SameSite=Lax"; };
+  document.querySelectorAll("#tabs button").forEach(b => { b.title = b.textContent.trim(); });
+  $("mePearl").addEventListener("click", (e) => { if (document.body.classList.contains("rail") && matchMedia("(min-width:861px)").matches) { e.stopPropagation(); $("meMore").click(); } });
+
+  // ── Work surface: four modes of ONE task (Discover / Build / Review / Ship). Everything shown comes from the task
+  // record, its event log, the preview endpoint and the delivery endpoint; nothing is inferred or animated for show. ──
+  const STAGE = { mode: "discover", auto: false, task: null, events: [], pvTask: null, pvTimer: null, pvSeq: 0, delivery: null, deliveryKey: "", diffTask: null, wasActive: false };
+  const short7 = (x) => x ? String(x).slice(0, 7) : "";
+  const clock = (ts) => ts ? new Date(ts * 1000).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "";
+  function autoMode(task) {
+    if (!task || matchMedia("(max-width:860px)").matches) return "discover";   // on a phone the conversation stays in front
+    if (!FINAL_STATES.includes(task.state)) return "build";
+    if (task.pr_url) return "ship";
+    return task.files_changed ? "review" : "discover";
+  }
+  function setMode(mode, manual) {
+    if (!["discover", "build", "review", "ship"].includes(mode) || !WORK_TASK) mode = "discover";
+    STAGE.mode = mode;
+    if (manual) { STAGE.auto = false; try { sessionStorage.setItem("novaMode:" + CONV, mode); } catch (e) {} }
+    document.body.classList.toggle("staged", mode !== "discover");
+    if (mode === "discover") document.body.classList.remove("stage-focus");
+    $("stFocus").setAttribute("aria-pressed", String(document.body.classList.contains("stage-focus")));
+    document.querySelectorAll("#stModes button").forEach(b => { const on = b.dataset.mode === mode; b.classList.toggle("on", on); b.setAttribute("aria-selected", String(on)); });
+    document.querySelectorAll("#stage>section").forEach(sec => { sec.hidden = sec.dataset.stage !== mode; });
+    if (mode === "build") stPreview(); else if (mode === "review") rvRender(); else if (mode === "ship") shLoad();
+  }
+  document.querySelectorAll("#stModes button").forEach(b => b.onclick = () => setMode(b.dataset.mode, true));
+  $("stFocus").onclick = () => { const on = document.body.classList.toggle("stage-focus"); $("stFocus").setAttribute("aria-pressed", String(on)); };
+  function stageOpen() {            // called whenever a conversation is opened
+    clearTimeout(STAGE.pvTimer); STAGE.pvSeq++; STAGE.pvTask = null; STAGE.task = null; STAGE.events = []; STAGE.delivery = null; STAGE.deliveryKey = ""; STAGE.diffTask = null; STAGE.wasActive = false;
+    $("spFrame").removeAttribute("src"); $("spFrame").style.display = "none"; $("rvBody").innerHTML = ""; $("shBody").innerHTML = "";
+    $("modeBar").hidden = !WORK_TASK;
+    let saved = ""; if (WORK_TASK) { try { saved = sessionStorage.getItem("novaMode:" + CONV) || ""; } catch (e) {} }
+    STAGE.auto = !!WORK_TASK && !saved; setMode(saved || "discover", false);
+  }
+  function stageUpdate(task, events, outcome, now, active) {     // called with every fresh task snapshot
+    STAGE.task = task; STAGE.events = events;
+    $("stPill").className = "oc " + outcome[1]; $("stPill").textContent = outcome[0]; $("stNow").textContent = now; $("stNow").title = now;
+    $("stStrip").classList.toggle("working", active);
+    $("stCost").textContent = costChip(task, active); $("stCost").title = costTitle(task);
+    if (STAGE.auto) { STAGE.auto = false; setMode(autoMode(task), false); }
+    else if (STAGE.mode === "review") rvRender();
+    else if (STAGE.mode === "ship") shLoad();
+    else if (STAGE.mode === "build" && STAGE.wasActive && !active) stPreview(true);    // the run ended: show its final result
+    STAGE.wasActive = active;
+  }
+  // Preview: starting / ready / unavailable / error, with the real address and what to do next.
+  function pvSet(state, title, text, retry) {
+    $("spDot").className = "dot " + state;
+    const el = $("spState");
+    if (state === "ready") { el.hidden = true; return; }
+    el.hidden = false; el.innerHTML = (state === "starting" ? '<div class="ring"></div>' : "") + "<b>" + esc(title) + "</b>" + (text ? "<p>" + esc(text) + "</p>" : "") + (retry ? '<button class="ghost" type="button">Try again</button>' : "");
+    const b = el.querySelector("button"); if (b) b.onclick = () => stPreview(true);
+    if (state !== "starting") { $("spFrame").style.display = "none"; }
+  }
+  async function stPreview(force) {
+    const tid = WORK_TASK; if (!tid || STAGE.mode !== "build") return;
+    if (!force && STAGE.pvTask === tid) return;
+    STAGE.pvTask = tid; const seq = ++STAGE.pvSeq; clearTimeout(STAGE.pvTimer);
+    $("spUrl").textContent = "Preview"; $("spOpen").removeAttribute("href");
+    pvSet("starting", "Checking preview…", "Looking for a web page or 3D model in this task.");
+    let info; try { info = await send("agent/tasks/" + tid + "/preview", "POST", {}); }
+    catch (e) { if (seq === STAGE.pvSeq) pvSet("error", "Preview could not start", e.message + " Your files are untouched; you can try again or keep working in the conversation.", true); return; }
+    if (seq !== STAGE.pvSeq || tid !== WORK_TASK) return;
+    if (info.mode === "none") return pvSet("unavailable", "No preview for this task", "There is no web page to show (" + (info.why || "nothing found") + "). Ask for a page or a preview command in the conversation, or open Review to see the changes.");
+    const model = info.mode === "model", f = $("spFrame");
+    const url = model ? "/autopilot/3d/?task=" + encodeURIComponent(tid) + "&embed=1" : info.url;
+    f.setAttribute("sandbox", model ? SANDBOX_3D : SANDBOX_WEB);
+    $("spUrl").textContent = model ? "3D Studio · task " + tid : url; $("spUrl").title = url; $("spOpen").href = model ? "/autopilot/3d/?task=" + encodeURIComponent(tid) : url;
+    pvSet("starting", info.mode === "command" ? "Starting preview…" : "Loading preview…", info.mode === "command" ? "The preview command is starting. The first start can take a few seconds." : "");
+    f.style.display = "block"; f.src = url + (url.includes("?") ? "&" : "?") + "_=" + Date.now();
+    STAGE.pvTimer = setTimeout(() => { if (seq === STAGE.pvSeq) pvSet("error", "Preview is taking too long", "The preview did not answer within a minute. Try again, or open it in a new tab.", true); }, 60000);
+  }
+  $("spFrame").addEventListener("load", () => { if ($("spFrame").getAttribute("src") && $("spFrame").style.display !== "none") { clearTimeout(STAGE.pvTimer); pvSet("ready"); } });
+  $("spReload").onclick = () => stPreview(true);
+  document.querySelectorAll("#spSizes button").forEach(b => b.onclick = () => {
+    document.querySelectorAll("#spSizes button").forEach(x => x.classList.toggle("on", x === b));
+    $("spFrame").style.width = b.dataset.w ? "min(100%," + b.dataset.w + "px)" : "100%"; });
+  // Review: what changed and what was checked, straight from the run's report and real captures.
+  function rvRender() {
+    const task = STAGE.task, tid = WORK_TASK; if (!task || !tid) return;
+    const r = task.report || {}, active = !FINAL_STATES.includes(task.state), oc = active ? ["Working", ""] : (OUTCOME[task.outcome] || ["Result not verified", ""]);
+    const files = r.files || [], tests = r.tests || [], shots = STAGE.events.filter(e => e.kind === "shot" && e.data && e.data.name);
+    const sig = JSON.stringify([tid, task.state, task.outcome, task.runs, files, tests, shots.length, r.why, r.sections]);
+    if ($("rvBody").dataset.sig === sig) return; $("rvBody").dataset.sig = sig;
+    const testTag = (t) => t.exit === 0 ? ["Passed", "ok"] : Number.isInteger(t.exit) ? ["Failed", "bad"] : ["Unverified", ""];
+    $("rvBody").innerHTML = `<div class="sthead"><span class="oc ${oc[1]}">${esc(oc[0])}</span><div><h2>Review</h2><p>${esc(active ? "The agent is still working. This reflects the last finished run." : r.why || task.error || "No summary was recorded for this run.")}</p></div></div>`
+      + `<div class="stsec"><h3><span>Files changed</span><span>${files.length}</span></h3>${files.map(f => `<div class="strow"><span class="tag">${esc(f.status || "M")}</span><span class="p" title="${esc(f.path)}">${esc(f.path)}</span><small><span class="add">+${Number(f.added) || 0}</span> <span class="del">−${Number(f.removed) || 0}</span></small></div>`).join("") || '<div class="stempty">No changed files were reported.</div>'}`
+      + (files.length ? '<details id="rvDiff"><summary>Show the full diff</summary><pre class="diff">Loading…</pre></details>' : "") + "</div>"
+      + `<div class="stsec"><h3><span>Checks</span><span>${tests.length}</span></h3>${tests.map(t => { const g = testTag(t); return `<div class="strow"><span class="tag ${g[1]}">${g[0]}</span><span class="p" title="${esc(t.command)}">${esc(t.command)}</span></div>`; }).join("") || '<div class="stempty">No checks were run or reported. Treat the result as unverified.</div>'}</div>`
+      + (shots.length ? `<div class="stsec"><h3><span>Screenshots (real captures)</span><span>${shots.length}</span></h3><div class="stshots">${shots.map(e => `<figure><img src="/autopilot/api/agent/tasks/${tid}/shots/${encodeURIComponent(e.data.name)}" alt="Screenshot ${esc(e.data.name)}" loading="lazy"><figcaption>${esc(e.data.name)}</figcaption></figure>`).join("")}</div></div>` : "")
+      + (r.sections && r.sections.not_done ? `<div class="stsec"><h3><span>Not done</span></h3><div class="stempty">${esc(r.sections.not_done)}</div></div>` : "")
+      + `<div class="shacts"><button class="primary" type="button" data-to-ship>Release status</button><button class="ghost" type="button" data-full>Open full project log</button></div>`;
+    $("rvBody").querySelector("[data-to-ship]").onclick = () => setMode("ship", true);
+    $("rvBody").querySelector("[data-full]").onclick = () => openProject(tid);
+    const dd = $("rvDiff"); if (dd) dd.addEventListener("toggle", async () => {
+      if (!dd.open || dd.dataset.loaded) return; dd.dataset.loaded = "1"; const pre = dd.querySelector("pre");
+      try { const d = await send("agent/tasks/" + tid + "/diff", "GET"); const lines = String(d.diff || "").split("\n");
+        pre.innerHTML = lines.length > 1 || lines[0] ? lines.slice(0, 4000).map(l => l.startsWith("+") && !l.startsWith("+++") ? "<span class='dadd'>" + esc(l) + "</span>" : l.startsWith("-") && !l.startsWith("---") ? "<span class='ddel'>" + esc(l) + "</span>" : esc(l)).join("\n") + (lines.length > 4000 ? "\n… (truncated; the full diff is in the project log)" : "") : "No diff was stored for this task.";
+      } catch (e) { pre.textContent = "The diff could not be loaded: " + e.message; delete dd.dataset.loaded; } });
+  }
+  // Ship: Changes saved → PR open → Reviewed → Merged → Deployed. Git/GitHub/installer are the sources of truth.
+  async function shLoad(force) {
+    const task = STAGE.task, tid = WORK_TASK; if (!task || !tid) return;
+    const key = [tid, task.state, task.pr_url, task.files_changed, task.updated].join("|");
+    if (!force && STAGE.deliveryKey === key && STAGE.delivery) return shRender();
+    STAGE.deliveryKey = key;
+    if (!STAGE.delivery) $("shBody").innerHTML = '<div class="sthead"><div><h2>Release</h2><p>Checking GitHub and the installed version…</p></div></div>';
+    try { const d = await send("agent/tasks/" + tid + "/delivery", "GET"); if (tid !== WORK_TASK) return; STAGE.delivery = d; shRender(); }
+    catch (e) { if (tid !== WORK_TASK) return; STAGE.delivery = null; STAGE.deliveryKey = "";
+      $("shBody").innerHTML = `<div class="sthead"><div><h2>Release</h2><p>The release status could not be loaded: ${esc(e.message)} Nothing was changed.</p></div></div><div class="shacts"><button class="primary" type="button">Check again</button></div>`;
+      $("shBody").querySelector("button").onclick = () => shLoad(true); }
+  }
+  function shRender() {
+    const d = STAGE.delivery, task = STAGE.task, tid = WORK_TASK; if (!d || !task) return;
+    const st = Object.fromEntries(d.stages.map(x => [x.key, x.status])), pr = d.pr, n = pr ? "PR #" + pr.number : "the pull request";
+    const inst = d.installed ? "<code>" + short7(d.installed) + "</code>" : "an unrecorded version", active = !FINAL_STATES.includes(task.state);
+    let say, acts = [];
+    const prLink = task.pr_url && /^https:\/\/github\.com\//.test(task.pr_url) ? `<a class="primary" href="${esc(task.pr_url)}" target="_blank" rel="noopener">Review ${esc(n)} on GitHub ↗</a>` : "";
+    if (st.deployed === "done") say = `Deployed. The server runs a version that includes <code>${short7(d.merge_sha)}</code>.`;
+    else if (st.merged === "done" && st.deployed === "untracked") say = `Merged${d.merge_sha ? " as <code>" + short7(d.merge_sha) + "</code>" : ""}. ${esc(BRAND.name)} does not install this repository, so its deployment is not tracked here.`;
+    else if (st.merged === "done" && st.deployed === "pending") { say = `${esc(n)} is merged (<code>${short7(d.merge_sha)}</code>), but the server still runs ${inst}. Merging does not install anything: approve the deploy to update the server.`; acts.push('<button class="primary" type="button" data-deploy>Approve deploy…</button>'); }
+    else if (st.merged === "done") say = `${esc(n)} is merged (<code>${short7(d.merge_sha)}</code>). The installed version could not be confirmed, so deployment is unknown.`;
+    else if (st.merged === "failed") say = `${esc(n)} was closed without merging. The changes are still saved in this task.`;
+    else if (st.pr === "done") { say = `Changes are saved in ${esc(n)}${pr.draft ? " (draft)" : ""}.${d.tracks_deploy ? " The server still runs " + inst + "." : ""} Review and merge the PR on GitHub to continue.`; acts.push(prLink); }
+    else if (st.pr === "unknown") { say = "A pull request is recorded for this task, but GitHub could not confirm its state right now. Nothing is assumed."; acts.push('<button class="primary" type="button" data-recheck>Check again</button>'); if (prLink) acts.push(prLink.replace('class="primary"', 'class="ghost"')); }
+    else if (st.saved === "done") { say = "Changes are saved in this task's workspace. Nothing is on GitHub yet.";
+      acts.push(task.can_publish ? '<button class="primary" type="button" data-prepare>Prepare release (draft PR)</button>' : ""); }
+    else say = active ? "The agent is still working. Changes appear here once a run records them." : "No changes are recorded for this task, so there is nothing to release.";
+    if (st.saved === "done" && st.merged !== "done") acts.push('<button class="ghost" type="button" data-review>Review changes</button>');
+    if (pr && st.merged !== "done" && st.merged !== "failed" && task.can_publish) acts.push('<button class="ghost" type="button" data-prepare>Update the PR with the latest changes</button>');
+    const why = st.saved === "done" && st.pr === "pending" && !task.can_publish && !active ? (task.repo ? "Connect GitHub in Projects → GitHub connection to prepare a release." : "This task has no repository, so it cannot become a pull request.") : "";
+    const detail = { saved: d.branch ? "branch " + d.branch : (task.files_changed ? task.files_changed + " file" + (task.files_changed === 1 ? "" : "s") : ""), pr: pr ? "#" + pr.number + (pr.draft ? " · draft" : "") : "", review: st.review === "done" && st.merged !== "done" ? "approved" : st.review === "failed" ? "changes requested" : "", merged: short7(d.merge_sha), deployed: st.deployed === "untracked" ? "not tracked" : d.tracks_deploy && d.installed ? "server: " + short7(d.installed) : "" };
+    const word = { unknown: "not confirmed", skipped: "skipped", failed: "stopped" };
+    let cur = false;
+    $("shBody").innerHTML = `<div class="sthead"><div><h2>Release</h2><p>${esc(d.repo || "No repository")}${d.base ? " · " + esc(d.base) : ""}</p></div></div>`
+      + `<ol class="stepper">${d.stages.map(x => { let c = x.status === "untracked" ? "skipped" : x.status; if (c === "pending" && !cur) { cur = true; c = "current"; } return `<li class="${c}"><b>${esc(x.label)}</b><small>${esc(detail[x.key] || word[x.status] || "")}</small></li>`; }).join("")}</ol>`
+      + `<p class="shsay">${say}</p>` + (why ? `<p class="shnote">${esc(why)}</p>` : "")
+      + (d.tracks_deploy && st.deployed !== "done" ? '<p class="shnote">Opening or updating a pull request never changes the installed version. The server changes only after a merge and your approval of that exact commit.</p>' : "")
+      + `<div class="shacts">${acts.filter(Boolean).join("")}</div>`
+      + `<div class="shmeta"><span>Checked ${esc(clock(d.checked_at))}</span>${d.errors.map(e => `<span class="warnc">${esc(e)}</span>`).join("")}<button class="copyid" type="button" data-recheck>Check again</button></div>`;
+    const on = (sel, fn) => $("shBody").querySelectorAll(sel).forEach(b => b.onclick = fn);
+    on("[data-recheck]", () => shLoad(true)); on("[data-review]", () => setMode("review", true)); on("[data-deploy]", () => setView("activity"));
+    on("[data-prepare]", async (ev) => { if (!confirm("Create or update the draft pull request with this task's changes?\n\nThis does not merge or install anything.")) return;
+      ev.target.disabled = true; ev.target.textContent = "Preparing…";
+      try { await send("agent/tasks/" + tid + "/publish", "POST", {}); toast("Pull request prepared.", "ok"); await refreshWork(); await shLoad(true); } catch (e) { toast(e.message); shRender(); } });
+  }
+  // Cost chip: confirmed (provider-reported), estimated, and unknown are never merged into one "confirmed" number.
+  function costChip(task, active) {
+    const c = task.cost; if (!c) return task.cost_usd == null ? "Cost unavailable" : money4(task.cost_usd) + (active ? " so far" : "");
+    if (!c.requests) return active ? "No model cost yet" : "No model requests";
+    const parts = [];
+    if (c.confirmed_usd) parts.push(money4(c.confirmed_usd) + " confirmed");
+    if (c.estimated_usd) parts.push("≈" + money4(c.estimated_usd) + " estimated");
+    if (c.unpriced_requests) parts.push(c.unpriced_requests + " unpriced");
+    if (!parts.length) parts.push(c.free_requests ? "Free (plan / own GPU)" : "$0.0000 confirmed");
+    return parts.join(" · ") + (active ? " · so far" : "");
+  }
+  function costTitle(task) {
+    const c = task.cost; if (!c) return "";
+    return `${c.requests} model requests: ${money4(c.confirmed_usd)} reported by providers, ≈${money4(c.estimated_usd)} estimated by ${BRAND.name}, ${c.free_requests} free, ${c.unpriced_requests} with an unknown price. Provider reports can arrive late.`;
+  }
+  // Timeline phases: the run in plain words, each with the time of the real event behind it.
+  function phaseRows(events, task, active) {
+    const run = task.runs || 1, ev = events.filter(e => (e.run || 1) === run), first = (fn) => ev.find(fn), rows = [];
+    const isTool = (names) => (e) => e.kind === "tool" && names.includes((e.data || {}).tool);
+    const add = (label, e, cls) => { if (e) rows.push([label, e.ts, cls || ""]); };
+    add("Understood request", first(e => e.kind === "user"));
+    add("Preparing", first(e => e.kind === "status"));
+    add("Editing", first(isTool(["edit", "write", "multiedit", "patch", "apply_patch"])));
+    add("Testing", first(e => e.kind === "tool" && (e.data || {}).tool === "bash" && /\b(test|pytest|vitest|jest|check|lint|tsc|build)\b/.test(((e.data || {}).input || {}).command || "")));
+    add("Previewing", first(e => e.kind === "shot"));
+    const rep = first(e => e.kind === "report");
+    if (rep) add((rep.data || {}).outcome === "completed" ? "Ready for review" : "Run ended: " + (OUTCOME[(rep.data || {}).outcome] || ["not confirmed"])[0].toLowerCase(), rep, (rep.data || {}).outcome === "completed" ? "" : "warn");
+    else if (!active && (task.files_changed || task.pr_url)) rows.push(["Execution interrupted · changes saved", task.ended, "warn"]);
+    add("Pull request recorded", first(e => e.kind === "pr"));
+    add("Published", first(e => e.kind === "publication" && (e.data || {}).status === "published"));
+    if (active && rows.length) rows[rows.length - 1][2] = "now";
+    return rows.length ? `<ol class="phases">${rows.map(r => `<li class="${r[2]}"><i></i>${esc(r[0])}<time>${esc(clock(r[1]))}</time></li>`).join("")}</ol>` : "";
+  }
+
 
   // agent
   // ── agent: one conversation per task, live timeline from the server's event log ─────────────
@@ -1491,7 +1812,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
       $(id).checked = main ? !!AGENT.self_repo && PREFS[key] === AGENT.self_repo : !!PREFS[key];
       $(id).disabled = PREF_PENDING.has(key) || (main && !AGENT.self_repo);
     }
-    $("agMainRepo").textContent = AGENT.self_repo || "VELLUR";
+    $("agMainRepo").textContent = AGENT.self_repo || "NOVA";
   }
   for (const [key, id] of Object.entries(PREF_CONTROLS)) $(id).onchange = async () => {
     const input = $(id), previous = PREFS[key], main = key === "agent_auto_publish_main_repo";
@@ -1614,11 +1935,11 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
       const warn = CUR.outcome !== "completed" ? "\n\nNote: the agent did not confirm the task as complete." : "";
       if (!confirm("Publish these changes directly to “" + CUR.base + "” in " + CUR.repo + "?\n\nIf this project deploys from that branch, the changes go live." + warn)) return;
       ev.target.disabled = true; ev.target.textContent = "Publishing…";
-      try { await send("agent/tasks/" + TASK + "/publish-direct", "POST", {}); await openTask(TASK); } catch (e) { if (e.message && e.message.includes("changed on GitHub since")) { ev.target.textContent = "Creating pull request…"; try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e2) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; alert(e2.message); } } else { ev.target.disabled = false; ev.target.textContent = "Publish to " + CUR.base; alert(e.message); } } });
+      try { await send("agent/tasks/" + TASK + "/publish-direct", "POST", {}); await openTask(TASK); } catch (e) { if (e.message && e.message.includes("changed on GitHub since")) { ev.target.textContent = "Creating pull request…"; try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e2) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; toast(e2.message); } } else { ev.target.disabled = false; ev.target.textContent = "Publish to " + CUR.base; toast(e.message); } } });
     if (CUR.can_publish) add(CUR.pr_url ? "Update pull request" : "Pull request instead", "ghost", async (ev) => {
       if (!confirm(CUR.pr_url ? "Push these changes to the existing pull request branch?" : "Create a branch and a draft pull request on GitHub with these changes?")) return;
       ev.target.disabled = true; ev.target.textContent = "Publishing…";
-      try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; alert(e.message); } });
+      try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; toast(e.message); } });
     if (CUR.pr_url) { const l = document.createElement("a"); l.href = CUR.pr_url; l.target = "_blank"; l.rel = "noopener"; l.className = "chip"; l.style.cssText = "display:inline-flex;align-items:center;text-decoration:none"; l.textContent = "Open pull request ↗"; a.appendChild(l); }
     if (CUR.can_message && el.querySelector(".acts") && (CUR.report || {}).provider_credit) {     // switch model and retry in the same session
       ["vellur-coder", "vellur-chat", "vellur-max"].filter(r => r !== CUR.model).forEach(r => add("Continue with " + r, "chip", () => {
@@ -1692,9 +2013,9 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
     const ex = ["Explain how this repository is organised and suggest 3 improvements (no changes).", "Find one real bug, fix it and add a test.", "Improve the mobile layout of the main page and show me before/after screenshots."];
     box().innerHTML = `<div class="agempty"><h3>What should we build?</h3><p>Pick a repository, describe the task in your own words and watch the agent work. Publishing depends on your preferences and server support.</p><div class="chips">${ex.map(x => `<button class="chip">${esc(x)}</button>`).join("")}</div>${AGENT.available === false ? `<div class="alert" style="margin-top:18px;text-align:left">${esc(AGENT.why || "The agent is not available.")}</div>` : ""}</div>`;
     box().querySelectorAll(".agempty .chip").forEach(c => c.onclick = () => { $("agIn").value = c.textContent; $("agIn").focus(); agGrow(); });
-    if (AGENT.self_repo && [...$("tRepoSel").options].some(o => o.value === AGENT.self_repo)) {     // VELLUR can work on VELLUR
-      const c = document.createElement("button"); c.className = "chip"; c.style.borderColor = "var(--accent-line)"; c.textContent = "Improve VELLUR itself";
-      c.onclick = async () => { $("tRepoSel").value = AGENT.self_repo; await repoChanged(); $("agIn").value = "In the VELLUR dashboard, "; $("agIn").focus(); agGrow(); };
+    if (AGENT.self_repo && [...$("tRepoSel").options].some(o => o.value === AGENT.self_repo)) {     // NOVA can work on NOVA
+      const c = document.createElement("button"); c.className = "chip"; c.style.borderColor = "var(--accent-line)"; c.textContent = "Improve NOVA itself";
+      c.onclick = async () => { $("tRepoSel").value = AGENT.self_repo; await repoChanged(); $("agIn").value = "In the NOVA dashboard, "; $("agIn").focus(); agGrow(); };
       box().querySelector(".agempty .chips").prepend(c); }
     header(); composer(); renderTasks(); loadPreview();
   }
@@ -1862,16 +2183,16 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
       if (i > 0) { const b = document.createElement("button"); b.className = "ghost"; b.textContent = "Restore"; b.onclick = async () => {
           if (!confirm("Return the project to “" + c.label + "”?\n\nThe current state is saved as a checkpoint first, so you can come back to it.")) return;
           b.disabled = true; b.textContent = "Restoring…";
-          try { await send("agent/tasks/" + TASK + "/restore", "POST", { id: c.id }); $("cpPanel").hidden = true; await openTask(TASK); } catch (e) { b.disabled = false; b.textContent = "Restore"; alert(e.message); } };
+          try { await send("agent/tasks/" + TASK + "/restore", "POST", { id: c.id }); $("cpPanel").hidden = true; await openTask(TASK); } catch (e) { b.disabled = false; b.textContent = "Restore"; toast(e.message); } };
         row.appendChild(b); }
       l.appendChild(row); });
   }
   $("cpToggle").onclick = () => { const p = $("cpPanel"); p.hidden = !p.hidden; if (!p.hidden) loadCheckpoints(); };
   $("cpClose").onclick = () => { $("cpPanel").hidden = true; };
   $("cpSave").onclick = async () => { const label = prompt("Name this checkpoint:", "Good version"); if (label === null) return;
-    try { await send("agent/tasks/" + TASK + "/checkpoints", "POST", { label }); await loadCheckpoints(); await catchUp(); } catch (e) { alert(e.message); } };
-  $("agVision").onchange = async () => { try { await send("settings", "PUT", { agent_vision: $("agVision").checked }); } catch (e) { alert(e.message); } };
-  // ── releases of VELLUR itself: the owner approves, the server installs ───────────────────────
+    try { await send("agent/tasks/" + TASK + "/checkpoints", "POST", { label }); await loadCheckpoints(); await catchUp(); } catch (e) { toast(e.message); } };
+  $("agVision").onchange = async () => { try { await send("settings", "PUT", { agent_vision: $("agVision").checked }); } catch (e) { toast(e.message); } };
+  // ── releases of NOVA itself: the owner approves, the server installs ───────────────────────
   async function loadRelease() {
     let r; try { r = await send("release", "GET"); } catch (e) { $("relBox").textContent = e.message; return; }
     const short = (x) => x ? x.slice(0, 7) : "", L = r.latest, CI = { passed: "<span class='good'>tests passed</span>", failed: "<span class='badc'>tests failed</span>", pending: "<span class='warnc'>tests running…</span>", none: "<span class='warnc'>no test result</span>", unknown: "tests: unknown" };
@@ -1888,7 +2209,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
     $("relInstall").onclick = async () => { if (!confirm("Install version " + short(L.sha) + " on the server?\n\n“" + L.message + "”\n\nThe dashboard restarts for about a minute. If the new version fails its checks, the previous one is restored automatically.")) return;
       try { await send("release/approve", "POST", { sha: L.sha }); await loadRelease(); } catch (e) { $("relNote").textContent = e.message; } };
     $("relCancel").onclick = async () => { await send("release/cancel", "POST", {}); await loadRelease(); };
-    $("relRollback").onclick = async () => { if (!confirm("Return the server to the previous version of VELLUR?")) return; await send("release/rollback", "POST", {}); $("relNote").textContent = "Requested: the server does it within two minutes."; };
+    $("relRollback").onclick = async () => { if (!confirm("Return the server to the previous version of NOVA?")) return; await send("release/rollback", "POST", {}); $("relNote").textContent = "Requested: the server does it within two minutes."; };
   }
   async function catchUp() {      // fetch every event after LAST_EV, in pages (a long run has more than 500)
     for (;;) {
@@ -1943,7 +2264,7 @@ main{padding:42px 48px 60px}.wrap{max-width:1120px}.pagehead{margin:0 0 26px;pad
     REPOS_LOADED = true; const sel = $("tRepoSel"); let list = [];
     try { list = (await send("agent/repos", "GET")).repos || []; } catch (e) { $("agNote").textContent = e.message; }
     const owner = list.length ? list[0].name.split("/")[0] : "";
-    sel.innerHTML = list.map(r => `<option value="${esc(r.name)}">${esc(r.name.startsWith(owner + "/") ? r.name.slice(owner.length + 1) : r.name)}${r.name === AGENT.self_repo ? " — VELLUR itself" : ""}${r.private ? " 🔒" : ""}</option>`).join("")
+    sel.innerHTML = list.map(r => `<option value="${esc(r.name)}">${esc(r.name.startsWith(owner + "/") ? r.name.slice(owner.length + 1) : r.name)}${r.name === AGENT.self_repo ? " — NOVA itself" : ""}${r.private ? " 🔒" : ""}</option>`).join("")
       + '<option value="">Empty workspace (no repository)</option><option value="__other">Other (type owner/name)…</option>';
     const last = (TASKS.find(t => t.repo) || {}).repo || "";
     if (last && [...sel.options].some(o => o.value === last)) sel.value = last; else if (!list.length) sel.value = "";

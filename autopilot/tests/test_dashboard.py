@@ -243,3 +243,19 @@ def test_pearl_shell_is_wired():
     assert not re.search(r"\}%|\d%|\.percent", panel) and 'role="progressbar" aria-label="Working"' in panel
     # the pearl comes from one stored seed
     assert "pearl_seed" in html and "function pearlSVG(seed)" in html
+
+
+def test_nova_work_surface_is_wired_to_real_endpoints_and_stays_sandboxed():
+    html = open(PAGE).read()
+    assert "<title>NOVA</title>" in html and 'const BRAND = { name: "NOVA"' in html
+    for mode in ("discover", "build", "review", "ship"):
+        assert f'data-mode="{mode}"' in html
+    # the stage reads the task's own endpoints; no invented progress
+    assert '"/preview", "POST"' in html and '"/delivery", "GET"' in html and '"/diff", "GET"' in html
+    frame = html.split('id="spFrame"', 1)[1].split("</iframe>", 1)[0]
+    assert 'sandbox="allow-scripts allow-forms allow-popups allow-modals allow-pointer-lock"' in frame
+    assert "allow-same-origin" not in frame
+    assert "alert(e.message)" not in html and "function toast(" in html
+    stage = html[html.index("  function phaseRows("):html.index("  function toolView(")] if "  function toolView(" in html[html.index("  function phaseRows("):] else ""
+    import re
+    assert not re.search(r"\d%|percent", stage)   # phases carry real event times, never a percentage

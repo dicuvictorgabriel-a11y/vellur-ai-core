@@ -54,3 +54,59 @@ async def test_release_is_installed_only_after_the_owner_approves_an_exact_commi
 async def test_release_overview_reports_failed_and_running_tests(rig):
     assert (await (await client(rig, github(ci="failure"))).get("/autopilot/api/release", headers=ADMIN)).json()["latest"]["ci"] == "failed"
     assert (await (await client(rig, github(status="in_progress"))).get("/autopilot/api/release", headers=ADMIN)).json()["latest"]["ci"] == "pending"
+
+
+async def test_delivery_reports_only_what_github_and_the_installer_confirm(rig):
+    from app.release import Release
+    ctrl = rig()
+    MERGE, state = "c" * 40, {"pr": {"state": "open", "merged": False, "draft": True, "title": "T"}, "reviews": [], "compare": "behind", "down": False}
+
+    def handler(req: httpx.Request):
+        p = req.url.path
+        if state["down"]:
+            return httpx.Response(500)
+        if p.endswith("/pulls/7/reviews"):
+            return httpx.Response(200, json=state["reviews"])
+        if p.endswith("/pulls/7"):
+            return httpx.Response(200, json=state["pr"])
+        if "/compare/" in p:
+            return httpx.Response(200, json={"status": state["compare"]})
+        return httpx.Response(404)
+    rel = Release(ctrl.db, "o/self", lambda: "", httpx.MockTransport(handler))
+    st = lambda d: {x["key"]: x["status"] for x in d["stages"]}
+    task = {"repo": "o/self", "base": "main", "branch": "", "pr_url": "", "files_changed": 0, "report": {}}
+    assert st(await rel.delivery(task)) == {"saved": "pending", "pr": "pending", "review": "pending", "merged": "pending", "deployed": "pending"}
+    task.update(files_changed=2, pr_url="https://github.com/o/self/pull/7")
+    d = await rel.delivery(task)
+    assert st(d) == {"saved": "done", "pr": "done", "review": "pending", "merged": "pending", "deployed": "pending"} and d["pr"]["draft"]
+    state["reviews"] = [{"state": "APPROVED"}]
+    assert st(await rel.delivery(task))["review"] == "done"
+    state["pr"] = {"state": "closed", "merged": True, "merge_commit_sha": MERGE}
+    d = await rel.delivery(task)   # merged, but the installer never reported a version: deployment is unknown, not done
+    assert st(d)["merged"] == "done" and st(d)["deployed"] == "unknown" and d["errors"]
+    rel.report(OLD, "", "", "")
+    assert st(await rel.delivery(task))["deployed"] == "pending"   # main still runs an older commit
+    state["compare"] = "ahead"
+    assert st(await rel.delivery(task))["deployed"] == "done"
+    state["down"] = True   # GitHub unreachable: nothing is claimed
+    d = await rel.delivery(task)
+    assert st(d) == {"saved": "done", "pr": "unknown", "review": "unknown", "merged": "unknown", "deployed": "pending"} and d["errors"]
+    state["down"] = False
+    assert st(await rel.delivery({**task, "repo": "o/other"}))["deployed"] == "untracked"
+    direct = {"repo": "o/self", "base": "main", "pr_url": "", "files_changed": 1, "report": {"publication": {"status": "published", "branch": "main", "commit": OLD}}}
+    assert st(await rel.delivery(direct)) == {"saved": "done", "pr": "skipped", "review": "skipped", "merged": "done", "deployed": "done"}
+    c = await client(rig, httpx.MockTransport(handler))
+    assert (await c.get("/autopilot/api/agent/tasks/1/delivery")).status_code == 401
+    assert (await c.get("/autopilot/api/agent/tasks/1/delivery", headers=ADMIN)).status_code == 404
+
+
+def test_task_cost_keeps_confirmed_estimated_and_unknown_apart(rig):
+    from app.router import Router
+    ctrl = rig()
+    router = Router(ctrl, transport=httpx.MockTransport(lambda r: httpx.Response(500)))
+    for src, cost in (("provider", 0.02), ("estimate", 0.005), ("unpriced", 0.0), ("plan", 0.0), ("provider", 0.01)):
+        ctrl.db.x("INSERT INTO usage(ts,month,role,target,provider,model,ok,cost_usd,cost_source,tag) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                  (1, "2026-11", "vellur-coder", "p:m", "p", "m", 1, cost, src, "task:9"))
+    c = router.tag_costs("task:9")
+    assert c == {"confirmed_usd": 0.03, "estimated_usd": 0.005, "free_requests": 1, "unpriced_requests": 1, "requests": 5}
+    assert router.tag_costs("task:404")["requests"] == 0

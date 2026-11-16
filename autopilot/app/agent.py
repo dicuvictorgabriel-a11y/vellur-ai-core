@@ -446,6 +446,7 @@ class AgentManager:
         t = self.db.one("SELECT * FROM tasks WHERE id=?", (tid,))
         if t:
             t["cost_usd"] = round(self.router.tag_cost(f"task:{tid}"), 4)
+            t["cost"] = self.router.tag_costs(f"task:{tid}")
             t["report"] = _loads(t.get("report"), {})
             t["activity"] = self.activity.get(tid, [])
         return t
