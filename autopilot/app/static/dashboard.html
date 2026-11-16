@@ -516,6 +516,57 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
 .mcitem-m{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:12px}
 .mcitem-m .mcmeta{color:var(--muted);font-size:12.5px;margin-right:auto}
 .mcitem-m button{min-height:38px;padding:0 14px;border-radius:99px}
+
+/* Mission Control new layout */
+.mc-kpi{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-bottom:20px}
+.mc-kpi-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px;display:flex;flex-direction:column;gap:8px}
+.mc-kpi-card .kpi-label{font:500 10.5px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--faint)}
+.mc-kpi-card .kpi-value{font-size:28px;font-weight:600;letter-spacing:-.02em;color:var(--text)}
+.mc-kpi-card .kpi-sub{font-size:12.5px;color:var(--muted);margin-top:auto}
+
+.mc-body{display:grid;grid-template-columns:1fr 340px;gap:20px;align-items:start}
+.mc-center{display:flex;flex-direction:column;gap:16px;min-width:0}
+.mc-tabs{display:flex;gap:4px;background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:4px}
+.mc-tabs button{flex:1;background:transparent;border:0;border-radius:8px;padding:10px 16px;font:inherit;font-size:13.5px;font-weight:500;color:var(--muted);cursor:pointer;transition:background .12s,color .12s;display:flex;align-items:center;justify-content:center;gap:8px}
+.mc-tabs button:hover{background:var(--hover);color:var(--text)}
+.mc-tabs button[aria-selected="true"]{background:var(--raise);color:var(--text);box-shadow:0 1px 4px rgba(0,0,0,.15)}
+.mc-tabs button.mc-new-btn{background:var(--accent);color:var(--accent-ink)}
+.mc-tabs button.mc-new-btn:hover{opacity:.9}
+.mc-panels{display:flex;flex-direction:column;gap:16px}
+.mc-panel{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px;min-height:300px}
+.mc-panel[hidden]{display:none}
+
+.mc-rail{display:flex;flex-direction:column;gap:16px;position:sticky;top:100px;max-height:calc(100vh - 140px);overflow:auto;padding-right:4px}
+.mc-rail-card{background:var(--panel);border:1px solid var(--line);border-radius:16px;padding:20px 22px}
+.mc-rail-card h3{margin:0 0 16px;font-size:14.5px;font-weight:600}
+.mc-activity-item{padding:10px 0;border-bottom:1px solid var(--line);font-size:13px}
+.mc-activity-item:last-child{border-bottom:0;padding-bottom:0}
+.mc-activity-item .act-time{font:11px var(--mono);color:var(--faint);display:block;margin-bottom:2px}
+.mc-activity-item .act-text{color:var(--soft)}
+
+.mc-ring-wrap{position:relative;width:120px;height:120px;margin:0 auto 16px}
+.mc-ring{width:100%;height:100%}
+.mc-ring-bg{stroke:var(--line)}
+.mc-ring-fg{transition:stroke-dashoffset .6s ease}
+.mc-ring-value{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font:700 22px var(--mono);color:var(--text)}
+.mc-ring-legend{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;font-size:12px;color:var(--muted)}
+.mc-ring-legend span{display:flex;align-items:center;gap:6px}
+.mc-ring-legend .dot{width:8px;height:8px;border-radius:50%}
+
+.mc-opt{display:flex;flex-direction:column;gap:14px}
+.mc-opt-toggle{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:12px 14px;background:var(--sunk);border:1px solid var(--line);border-radius:10px}
+.mc-opt-toggle .opt-label{display:flex;flex-direction:column;gap:2px}
+.mc-opt-toggle .opt-label strong{font-size:13px;color:var(--text)}
+.mc-opt-toggle .opt-label small{font:11px var(--mono);color:var(--faint)}
+.mc-opt-toggle .opt-savings{font:600 13px var(--mono);color:var(--good)}
+.mc-opt-toggle .sw{position:relative;width:44px;height:26px;flex:none}
+.mc-opt-toggle .sw input{opacity:0;width:0;height:0}
+.mc-opt-toggle .sw b{position:absolute;inset:0;background:var(--line2);border-radius:99px;transition:.2s}
+.mc-opt-toggle .sw b:after{content:"";position:absolute;left:3px;top:3px;width:20px;height:20px;border-radius:50%;background:var(--muted);transition:.2s}
+.mc-opt-toggle .sw input:checked+b{background:var(--accent-line)}
+.mc-opt-toggle .sw input:checked+b:after{transform:translateX(18px);background:var(--accent)}
+.mc-opt-note{font-size:12px;color:var(--muted);line-height:1.5}
+
 #mcPlanDlg,#mcObjDlg,#mcRetDlg{border:0;border-radius:20px;padding:0;background:var(--raise);box-shadow:0 30px 80px rgba(0,0,0,.45);color:var(--text);width:min(560px,calc(100vw - 32px))}
 #mcPlanDlg form,#mcObjDlg form,#mcRetDlg form{padding:22px;display:flex;flex-direction:column;gap:14px}
 #mcPlanDlg h2,#mcObjDlg h2,#mcRetDlg h2{margin:0;font-size:18px;font-weight:500}
@@ -774,20 +825,32 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 .brandword{font-size:17px;font-weight:750;letter-spacing:-.02em}
 .brandsub{font-size:8.5px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
 .brandmini{font-size:15px!important;font-weight:750!important;letter-spacing:-.02em!important}
+.sidebadge{margin:18px 10px 8px;padding:10px 12px;background:var(--hover);border:1px solid var(--line);border-radius:8px;font:500 11px var(--mono);color:var(--accent);letter-spacing:.06em;text-align:center;opacity:.9}
 </style>
 </head>
 <body>
 <aside id="side" class="admin-only">
-  <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div class="brandtxt"><span class="brandword" data-brand>NOVA</span><small class="brandsub">Artist Desk</small></div></div>
+  <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div class="brandtxt"><span class="brandword" data-brand>VELLUR</span><span class="brandword" style="color:var(--accent)">NOVA</span><small class="brandsub">AI Development Engine</small></div></div>
   <nav id="tabs">
-    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Home</button><button data-view="music"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>Music</button><button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button><button data-view="mission"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/></svg>Mission Control</button><div id="advViews" hidden aria-label="Advanced views"><div class="navdiv" role="presentation">Workspace</div><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/></svg>Mission</button></div>
+    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Home</button>
+    <button data-view="gpu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>GPU</button>
+    <button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Costs</button>
+    <button data-view="music"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>Music</button>
+    <button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button>
+    <button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Chat</button>
+    <button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Agent</button>
+    <button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button>
+    <button data-view="project"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Project</button>
+    <button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button>
+    <button data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button>
   </nav>
+  <div class="sidebadge">NOVA Core · AI Development Engine · Operational</div>
   <button class="navbtn" type="button" id="railToggle" title="Collapse or expand navigation" aria-label="Collapse or expand navigation"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/><path d="M19 5v14"/></svg>Collapse</button>
   <div class="sidehead"><span id="sideLabel">Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button></div>
   <div id="convList"></div>
   <div id="taskList"></div>
   <div id="me">
-    <span class="pearl" id="mePearl"></span><div class="who"><b id="meName">Owner</b><small>Owner</small></div><button class="iconbtn plain" id="meMore" aria-label="Account and appearance" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button>
+    <span class="pearl" id="mePearl"></span><div class="who"><b id="meName">Owner</b><small>Artist · NOVA</small></div><button class="iconbtn plain" id="meMore" aria-label="Account and appearance" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button>
   </div>
 </aside>
 <div id="scrim"></div>
@@ -979,7 +1042,41 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       <div class="mulist" id="muList"></div>
     </section>
     <section class="admin-only" id="missionCard" data-tab="mission">
-      <div class="mcobj" id="mcObj" aria-live="polite"></div>
+      <div class="mc-kpi" id="mcKpi"></div>
+      <div class="mc-body">
+        <div class="mc-center">
+          <div class="mc-tabs" role="tablist" aria-label="Mission Control tabs">
+            <button role="tab" data-mctab="scenes" aria-selected="true">3D Studio</button>
+            <button role="tab" data-mctab="selfdev" aria-selected="false">Self-Dev</button>
+            <button role="tab" data-mctab="items" aria-selected="false">Mission Items</button>
+            <button role="tab" data-mctab="new" class="mc-new-btn" aria-selected="false" aria-label="New Project"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg><span>New Project</span></button>
+          </div>
+          <div class="mc-panels">
+            <div class="mc-panel" data-mcpanel="scenes" hidden></div>
+            <div class="mc-panel" data-mcpanel="selfdev" hidden></div>
+            <div class="mc-panel" data-mcpanel="items" hidden></div>
+          </div>
+        </div>
+        <aside class="mc-rail" aria-label="Mission Control rail">
+          <div class="mc-rail-card">
+            <h3>Live Activity</h3>
+            <div id="mcActivity"></div>
+          </div>
+          <div class="mc-rail-card">
+            <h3>Resource Usage</h3>
+            <div class="mc-ring-wrap">
+              <svg class="mc-ring" viewBox="0 0 120 120" aria-hidden="true"><circle class="mc-ring-bg" cx="60" cy="60" r="54" fill="none" stroke="var(--line)" stroke-width="12"/><circle class="mc-ring-fg" cx="60" cy="60" r="54" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round" stroke-dasharray="339" stroke-dashoffset="339" transform="rotate(-90 60 60)"/></svg>
+              <div class="mc-ring-value" id="mcRingValue">0%</div>
+            </div>
+            <div class="mc-ring-legend" id="mcRingLegend"></div>
+          </div>
+          <div class="mc-rail-card">
+            <h3>Optimization</h3>
+            <div class="mc-opt" id="mcOptimization"></div>
+          </div>
+        </aside>
+      </div>
+      <div class="mcobj" id="mcObj" aria-live="polite" hidden></div>
       <div class="mcrun" id="mcRun" hidden></div>
       <div class="mccap"><input id="mcIdea" maxlength="200" placeholder="A new idea, quickly…" aria-label="Capture an idea"><button class="primary" type="button" id="mcIdeaAdd">Capture</button></div>
       <div id="mcSections"></div>
@@ -1715,7 +1812,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
   $("searchIn").addEventListener("keydown", (e) => { if (e.key === "Enter") { const b = $("searchRes").querySelector("button"); if (b) b.click(); } });
   $("searchBox").addEventListener("click", (e) => { if (e.target === $("searchBox")) $("searchBox").hidden = true; });
   // ── mission control: one objective, the queue, the work in progress, the real cost. Every fact comes from /autopilot/api/mission. ──
-  const MISSION = { data: null, fail: null, seq: 0, timer: null, planId: null, retId: null };
+  const MISSION = { data: null, fail: null, seq: 0, timer: null, planId: null, retId: null, activeTab: "scenes" };
   const MC_LABEL = { idea: "Idea", backlog: "Backlog", ready: "Ready", running: "Working", review: "Awaiting review", verified: "Verified", parked: "Parked" };
   const mcPill = (st) => { const k = (st === "ready" || st === "verified") ? "ok" : st === "running" ? "run" : st === "review" ? "warn" : ""; return `<span class="oc ${k}">${MC_LABEL[st] || st}</span>`; };
   async function loadMission() {
@@ -1732,23 +1829,164 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     if (VIEW === "mission" && document.visibilityState === "visible" && busy) MISSION.timer = setTimeout(loadMission, 4000);
   }
   function renderMission() {
-    const d = MISSION.data, objEl = $("mcObj"), runEl = $("mcRun"), secEl = $("mcSections");
+    const d = MISSION.data;
     if (!d) {
-      objEl.innerHTML = `<div class="mcobj-h"><span class="label">NOVA · MISSION CONTROL</span></div><div class="hempty">Mission could not be loaded: ${esc(MISSION.fail || "unknown error")}</div>`;
-      runEl.hidden = true; secEl.innerHTML = ""; return;
+      $("mcObj").innerHTML = `<div class="mcobj-h"><span class="label">NOVA · MISSION CONTROL</span></div><div class="hempty">Mission could not be loaded: ${esc(MISSION.fail || "unknown error")}</div>`;
+      $("mcRun").hidden = true; $("mcSections").innerHTML = "";
+      renderMissionKpi({}); renderMissionPanels({}); renderMissionRail({});
+      return;
     }
+    renderMissionKpi(d);
+    renderMissionPanels(d);
+    renderMissionRail(d);
+    // Legacy objective/run/sections (kept for compatibility)
+    renderMissionLegacy(d);
+  }
+  function renderMissionKpi(d) {
+    const g = d.budget?.global || {};
+    const eff = d.efficiency || {};
+    const cumulative = g.cumulative_usd || 0;
+    const cap = g.total_cap_usd || 10.8; // €10 ≈ $10.80
+    const budgetPct = cap > 0 ? Math.round((cumulative / cap) * 100) : 0;
+    const gpu = d.gpu || { active: false };
+    const ringPct = Math.round((eff.tokens_saved_pct || 0) * 100) || Math.round((budgetPct / 100) * 100);
+    const selfdevCount = (d.selfdev?.runs || []).length;
+    const scenesCount = (d.studio?.scenes || []).length;
+    $("mcKpi").innerHTML = `
+      <div class="mc-kpi-card">
+        <span class="kpi-label">Budget (€10 cap)</span>
+        <span class="kpi-value">${money(cumulative)} / ${money(cap)}</span>
+        <span class="kpi-sub">${budgetPct}% used · ${money(cap - cumulative)} remaining</span>
+      </div>
+      <div class="mc-kpi-card">
+        <span class="kpi-label">GPU</span>
+        <span class="kpi-value">${gpu.active ? "Active" : "Idle"}</span>
+        <span class="kpi-sub">${gpu.name || "No session"} · ${gpu.rate || "—"}</span>
+      </div>
+      <div class="mc-kpi-card">
+        <span class="kpi-label">Token Efficiency</span>
+        <span class="kpi-value">${eff.tokens_saved_pct ? Math.round(eff.tokens_saved_pct * 100) + "%" : ringPct + "%"}</span>
+        <span class="kpi-sub">Ponytail: ${eff.ponytail?.enabled ? "On" : "Off"} · RTK: ${eff.rtk?.enabled ? "On" : "Off"}</span>
+      </div>
+      <div class="mc-kpi-card">
+        <span class="kpi-label">Self-Dev Runs</span>
+        <span class="kpi-value">${selfdevCount}</span>
+        <span class="kpi-sub">${scenesCount} 3D scenes · ${d.activity?.length || 0} events</span>
+      </div>
+    `;
+  }
+  function renderMissionPanels(d) {
+    const scenes = d.studio?.scenes || [];
+    const selfdev = d.selfdev?.runs || [];
+    const items = d.items || [];
+    const obj = d.objective;
+    // Scenes panel
+    $("mcPanel[scenes]").innerHTML = scenes.length ? `
+      <div class="mc-grid">${scenes.map(s => `
+        <div class="mc-card">
+          <h4>${esc(s.title)}</h4>
+          <p class="mc-meta">${esc(s.description || "No description")}</p>
+          <div class="mc-meta">v${esc(s.version || "1.0")} · ${agoShort(s.updated)} ${s.task_id ? `· Task #${s.task_id}` : ""}</div>
+        </div>
+      `).join("")}</div>
+    ` : `<div class="hempty">No 3D scenes yet. Create one in <a href="/autopilot/3d/" target="_blank" rel="noopener">3D Studio</a>.</div>`;
+    // Self-dev panel
+    $("mcPanel[selfdev]").innerHTML = selfdev.length ? `
+      <div class="mc-grid">${selfdev.map(r => `
+        <div class="mc-card">
+          <h4>${esc(r.title)}</h4>
+          <p class="mc-meta">${esc(r.goal || "No goal")}</p>
+          <div class="mc-meta">Stage: <span class="oc ${r.stage === "COMPLETED" ? "ok" : r.stage === "REVIEW" ? "warn" : r.stage === "TEST" ? "run" : ""}">${r.stage}</span> · ${agoShort(r.updated)}</div>
+        </div>
+      `).join("")}</div>
+    ` : `<div class="hempty">No self-dev runs yet.</div>`;
+    // Items panel (legacy mission items)
+    const order = [["running", "Working"], ["review", "Awaiting review"], ["ready", "Ready"], ["backlog", "Backlog"], ["idea", "Ideas"], ["parked", "Parked"], ["verified", "Verified"]];
+    $("mcPanel[items]").innerHTML = order.map(([st, title]) => {
+      const list = items.filter(i => i.effective_state === st);
+      return list.length ? `<div class="mcsec"><h3>${title}<small>${list.length}</small></h3>${list.map(mcItem).join("")}</div>` : "";
+    }).join("") || '<div class="hempty">Nothing captured yet. Write an idea above — it appears here, no project needed.</div>';
+    // Tab switching
+    document.querySelectorAll("#missionCard .mc-tabs button[data-mctab]").forEach(btn => {
+      btn.onclick = () => {
+        MISSION.activeTab = btn.dataset.mctab;
+        document.querySelectorAll("#missionCard .mc-tabs button").forEach(b => b.setAttribute("aria-selected", b === btn));
+        document.querySelectorAll("#missionCard .mc-panel").forEach(p => p.hidden = p.dataset.mcpanel !== MISSION.activeTab);
+      };
+    });
+    // New project button
+    const newBtn = document.querySelector("#missionCard .mc-new-btn");
+    if (newBtn) newBtn.onclick = () => { setView("agent"); setTimeout(() => { const t = TASKS.find(x => !FINAL_STATES.includes(x.state)); if (t) openProject(t.id); else { $("homeMode").value = "agent"; homeMode("agent"); homeSend(); } }, 100); };
+  }
+  function renderMissionRail(d) {
+    const activity = d.activity || [];
+    const eff = d.efficiency || {};
+    const g = d.budget?.global || {};
+    const cumulative = g.cumulative_usd || 0;
+    const cap = g.total_cap_usd || 10.8;
+    const budgetPct = cap > 0 ? Math.min(100, Math.round((cumulative / cap) * 100)) : 0;
+    const ringPct = eff.tokens_saved_pct ? Math.round(eff.tokens_saved_pct * 100) : budgetPct;
+    const dashoffset = 339 - (ringPct / 100) * 339;
+    // Activity
+    $("mcActivity").innerHTML = activity.length ? activity.map(e => `
+      <div class="mc-activity-item">
+        <span class="act-time">${agoShort(e.ts)}</span>
+        <span class="act-text">${esc(e.text || e.kind || "Event")}</span>
+      </div>
+    `).join("") : `<div class="note">No recent activity.</div>`;
+    // Resource Usage ring
+    $("mcRingValue").textContent = ringPct + "%";
+    $("mcRingValue").style.setProperty("--pct", ringPct + "%");
+    const fg = document.querySelector("#missionCard .mc-ring-fg");
+    if (fg) fg.style.strokeDashoffset = dashoffset;
+    // Legend
+    const ponytailOn = eff.ponytail?.enabled;
+    const rtkOn = eff.rtk?.enabled;
+    $("mcRingLegend").innerHTML = `
+      <span><i class="dot" style="background:${ponytailOn ? "var(--accent)" : "var(--line2)"}"></i>Ponytail ${ponytailOn ? "On" : "Off"}</span>
+      <span><i class="dot" style="background:${rtkOn ? "var(--accent)" : "var(--line2)"}"></i>RTK ${rtkOn ? "On" : "Off"}</span>
+      <span><i class="dot" style="background:var(--good)"></i>Budget ${budgetPct}%</span>
+    `;
+    // Optimization toggles
+    const ponytailMode = eff.ponytail?.mode || "embedded_filter";
+    const rtkMode = eff.rtk?.mode || "embedded_filter";
+    const ponytailBinary = eff.ponytail?.binary_installed;
+    const rtkBinary = eff.rtk?.binary_installed;
+    $("mcOptimization").innerHTML = `
+      <div class="mc-opt-toggle">
+        <div class="opt-label">
+          <strong>Ponytail</strong>
+          <small>Mode: ${ponytailMode} · Binary: ${ponytailBinary ? "Installed" : "Not found (embedded)"}</small>
+        </div>
+        <label class="sw"><input type="checkbox" id="optPonytail" ${ponytailOn ? "checked" : ""}><b></b></label>
+        <span class="opt-savings">${eff.ponytail?.savings_pct ? Math.round(eff.ponytail.savings_pct * 100) + "%" : "—"}</span>
+      </div>
+      <div class="mc-opt-toggle">
+        <div class="opt-label">
+          <strong>RTK</strong>
+          <small>Mode: ${rtkMode} · Binary: ${rtkBinary ? "Installed" : "Not found (embedded)"}</small>
+        </div>
+        <label class="sw"><input type="checkbox" id="optRtk" ${rtkOn ? "checked" : ""}><b></b></label>
+        <span class="opt-savings">${eff.rtk?.savings_pct ? Math.round(eff.rtk.savings_pct * 100) + "%" : "—"}</span>
+      </div>
+      <div class="mc-opt-note">Toggles apply to the current project scope. Savings are estimated from the last token analysis.</div>
+    `;
+    // Toggle handlers
+    $("#optPonytail").onchange = async () => {
+      try { await send("efficiency/ponytail", "POST", { enabled: $("#optPonytail").checked }); toast($("#optPonytail").checked ? "Ponytail enabled" : "Ponytail disabled", "ok"); loadMission(); } catch (e) { toast(e.message); $("#optPonytail").checked = !$("#optPonytail").checked; }
+    };
+    $("#optRtk").onchange = async () => {
+      try { await send("efficiency/rtk", "POST", { enabled: $("#optRtk").checked }); toast($("#optRtk").checked ? "RTK enabled" : "RTK disabled", "ok"); loadMission(); } catch (e) { toast(e.message); $("#optRtk").checked = !$("#optRtk").checked; }
+    };
+  }
+  function renderMissionLegacy(d) {
     const o = d.objective, g = d.budget.global;
     const nums = `<div class="mcnums"><div><small>Estimated</small><b>${money(d.budget.objective_estimate_usd)}</b></div><div><small>Confirmed</small><b>${money(d.budget.objective_spent_usd)}</b></div><div><small>Monthly budget</small><b>${money(g.total_usd)} / ${money(g.budget_usd)}</b></div></div>`;
     const parked = d.parked_objectives.length ? `<div class="mcpark">${d.parked_objectives.map(p => `<button type="button" data-react="${p.id}"><b>${esc(p.title)}</b><small>parked · ${agoShort(p.updated)}</small></button>`).join("")}</div>` : "";
-    objEl.innerHTML = o ? `<div class="mcobj-h"><span class="label">NOVA · MISSION CONTROL</span>${o.state === "active" ? '<span class="oc ok">Active objective</span>' : '<span class="oc warn">No active objective</span>'}<span class="sp"></span><button class="ghost" type="button" data-obj="edit">${o.state === "active" ? "Change" : "New objective"}</button>${o.state === "active" ? '<button class="ghost" type="button" data-obj="park">Park</button>' : ""}</div><h2>${esc(o.title)}</h2>${o.detail ? `<p>${esc(o.detail)}</p>` : ""}${nums}${parked}` : `<div class="mcobj-h"><span class="label">NOVA · MISSION CONTROL</span></div><div class="hempty"><b>No objective yet.</b><p style="margin:8px 0 14px">Set one and NOVA shows the whole work here: ideas, the next task, what is running, the cost.</p><button class="primary" type="button" data-obj="new">Set objective</button></div>${parked}`;
+    $("mcObj").innerHTML = o ? `<div class="mcobj-h"><span class="label">NOVA · MISSION CONTROL</span>${o.state === "active" ? '<span class="oc ok">Active objective</span>' : '<span class="oc warn">No active objective</span>'}<span class="sp"></span><button class="ghost" type="button" data-obj="edit">${o.state === "active" ? "Change" : "New objective"}</button>${o.state === "active" ? '<button class="ghost" type="button" data-obj="park">Park</button>' : ""}</div><h2>${esc(o.title)}</h2>${o.detail ? `<p>${esc(o.detail)}</p>` : ""}${nums}${parked}` : `<div class="mcobj-h"><span class="label">NOVA · MISSION CONTROL</span></div><div class="hempty"><b>No objective yet.</b><p style="margin:8px 0 14px">Set one and NOVA shows the whole work here: ideas, the next task, what is running, the cost.</p><button class="primary" type="button" data-obj="new">Set objective</button></div>${parked}`;
     const r = d.agent.running;
-    runEl.hidden = !r;
-    if (r) runEl.innerHTML = `<span class="hstat live"><span class="ring"></span>Working now</span><small>${esc(r.state)} · ${money(r.cost_usd)}</small><button type="button" class="mcrun-go" data-open="${r.id}"><b>${esc(r.title)}</b><span>Open in Projects ↗</span></button>`;
-    const order = [["running", "Working"], ["review", "Awaiting review"], ["ready", "Ready"], ["backlog", "Backlog"], ["idea", "Ideas"], ["parked", "Parked"], ["verified", "Verified"]];
-    secEl.innerHTML = order.map(([st, title]) => {
-      const list = d.items.filter(i => i.effective_state === st);
-      return list.length ? `<div class="mcsec"><h3>${title}<small>${list.length}</small></h3>${list.map(mcItem).join("")}</div>` : "";
-    }).join("") || '<div class="hempty">Nothing captured yet. Write an idea above — it appears here, no project needed.</div>';
+    $("mcRun").hidden = !r;
+    if (r) $("mcRun").innerHTML = `<span class="hstat live"><span class="ring"></span>Working now</span><small>${esc(r.state)} · ${money(r.cost_usd)}</small><button type="button" class="mcrun-go" data-open="${r.id}"><b>${esc(r.title)}</b><span>Open in Projects ↗</span></button>`;
   }
   function mcItem(i) {
     const d = MISSION.data, st = i.effective_state;

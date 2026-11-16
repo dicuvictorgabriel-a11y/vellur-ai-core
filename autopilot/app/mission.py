@@ -19,6 +19,7 @@ from pydantic import BaseModel
 from .agent import FINAL, ROLES, AgentError, AgentManager
 from .lifecycle import Controller
 from .router import Router
+from .efficiency import TokenEfficiencyManager
 
 ITEM_STATES = ("idea", "backlog", "ready", "running", "review", "verified", "parked")
 # states the owner can set directly; "running" comes only from starting an agent task,
@@ -93,7 +94,7 @@ class ReturnBody(BaseModel):
     note: str = ""
 
 
-def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager, admin, admin_write) -> None:
+def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager, admin, admin_write, efficiency: TokenEfficiencyManager) -> None:
     db = ctrl.db
 
     def agent_err(e) -> JSONResponse:
@@ -141,15 +142,43 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         g = ctrl.budget.status(ctrl.settings.get(), None, ctrl.clock())
         ok, why = agent.available()
         running = next((t for t in agent.list() if t["state"] not in FINAL), None)
+
+        # 3D Studio scenes
+        scenes = db.all("SELECT id,title,description,version,task_id,created,updated FROM studio_scenes ORDER BY updated DESC LIMIT 10")
+        # Self-dev runs
+        selfdev = db.all("SELECT id,title,goal,stage,target_paths,agent_task_id,created,updated FROM selfdev_runs ORDER BY updated DESC LIMIT 10")
+        # Live activity (recent events)
+        activity = db.events(20)
+        # Token efficiency state
+        eff_status = efficiency.status()
+
+        # Global budget with cumulative €10 cap
+        budget_global = {
+            "month": g["month"],
+            "budget_usd": g["budget_usd"],
+            "total_cap_usd": g.get("total_cap_usd", 0.0),
+            "cumulative_usd": g.get("cumulative_usd", 0.0),
+            "total_usd": g["total_usd"],
+            "remaining_usd": g["remaining_usd"],
+            "percent": g["percent"],
+            "exhausted": g["exhausted"],
+            "confirmed_usd": g.get("confirmed_usd", 0.0),
+            "estimated_unconfirmed_usd": g.get("estimated_unconfirmed_usd", 0.0),
+            "api_reported_usd": g.get("api_reported_usd", 0.0),
+            "api_estimated_usd": g.get("api_estimated_usd", 0.0),
+        }
+
         return {"objective": obj, "parked_objectives": parked, "items": items,
                 "next": public_item(nxt, task_of(nxt)) if nxt else None,
                 "agent": {"available": ok, "why": why,
                           "running": {"id": running["id"], "state": running["state"], "title": running["title"],
                                       "repo": running["repo"], "cost_usd": running["cost_usd"]} if running else None},
                 "budget": {"objective_estimate_usd": round(estimate, 4), "objective_spent_usd": round(spent, 4),
-                           "global": {"month": g["month"], "budget_usd": g["budget_usd"], "total_usd": g["total_usd"],
-                                      "remaining_usd": g["remaining_usd"], "percent": g["percent"],
-                                      "exhausted": g["exhausted"]}}}
+                           "global": budget_global},
+                "studio": {"scenes": scenes},
+                "selfdev": {"runs": selfdev},
+                "activity": activity,
+                "efficiency": eff_status}
 
     # ── objective ──────────────────────────────────────────────────────────────────────────────
     @app.get("/autopilot/api/mission", dependencies=[Depends(admin)])

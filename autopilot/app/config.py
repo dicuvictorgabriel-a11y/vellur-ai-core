@@ -27,6 +27,7 @@ class Env:
     # Live mode: only then may a provider be asked to create/start/stop/destroy anything billable.
     live: bool = field(default_factory=lambda: _b("AUTOPILOT_LIVE", False))
     hard_max_monthly_usd: float = field(default_factory=lambda: _f("AUTOPILOT_HARD_MAX_MONTHLY_USD", 50.0))
+    hard_max_total_usd: float = field(default_factory=lambda: _f("AUTOPILOT_HARD_MAX_TOTAL_USD", 0.0))
     hard_max_hourly_usd: float = field(default_factory=lambda: _f("AUTOPILOT_HARD_MAX_HOURLY_USD", 0.50))
     admin_header_secret: str = field(default_factory=lambda: os.environ.get("AUTOPILOT_ADMIN_SECRET", ""))
     data_dir: str = field(default_factory=lambda: os.environ.get("AUTOPILOT_DATA_DIR", "/data"))
@@ -60,6 +61,7 @@ DEFAULT_SETTINGS: dict = {
     "profile": "coding",
     "idle_timeout_min": 20,
     "monthly_budget_usd": 50.0,
+    "total_budget_cap_usd": 0.0,     # 0 = monthly budget only; >0 = strict cumulative all-time spend cap (e.g. 10.80 for €10)
     "max_hourly_usd": 0.50,
     "max_session_hours": 3.0,
     "auto_start_paid": False,        # a GPU request may start a paid provider by itself

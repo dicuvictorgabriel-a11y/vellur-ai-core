@@ -89,21 +89,39 @@ class Budget:
         fixed_out = sum(float(f["usd"]) for f in fixed if not f.get("in_budget"))
         total = confirmed + estimated + api_reported + api_estimated + subs + fixed_in
         budget = float(settings["monthly_budget_usd"])
+        total_cap = float(settings.get("total_budget_cap_usd") or 0.0)
+        all_ledger = float((self.db.one("SELECT SUM(amount_usd) AS c FROM ledger WHERE kind='provider_charge'") or {}).get("c") or 0.0)
+        all_api = float((self.db.one("SELECT SUM(cost_usd) AS c FROM usage WHERE cost_source IN ('provider','estimate')") or {}).get("c") or 0.0)
+        older_est = 0.0
+        if total_cap > 0:
+            older_unreconciled = self.db.all("SELECT * FROM sessions WHERE created_at<? AND reconciled=0 AND dry_run=0", (month_start(now),))
+            older_est = sum(self.session_estimate(s, settings, now) for s in older_unreconciled)
+        cumulative = all_ledger + all_api + estimated + older_est + subs + fixed_in
         cur_est, rate = 0.0, 0.0
         hyperai_used = hyperai_before[None]
         if current and not current.get("ended_at") and not current.get("dry_run"):
             cur_est = self.session_estimate(current, settings, now, hyperai_before)
             rate = self.current_rate(current, settings, now, hyperai_used)
         projected = total + rate * float(settings["idle_timeout_min"]) / 60.0
-        remaining = budget - total
+        monthly_remaining = budget - total
+        cap_remaining = (total_cap - cumulative) if total_cap > 0 else None
+        remaining = min(monthly_remaining, cap_remaining) if cap_remaining is not None else monthly_remaining
+        cap_exhausted = total_cap > 0 and cumulative >= total_cap
+        exhausted = budget <= 0 or total >= budget or cap_exhausted
+        pct_month = (100.0 * total / budget) if budget > 0 else 100.0
+        pct_cap = (100.0 * cumulative / total_cap) if total_cap > 0 else 0.0
         return {
             "month": m,
             "budget_usd": round(budget, 2),
+            "total_cap_usd": round(total_cap, 2) if total_cap > 0 else 0.0,
+            "cumulative_usd": round(cumulative, 4),
+            "total_cap_remaining_usd": round(cap_remaining, 2) if cap_remaining is not None else None,
+            "total_cap_exhausted": cap_exhausted,
             "confirmed_usd": round(confirmed, 2),
             "estimated_unconfirmed_usd": round(estimated, 2),
             "total_usd": round(total, 2),
             "remaining_usd": round(remaining, 2),
-            "percent": round(100.0 * total / budget, 1) if budget > 0 else 100.0,
+            "percent": round(max(pct_month, pct_cap), 1),
             "current_session_estimate_usd": round(cur_est, 2),
             "current_rate_usd_per_hour": round(rate, 3),
             "projected_if_idle_out_usd": round(projected, 2),
@@ -116,7 +134,7 @@ class Budget:
             "fixed_in_budget_usd": round(fixed_in, 2),
             "fixed_outside_budget_usd": round(fixed_out, 2),
             "all_in_total_usd": round(total + fixed_out, 2),
-            "exhausted": budget <= 0 or total >= budget,
+            "exhausted": exhausted,
             "note": "Estimates are not confirmed charges. Confirmed = provider-reported.",
         }
 
@@ -138,7 +156,11 @@ class Budget:
             rate = dph
         if rate > float(settings["max_hourly_usd"]) + 1e-9:
             return False, "price_above_limit"
-        if st["total_usd"] + rate * MIN_SESSION_HOURS + extra_cost > float(settings["monthly_budget_usd"]) + 1e-9:
+        needed = rate * MIN_SESSION_HOURS + extra_cost
+        if st["total_usd"] + needed > float(settings["monthly_budget_usd"]) + 1e-9:
+            return False, "budget_insufficient"
+        total_cap = float(settings.get("total_budget_cap_usd") or 0.0)
+        if total_cap > 0 and st["cumulative_usd"] + needed > total_cap + 1e-9:
             return False, "budget_insufficient"
         return True, "ok"
 

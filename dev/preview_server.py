@@ -46,7 +46,7 @@ def seed(db) -> tuple[int, int]:
     cur = db.x("INSERT INTO conversations(title,model,created,updated) VALUES(?,?,?,?)", ("Demo conversation", "vellur-chat", now, now))
     cid = cur.lastrowid
     for role, text in (("user", "What can you do?"), ("assistant", "This is the **staging preview** of NOVA. "
-                                                                  "Nothing here is connected to real models or data.")):
+                                                           "Nothing here is connected to real models or data.")):
         db.x("INSERT INTO messages(conv_id,role,content,created) VALUES(?,?,?,?)", (cid, role, text, now))
     cur = db.x("INSERT INTO tasks(created,updated,state,repo,base,model,prompt,outcome,runs,files_changed,started,ended) "
                "VALUES(?,?,?,?,?,?,?,?,?,?,?,?)", (now, now, "done", "demo/project", "main", "vellur-coder",
@@ -60,7 +60,7 @@ def seed(db) -> tuple[int, int]:
               ("text", {"text": "I'll look at the current page first."}),
               ("tool", {"tool": "read", "status": "completed", "input": {"filePath": "index.html"}, "output": "", "title": "index.html"}),
               ("tool", {"tool": "edit", "status": "completed", "input": {"filePath": "index.html", "oldString": "<h1>Old</h1>",
-                                                                         "newString": "<h1>New</h1>"}, "output": ""}),
+                                                                          "newString": "<h1>New</h1>"}, "output": ""}),
               ("tool", {"tool": "bash", "status": "completed", "input": {"command": "npm test", "description": "Run the tests"},
                         "output": "12 passed", "exit": 0}),
               ("text", {"text": "## Summary\nThe page is restyled.\n## Done\n- New heading\n## Not done\nnothing\nSTATUS: COMPLETE"}),
@@ -81,6 +81,42 @@ def seed(db) -> tuple[int, int]:
     rel = db.all("SELECT id FROM music_releases ORDER BY id DESC LIMIT 1")[0]["id"]
     for i, (t, d) in enumerate((("Neon Hours", "3:21"), ("Low Orbit", "2:58"), ("Signal Bloom", "4:02")), 1):
         db.x("INSERT INTO music_tracks(release_id,title,duration,position,created) VALUES(?,?,?,?,?)", (rel, t, d, i, now))
+
+    # 3D Studio scenes
+    for i, (title, desc) in enumerate((
+        ("Robot arm", "6-DOF articulated arm with IK targets, ready for animation"),
+        ("Scene layout", "Modular room with procedural furniture placement"),
+        ("Character base", "Low-poly character with rigging helpers"),
+    ), 1):
+        db.x("INSERT INTO studio_scenes(title,description,version,task_id,created,updated) VALUES(?,?,?,?,?,?)",
+             (title, desc, "1.0", tid, now - i * 3600, now - i * 3600))
+
+    # Self-dev runs
+    for i, (title, goal, stage) in enumerate((
+        ("Add dark mode", "Implement dark/light theme toggle with persistence", "TEST"),
+        ("Refactor API routes", "Split monolithic router into feature modules", "REVIEW"),
+        ("Update dependencies", "Bump all deps to latest compatible versions", "COMPLETED"),
+    ), 1):
+        db.x("INSERT INTO selfdev_runs(title,goal,stage,target_paths,agent_task_id,created,updated) VALUES(?,?,?,?,?,?,?)",
+             (title, goal, stage, json.dumps(["autopilot/app/api.py", "autopilot/app/router.py"]), tid + i, now - i * 7200, now - i * 7200))
+
+    # Budget with cumulative €10 cap (using USD values, ~€10 = $10.80)
+    db.x("INSERT INTO ledger(ts,provider,model,cost_usd,confirmed,request_id,created) VALUES(?,?,?,?,?,?,?)",
+         (now, "hyperai", "RedHatAI/Qwen3.8-27B-INT4", 2.5, 1, "demo-req-1", now))
+    db.x("INSERT INTO ledger(ts,provider,model,cost_usd,confirmed,request_id,created) VALUES(?,?,?,?,?,?,?)",
+         (now, "vastai", "meta-llama/Llama-3.1-70B", 3.2, 1, "demo-req-2", now))
+    db.x("INSERT INTO ledger(ts,provider,model,cost_usd,confirmed,request_id,created) VALUES(?,?,?,?,?,?,?)",
+         (now, "hyperai", "RedHatAI/Qwen3.8-27B-INT4", 1.8, 0, "demo-req-3", now))
+
+    # Events for live activity feed
+    for kind, data in (
+        ("info", {"text": "GPU session started on HyperAI H100"}),
+        ("info", {"text": "Agent task completed: Add dark mode"}),
+        ("info", {"text": "3D scene saved: Robot arm v1.2"}),
+        ("info", {"text": "Self-dev run finished: Update dependencies"}),
+    ):
+        db.event(kind, "mission", data["text"])
+
     return cid, tid
 
 

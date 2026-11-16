@@ -70,16 +70,20 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
                 router=None, agent=None) -> FastAPI:
     from .agent import AgentManager
     from .attachments import register as register_attachments
+    from .efficiency import register as register_efficiency
     from .images import ImageService, register as register_images
     from .mission import register as register_mission
     from .music import register as register_music
     from .router import Router
+    from .selfdev import register as register_selfdev
+    from .studio3d import register as register_studio3d
     from .workspace import register as register_workspace
     app = FastAPI(docs_url=None, redoc_url=None, openapi_url=None)
     env = ctrl.env
     router = router or Router(ctrl)
     agent = agent or AgentManager(ctrl, router)
     app.state.router, app.state.agent = router, agent
+    app.state.efficiency = router.efficiency
     image_service = ImageService(ctrl, router)
     app.state.images = image_service
 
@@ -322,7 +326,10 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     register_attachments(app, ctrl, agent.attachments, admin, admin_write)
     register_images(app, ctrl, router, image_service, admin, admin_write)
     register_workspace(app, ctrl, router, agent, admin, admin_write)
-    register_mission(app, ctrl, router, agent, admin, admin_write)
+    register_mission(app, ctrl, router, agent, admin, admin_write, router.efficiency)
     register_music(app, ctrl, admin, admin_write)
+    register_studio3d(app, ctrl, router, agent, admin, admin_write)
+    app.state.selfdev = register_selfdev(app, ctrl, admin, admin_write)
+    register_efficiency(app, ctrl, admin, admin_write)
 
     return app

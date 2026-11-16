@@ -165,3 +165,97 @@ def test_3d_studio_opens_local_models_without_uploading():
     # loaders fetch the object URL: connect-src must allow blob:, and nothing else was widened
     csp = STUDIO3D_HEADERS["Content-Security-Policy"]
     assert "connect-src 'self' blob:;" in csp and "script-src 'self';" in csp and "default-src 'self';" in csp
+
+
+async def test_3d_studio_two_prompt_futuristic_room_persistence_glb_and_snapshot(rig):
+    app = build_admin(rig())
+    mutate = {**ADMIN, "X-Vellur-Request": "1"}
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=app), base_url="http://ap") as client:
+        assert (await client.get("/autopilot/3d/scene_studio.js", headers=ADMIN)).status_code == 200
+
+        prompt1 = (
+            "Create a minimalist futuristic room with frosted glass panels, "
+            "polished concrete flooring, a chrome sphere, and soft studio lighting."
+        )
+        # Missing CSRF header must be rejected
+        assert (await client.post("/autopilot/api/studio3d/scenes", headers=ADMIN, json={"prompt": prompt1})).status_code == 403
+        r1 = await client.post("/autopilot/api/studio3d/scenes", headers=mutate, json={"prompt": prompt1, "use_ai": False})
+        assert r1.status_code == 200
+        rec1 = r1.json()
+        sid = rec1["id"]
+        assert rec1["version"] == 1
+        sc1 = rec1["scene"]
+        roles = {o["role"] for o in sc1["objects"]}
+        assert {"floor", "glass", "hero"} <= roles
+        glass1 = [o for o in sc1["objects"] if o["role"] == "glass"]
+        sphere1 = next(o for o in sc1["objects"] if o["primitive"] == "sphere")
+        floor1 = next(o for o in sc1["objects"] if o["role"] == "floor")
+        assert len(glass1) >= 2
+        assert floor1["material"]["preset"] == "polished_concrete"
+        assert sphere1["material"]["preset"] == "chrome"
+        initial_trans = glass1[0]["material"]["transmission"]
+        initial_opac = glass1[0]["material"]["opacity"]
+        initial_sphere_x = sphere1["position"][0]
+        initial_cam_pos = list(sc1["camera"]["position"])
+
+        prompt2 = "Make the glass more transparent, move the sphere to the left, and adjust the camera."
+        r2 = await client.post(
+            f"/autopilot/api/studio3d/scenes/{sid}/prompt",
+            headers=mutate,
+            json={"prompt": prompt2, "use_ai": False},
+        )
+        assert r2.status_code == 200
+        rec2 = r2.json()
+        assert rec2["version"] == 2
+        assert len(rec2["history"]) == 2
+
+        # Reopen persistent scene from API to verify full database round-trip
+        reopened = (await client.get(f"/autopilot/api/studio3d/scenes/{sid}", headers=ADMIN)).json()
+        sc2 = reopened["scene"]
+        glass2 = [o for o in sc2["objects"] if o["role"] == "glass"]
+        sphere2 = next(o for o in sc2["objects"] if o["primitive"] == "sphere")
+        assert glass2[0]["material"]["transmission"] > initial_trans
+        assert glass2[0]["material"]["opacity"] < initial_opac
+        assert sphere2["position"][0] < initial_sphere_x
+        assert sc2["camera"]["position"] != initial_cam_pos
+
+        # Direct inspector save round-trip
+        sphere2["material"]["roughness"] = 0.14
+        r_put = await client.put(
+            f"/autopilot/api/studio3d/scenes/{sid}",
+            headers=mutate,
+            json={"scene": sc2, "note": "Inspector roughness tweak"},
+        )
+        assert r_put.status_code == 200
+        assert r_put.json()["version"] == 3
+
+        # Binary GLB 2.0 export validation
+        glb_res = await client.get(f"/autopilot/api/studio3d/scenes/{sid}/export.glb", headers=ADMIN)
+        assert glb_res.status_code == 200
+        assert glb_res.headers["content-type"].startswith("model/gltf-binary")
+        glb = glb_res.content
+        magic, version, total_len = struct.unpack_from("<4sII", glb, 0)
+        assert magic == b"glTF" and version == 2 and total_len == len(glb)
+        json_len, json_type = struct.unpack_from("<II", glb, 12)
+        assert json_type == 0x4E4F534A
+        gltf_json = json.loads(glb[20 : 20 + json_len].decode("utf-8").strip())
+        assert "KHR_materials_transmission" in gltf_json.get("extensionsUsed", [])
+        assert len(gltf_json["meshes"]) == len(sc2["objects"])
+        bin_offset = 20 + json_len
+        bin_len, bin_type = struct.unpack_from("<II", glb, bin_offset)
+        assert bin_type == 0x004E4942 and bin_len > 100
+
+        # Server-side isometric PNG snapshot + retrieval
+        snap_res = await client.post(
+            f"/autopilot/api/studio3d/scenes/{sid}/snapshots",
+            headers=mutate,
+            json={"note": "Server isometric preview"},
+        )
+        assert snap_res.status_code == 200
+        snap = snap_res.json()
+        assert snap["width"] >= 320 and snap["height"] >= 200
+        png_res = await client.get(snap["url"], headers=ADMIN)
+        assert png_res.status_code == 200
+        assert png_res.headers["content-type"] == "image/png"
+        assert png_res.content[:8] == b"\x89PNG\r\n\x1a\n"
+

@@ -140,8 +140,10 @@ class Router:
                                         timeout=httpx.Timeout(connect=15, read=900, write=120, pool=30))
         self.tokens: dict[str, str] = {}
         self._reconciling: set = set()
+        from .efficiency import TokenEfficiencyManager
         from .policy import Policy
         self.policy = Policy(self)
+        self.efficiency = TokenEfficiencyManager(self.db)
 
     # ── providers ───────────────────────────────────────────────────────────────────────────────
     def providers(self) -> dict:
@@ -450,6 +452,15 @@ class Router:
         return None
 
     # ── accounting ──────────────────────────────────────────────────────────────────────────────
+    @staticmethod
+    def _cached_tokens(u: dict) -> int:
+        details = u.get("prompt_tokens_details") if isinstance(u.get("prompt_tokens_details"), dict) else {}
+        for v in (details.get("cached_tokens"), u.get("prompt_cache_hit_tokens"),
+                  u.get("cache_read_input_tokens"), u.get("cached_tokens")):
+            if isinstance(v, (int, float)) and v > 0:
+                return int(v)
+        return 0
+
     def cost(self, target: str, info: dict, usage: Optional[dict]) -> tuple:
         if info["kind"] == "gpu":
             return 0.0, "gpu"
@@ -477,7 +488,7 @@ class Router:
             u["images"] = images
         # no usage at all (a stream cut before its last chunk) is "unknown", never a $0 estimate
         cost, source = self.cost(target, info, u if (usage is not None or images) else None) if ok else (0.0, "")
-        cached = ((u.get("prompt_tokens_details") or {}).get("cached_tokens") or 0) if isinstance(u.get("prompt_tokens_details"), dict) else 0
+        cached = self._cached_tokens(u)
         now = self.ctrl.clock()
         cur = self.db.x("INSERT INTO usage(ts,month,role,target,provider,model,ok,status,in_tokens,out_tokens,cached_tokens,"
                         "cost_usd,cost_source,latency_ms,tag,error,images) VALUES(?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)",
@@ -512,8 +523,10 @@ class Router:
                 continue
             tin = int(data.get("tokens_prompt") or data.get("native_tokens_prompt") or 0)
             tout = int(data.get("tokens_completion") or data.get("native_tokens_completion") or 0)
+            tcached = int(data.get("native_tokens_cached") or data.get("tokens_cached") or 0)
             self.db.x("UPDATE usage SET cost_usd=?, cost_source='provider', in_tokens=MAX(in_tokens,?), "
-                      "out_tokens=MAX(out_tokens,?) WHERE id=?", (cost, tin, tout, row_id))
+                      "out_tokens=MAX(out_tokens,?), cached_tokens=MAX(cached_tokens,?) WHERE id=?",
+                      (cost, tin, tout, tcached, row_id))
             return
 
     def tag_cost(self, tag: str) -> float:
@@ -570,6 +583,10 @@ class Router:
                 capability = "image_generation"
             elif self._has_image(payload):
                 capability = "vision"
+        if path == "chat/completions" and isinstance(payload.get("messages"), list):
+            payload, eff_meta = self.efficiency.optimize_payload(payload, record_stats=True)
+        else:
+            eff_meta = {"tokens_saved": 0}
         errors = []
         targets, decision = self.policy.plan(role, capability, payload, tag)
         auto = decision["policy"] != "manual"
@@ -584,12 +601,11 @@ class Router:
             if not ok:
                 errors.append((target, code, why))
                 continue
-            rid = 0
-            if auto:
-                rid, why = self.policy.reserve(tag, target, self.policy.expected_usd(target, role, payload) or 0.0)
-                if rid is None:
-                    errors.append((target, "allowance", why))
-                    continue
+            rid, why = self.policy.reserve(tag, target, self.policy.expected_usd(target, role, payload) or 0.0, auto=auto)
+            if rid is None:
+                err_code = "budget" if "budget limit" in why or not auto else "allowance"
+                errors.append((target, err_code, why))
+                continue
             try:
                 resp = await self._send(target, role, path, query, headers, payload, tag, rid, did)
                 if did and i:
@@ -597,6 +613,8 @@ class Router:
                               (target, f" Used {target} after: " + "; ".join(f"{t}: {w}" for t, _, w in errors), did))
                 if did:
                     resp.headers["X-Vellur-Decision"] = str(did)
+                if eff_meta.get("tokens_saved", 0) > 0:
+                    resp.headers["X-Vellur-Tokens-Saved"] = str(eff_meta["tokens_saved"])
                 return resp
             except _Skip as e:
                 self.policy.release(rid)
@@ -686,12 +704,16 @@ class Router:
         ok, code, why = self.usable(target, fallback=False)
         if not ok:
             return {"ok": False, "code": code, "message": why}
+        probe_payload = {"messages": [{"role": "user", "content": "Reply with the single word: ready"}],
+                         "max_tokens": 400}
+        rid, why = self.policy.reserve("probe", target, self.policy.expected_usd(target, "vellur-chat", probe_payload) or 0.0, auto=False)
+        if rid is None:
+            return {"ok": False, "code": "budget", "message": why}
         t0 = time.monotonic()
         try:
-            resp = await self._send(target, "vellur-chat", "chat/completions", "", {},
-                                    {"messages": [{"role": "user", "content": "Reply with the single word: ready"}],
-                                     "max_tokens": 400}, "probe")
+            resp = await self._send(target, "vellur-chat", "chat/completions", "", {}, probe_payload, "probe", rid=rid)
         except _Skip as e:
+            self.policy.release(rid)
             return {"ok": False, "code": e.code, "message": e.message}
         data = b"".join([c async for c in resp.stream])
         ms = int((time.monotonic() - t0) * 1000)

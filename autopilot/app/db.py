@@ -150,6 +150,48 @@ CREATE TABLE IF NOT EXISTS music_profile (
   links TEXT NOT NULL DEFAULT '',
   updated REAL NOT NULL
 );
+CREATE TABLE IF NOT EXISTS studio_scenes (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  description TEXT NOT NULL DEFAULT '',
+  scene_json TEXT NOT NULL DEFAULT '{}',
+  history_json TEXT NOT NULL DEFAULT '[]',
+  version INTEGER NOT NULL DEFAULT 1,
+  task_id INTEGER,
+  created REAL NOT NULL,
+  updated REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS studio_scenes_updated ON studio_scenes(updated DESC);
+CREATE TABLE IF NOT EXISTS studio_snapshots (
+  id TEXT PRIMARY KEY,
+  scene_id INTEGER NOT NULL,
+  mime TEXT NOT NULL DEFAULT 'image/png',
+  width INTEGER NOT NULL DEFAULT 0,
+  height INTEGER NOT NULL DEFAULT 0,
+  size INTEGER NOT NULL DEFAULT 0,
+  sha256 TEXT NOT NULL DEFAULT '',
+  note TEXT NOT NULL DEFAULT '',
+  created REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS studio_snapshots_scene ON studio_snapshots(scene_id, created DESC);
+CREATE TABLE IF NOT EXISTS selfdev_runs (
+  id INTEGER PRIMARY KEY AUTOINCREMENT,
+  title TEXT NOT NULL,
+  goal TEXT NOT NULL DEFAULT '',
+  stage TEXT NOT NULL DEFAULT 'INSPECT',
+  target_paths TEXT NOT NULL DEFAULT '[]',
+  inspection_json TEXT NOT NULL DEFAULT '{}',
+  plan_text TEXT NOT NULL DEFAULT '',
+  edits_json TEXT NOT NULL DEFAULT '[]',
+  test_json TEXT NOT NULL DEFAULT '{}',
+  preview_json TEXT NOT NULL DEFAULT '{}',
+  review_json TEXT NOT NULL DEFAULT '{}',
+  guardrails_json TEXT NOT NULL DEFAULT '{}',
+  agent_task_id INTEGER,
+  created REAL NOT NULL,
+  updated REAL NOT NULL
+);
+CREATE INDEX IF NOT EXISTS selfdev_runs_updated ON selfdev_runs(updated DESC);
 """
 
 # Columns added after the first release (ALTER TABLE ... ADD COLUMN is skipped when the column exists).

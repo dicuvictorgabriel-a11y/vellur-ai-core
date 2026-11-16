@@ -126,3 +126,28 @@ def test_owner_name_and_pearl_seed_settings(rig):
     for bad in ({"owner_name": "x" * 41}, {"owner_name": "<b>x</b>"}, {"pearl_seed": -1}, {"pearl_seed": 2 ** 31}):
         with pytest.raises(SettingsError):
             ctrl.settings.update(bad)
+
+
+def test_total_budget_cap_enforced_across_months_and_server_ceiling(tmp_path):
+    env = make_env(tmp_path, hard_max_total_usd=10.8)
+    db = DB(str(tmp_path / "cap.db"))
+    settings = Settings(db, env)
+    b = Budget(db)
+    assert settings.get()["total_budget_cap_usd"] == 10.8
+    with pytest.raises(SettingsError):
+        settings.update({"total_budget_cap_usd": 15.0})
+    with pytest.raises(SettingsError):
+        settings.update({"total_budget_cap_usd": 0.0})
+    db.settings_put({"total_budget_cap_usd": 999.0})
+    assert settings.get()["total_budget_cap_usd"] == 10.8
+    # Charge in an earlier month still counts toward cumulative all-time cap
+    t_prev_month = 1_795_000_000.0
+    t_now = 1_800_000_000.0
+    b.record_provider_charge("vastai", "prev-1", 10.7, t_prev_month)
+    st = b.status(settings.get(), None, t_now)
+    assert st["total_usd"] == 0.0 and st["cumulative_usd"] == 10.7
+    assert st["remaining_usd"] == 0.1 and not st["exhausted"]
+    assert b.check_start(settings.get(), "vastai", 0.4, 0.0, t_now)[1] == "budget_insufficient"
+    b.record_provider_charge("vastai", "now-1", 0.15, t_now)
+    st2 = b.status(settings.get(), None, t_now)
+    assert st2["exhausted"] is True and st2["total_cap_exhausted"] is True

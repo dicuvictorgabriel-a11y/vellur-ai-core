@@ -4,6 +4,7 @@ import { GLTFLoader } from './vendor/addons/loaders/GLTFLoader.js';
 import { OBJLoader } from './vendor/addons/loaders/OBJLoader.js';
 import { STLLoader } from './vendor/addons/loaders/STLLoader.js';
 import { RoomEnvironment } from './vendor/addons/environments/RoomEnvironment.js';
+import { createSceneStudio } from './scene_studio.js';
 
 const $ = (id) => document.getElementById(id);
 const appearance = () => (document.cookie.match(/(?:^|; )vellur_theme=(dark|light)/) || [])[1] || (matchMedia('(prefers-color-scheme: light)').matches ? 'light' : 'dark');
@@ -22,6 +23,7 @@ const state = {
   updateEntry: null, poll: null, signature: '', ready: false,
 };
 let renderer, scene, camera, controls, raycaster, grid, pmrem, keyLight;
+let sceneStudio = null;
 
 function bytes(n) {
   if (!Number.isFinite(n)) return '';
@@ -262,7 +264,33 @@ function statsFor(object) {
   return { vertices, triangles: Math.round(triangles), meshes };
 }
 
+function installCustomSceneRoot(group, meta) {
+  if (state.root) {
+    scene.remove(state.root);
+    disposeObject(state.root);
+  }
+  clearSelection(false);
+  state.root = group;
+  scene.add(state.root);
+  state.currentEntry = { path: meta.exportUrl || 'studio-scene.glb', name: meta.title || 'Studio Scene', format: 'glb', previewable: true, studio: true };
+  state.pendingEntry = state.currentEntry;
+  state.mixer = null;
+  state.actions = [];
+  state.playing = false;
+  $('btnAnim').hidden = true;
+  const s = statsFor(group);
+  $('stats').textContent = `${nf.format(s.vertices)} vertices · ${nf.format(s.triangles)} triangles · ${s.meshes} mesh${s.meshes === 1 ? '' : 'es'}`;
+  $('modelName').textContent = meta.title || 'NOVA 3D Studio';
+  setSub(meta.subtitle || '');
+  document.title = (meta.title || 'Scene') + ' · NOVA 3D Studio';
+  $('empty').hidden = true;
+  $('loading').hidden = true;
+  $('error').hidden = true;
+  $('updatePill').hidden = true;
+}
+
 function install(loaded, entry) {
+  if (sceneStudio && !entry.studio) sceneStudio.clearActiveScene();
   const object = loaded.object;
   prepareObject(object);
   fitObject(object);
@@ -427,6 +455,7 @@ function clearSelection(keepNote) {
   }
   state.selected = null;
   $('selection').hidden = true;
+  if (sceneStudio) sceneStudio.populateInspector(null);
   if (!keepNote) $('selNote').textContent = '';
 }
 
@@ -458,6 +487,7 @@ function selectMesh(mesh) {
   $('selVerts').textContent = info.vertices ? nf.format(info.vertices) : '—';
   $('selMat').textContent = info.material || '—';
   $('selPath').textContent = info.path || '—';
+  if (sceneStudio) sceneStudio.populateInspector(mesh);
   $('selection').hidden = false;
 }
 
@@ -631,10 +661,14 @@ function wireToolbar() {
   $('btnShot').onclick = () => {
     if (!state.ready) return;
     renderer.render(scene, camera);
+    const dataUrl = renderer.domElement.toDataURL('image/png');
+    if (sceneStudio && sceneStudio.hasActiveScene()) {
+      sceneStudio.saveSnapshotAndDownload(dataUrl);
+    }
     const a = document.createElement('a');
     const name = (state.currentEntry && (state.currentEntry.name || baseName(state.currentEntry.path))) || 'vellur-model';
     a.download = name.replace(/\.[^.]+$/, '') + '.png';
-    a.href = renderer.domElement.toDataURL('image/png');
+    a.href = dataUrl;
     a.click();
   };
   $('btnFull').onclick = async () => {
@@ -686,7 +720,7 @@ function wireToolbar() {
     }
   };
 
-  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshModels(false); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden && /^\d+$/.test(taskId)) refreshModels(false); });
 }
 
 function wirePointer() {
@@ -733,19 +767,45 @@ function wireLocal() {
 }
 
 async function init() {
+  if (!initScene()) return;
+  sceneStudio = createSceneStudio({
+    $,
+    api,
+    getThree: () => ({ scene, camera, controls, renderer, grid, getWire: () => state.wire }),
+    onInstallCustomRoot: installCustomSceneRoot,
+    onSelectMesh: selectMesh,
+    setSub,
+    setStatusNote: (msg) => { $('promptStatus').textContent = msg || ''; },
+  });
+  wireToolbar();
+  wireLocal();
+  sceneStudio.wireStudioUI(() => state.selected, () => clearSelection());
+
+  const wantedScene = params.get('scene');
+  const wantedPrompt = params.get('prompt');
+
   if (!/^\d+$/.test(taskId)) {
-    if (!initScene()) return;
-    wireToolbar(); wireLocal();
-    // Without a task there is no workspace to rescan and no agent conversation to add a selection to.
     for (const id of ['btnRefresh', 'emptyRefresh', 'selInsert']) $(id).hidden = true;
-    setEmpty('Open a 3D model', 'Open a GLB, glTF, OBJ or STL file from this device (it stays in your browser), or open 3D Studio from an Agent task to see the models the agent creates.');
-    setSub('Local files · nothing is uploaded');
-    $('blenderState').textContent = 'Files you open here are viewed in the browser only.';
+    const list = await sceneStudio.refreshScenes();
+    if (wantedPrompt && wantedPrompt.trim()) {
+      $('promptInput').value = wantedPrompt.trim();
+      await sceneStudio.createFromPrompt(wantedPrompt.trim());
+      return;
+    }
+    if (wantedScene && /^\d+$/.test(wantedScene)) {
+      const opened = await sceneStudio.openScene(Number(wantedScene));
+      if (opened) return;
+    }
+    if (list.length) {
+      await sceneStudio.openScene(list[0].id);
+      return;
+    }
+    setEmpty('NOVA 3D Studio', 'Generate a persistent 3D scene from a prompt below, start from the Futuristic Room demo, or open a GLB, glTF, OBJ or STL file from your device.');
+    setSub('Prompt-to-Scene · PBR Inspector · GLB Export');
     $('count').textContent = '';
     return;
   }
-  if (!initScene()) return;
-  wireToolbar(); wireLocal();
+
   if (isEmbed) {
     document.body.classList.add('embed');
     $('home').title = 'Close preview';
@@ -754,6 +814,8 @@ async function init() {
       window.parent.postMessage({ type: 'vellur-3d-close' }, location.origin);
     };
   }
+  await sceneStudio.refreshScenes();
+  sceneStudio.switchTab('files');
   setSub('Reading workspace…');
   await refreshModels(false);
   schedulePoll();

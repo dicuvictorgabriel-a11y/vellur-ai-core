@@ -94,6 +94,9 @@ class Settings:
         s.update(self.db.settings_get())
         # Ceilings always win, even over stored values.
         s["monthly_budget_usd"] = min(float(s["monthly_budget_usd"]), self.env.hard_max_monthly_usd)
+        if self.env.hard_max_total_usd > 0:
+            cur_cap = float(s.get("total_budget_cap_usd") or 0.0)
+            s["total_budget_cap_usd"] = self.env.hard_max_total_usd if cur_cap <= 0 else min(cur_cap, self.env.hard_max_total_usd)
         s["max_hourly_usd"] = min(float(s["max_hourly_usd"]), self.env.hard_max_hourly_usd)
         return s
 
@@ -143,6 +146,13 @@ class Settings:
             if not 0 <= clean["monthly_budget_usd"] <= self.env.hard_max_monthly_usd:
                 raise SettingsError(f"monthly budget must be 0–{self.env.hard_max_monthly_usd:g} USD "
                                     "(the ceiling is changed only on the server)")
+        if "total_budget_cap_usd" in clean:
+            hi_tot = self.env.hard_max_total_usd if self.env.hard_max_total_usd > 0 else 10000.0
+            if not 0 <= clean["total_budget_cap_usd"] <= hi_tot:
+                raise SettingsError(f"total spend cap must be 0–{hi_tot:g} USD "
+                                    "(the ceiling is changed only on the server)")
+            if self.env.hard_max_total_usd > 0 and clean["total_budget_cap_usd"] == 0:
+                raise SettingsError(f"total spend cap cannot be disabled while server ceiling ({self.env.hard_max_total_usd:g} USD) is active")
         if "max_hourly_usd" in clean:
             if not 0 <= clean["max_hourly_usd"] <= self.env.hard_max_hourly_usd:
                 raise SettingsError(f"max hourly rate must be 0–{self.env.hard_max_hourly_usd:g} USD "

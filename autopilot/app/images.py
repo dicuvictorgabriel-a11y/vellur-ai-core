@@ -359,32 +359,38 @@ class ImageService:
             raise ImageError("image_confirmation", message, 409, estimate)
         target = estimate["target"]
         info = self.router.info(target) or {}
+        rid, why = self.router.policy.reserve(tag, target, float(estimate["estimated_usd"] or 0.0), auto=False)
+        if rid is None:
+            raise ImageError("image_budget", why, 400)
         t0 = time.monotonic()
         try:
-            results, usage = await self._call(target, info, prompt, size, n)
-        except ImageError as e:
-            self.router.record(role, target, info, False, e.status, None, t0, tag, e.message)
-            raise
-        except Exception as e:  # noqa: BLE001
-            self.router.record(role, target, info, False, 0, None, t0, tag, f"{e.__class__.__name__}: {e}")
-            raise ImageError("provider", f"image provider failed ({e.__class__.__name__})", 502)
-        provider_cost = provider_usd(usage.get("cost")) if isinstance(usage, dict) else None
-        if not results:
-            # A provider that charged for an answer without a usable image is still recorded as spending.
-            self.router.record(role, target, info, False, 502, usage or None, t0, tag, "provider returned no images")
-            if provider_cost:
-                self._record_charge(role, target, info, float(provider_cost), t0, tag)
-            raise ImageError("invalid_image", "the provider answered but returned no image", 502)
-        if provider_cost is not None:
-            cost, source = provider_cost, "provider"
-        elif estimate["free"]:
-            cost, source = 0.0, "plan"
-        elif estimate["price_per_image"] is not None:
-            cost, source = estimate["price_per_image"] * len(results), "estimate"
-        else:
-            cost, source = 0.0, "unpriced"
-        usage = {**(usage or {}), "images": len(results)}
-        self.router.record(role, target, info, True, 200, usage, t0, tag, images=len(results))
+            try:
+                results, usage = await self._call(target, info, prompt, size, n)
+            except ImageError as e:
+                self.router.record(role, target, info, False, e.status, None, t0, tag, e.message)
+                raise
+            except Exception as e:  # noqa: BLE001
+                self.router.record(role, target, info, False, 0, None, t0, tag, f"{e.__class__.__name__}: {e}")
+                raise ImageError("provider", f"image provider failed ({e.__class__.__name__})", 502)
+            provider_cost = provider_usd(usage.get("cost")) if isinstance(usage, dict) else None
+            if not results:
+                # A provider that charged for an answer without a usable image is still recorded as spending.
+                self.router.record(role, target, info, False, 502, usage or None, t0, tag, "provider returned no images")
+                if provider_cost:
+                    self._record_charge(role, target, info, float(provider_cost), t0, tag)
+                raise ImageError("invalid_image", "the provider answered but returned no image", 502)
+            if provider_cost is not None:
+                cost, source = provider_cost, "provider"
+            elif estimate["free"]:
+                cost, source = 0.0, "plan"
+            elif estimate["price_per_image"] is not None:
+                cost, source = estimate["price_per_image"] * len(results), "estimate"
+            else:
+                cost, source = 0.0, "unpriced"
+            usage = {**(usage or {}), "images": len(results)}
+            self.router.record(role, target, info, True, 200, usage, t0, tag, images=len(results))
+        finally:
+            self.router.policy.release(rid)
         saved = []
         per_image = cost / len(results) if results else 0.0
         for result in results:

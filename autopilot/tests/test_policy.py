@@ -93,3 +93,25 @@ async def test_why_this_model_is_answered_from_the_logged_decision(stack):
     assert r.status_code == 400
     r = await admin.put("/autopilot/api/routing", headers=WRITE, json={"routing_mode": "economy", "auto_allowance_usd": 2})
     assert r.json()["mode"] == "economy" and r.json()["allowance_usd"] == 2.0
+
+
+async def test_manual_mode_reserves_against_hard_cap_and_tracks_cache_efficiency(stack):
+    ctrl, router, up, proxy, admin = stack()
+    setup(ctrl, router, routing_mode="manual", total_budget_cap_usd=0.05)
+    p = router.policy
+    r1, _ = p.reserve("chat:1", DEAR, 0.03, auto=False)
+    r2, why = p.reserve("chat:2", DEAR, 0.03, auto=False)
+    assert r1 and r2 is None and "budget limit" in why
+    p.release(r1)
+    # Request whose estimated cost exceeds total_budget_cap_usd falls back or blocks before calling provider
+    ctrl.settings.update({"total_budget_cap_usd": 0.01, "routes": {"vellur-coder": [DEAR]}})
+    n = len(up.calls)
+    res = await proxy.post("/v1/chat/completions", json=chat(), headers=KEY)
+    assert res.status_code == 503 and res.json()["error"]["code"] == "budget" and len(up.calls) == n
+    # Record usage with DeepSeek prompt_cache_hit_tokens and verify /autopilot/api/costs efficiency telemetry
+    router.record("vellur-coder", CHEAP, router.info(CHEAP), True, 200,
+                  {"prompt_tokens": 2000, "completion_tokens": 200, "prompt_cache_hit_tokens": 1500}, 0.0, "chat:1")
+    costs = (await admin.get("/autopilot/api/costs", headers=WRITE)).json()
+    eff = costs["efficiency"]
+    assert eff["in_tokens"] == 2000 and eff["cached_tokens"] == 1500 and eff["cache_hit_rate_pct"] == 75.0
+    assert len(eff["enforcement_notes"]) >= 2

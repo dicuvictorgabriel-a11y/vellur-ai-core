@@ -588,8 +588,26 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
                         "SUM(cost_usd) AS cost_usd FROM usage WHERE month=? GROUP BY use ORDER BY cost_usd DESC", (m,))
         subs = [{"name": p["display"], "usd": p["monthly_usd"]} for p in router.providers().values()
                 if p["plan"] == "subscription" and p["enabled"] and p["monthly_usd"]]
+        tot_tok = db.one("SELECT COALESCE(SUM(in_tokens),0) AS tin, COALESCE(SUM(out_tokens),0) AS tout, "
+                         "COALESCE(SUM(cached_tokens),0) AS tcache, COUNT(*) AS n FROM usage WHERE month=? AND ok=1", (m,)) or {}
+        tin, tout, tcache = int(tot_tok.get("tin") or 0), int(tot_tok.get("tout") or 0), int(tot_tok.get("tcache") or 0)
+        pol = router.policy.status()
+        efficiency = {
+            "in_tokens": tin,
+            "out_tokens": tout,
+            "cached_tokens": tcache,
+            "cache_hit_rate_pct": round(100.0 * tcache / tin, 1) if tin > 0 else 0.0,
+            "reserved_inflight_usd": pol["reserved_usd"],
+            "reserved_calls": pol["reserved_calls"],
+            "enforcement_notes": [
+                "Paid API & image calls atomically reserve estimated USD before dispatch against monthly budget, total cap, allowance, and task limits.",
+                "Confirmed costs come only from provider billing responses; token × price calculations are explicitly marked as estimates.",
+                "Local caps cannot block external usage of the same API key outside NOVA or a manually managed GPU left running at the provider.",
+            ],
+        }
         return {"month": m, "budget": ctrl.budget.status(st, ctrl.current(), ctrl.clock()), "by_target": by_target,
-                "by_day": by_day, "by_use": by_use, "fixed_costs": st["fixed_costs"], "subscriptions": subs}
+                "by_day": by_day, "by_use": by_use, "fixed_costs": st["fixed_costs"], "subscriptions": subs,
+                "efficiency": efficiency, "token_efficiency": router.efficiency.status()}
 
     # ── agent tasks ─────────────────────────────────────────────────────────────────────────────
     @app.get("/autopilot/api/agent", dependencies=[Depends(admin)])

@@ -192,23 +192,43 @@ class Policy:
     def spent_month(self) -> float:
         from .budget import month_key
         r = self.db.one("SELECT SUM(cost_usd) AS c FROM usage WHERE month=? AND cost_source IN ('provider','estimate')",
-                        (month_key(time.time()),))
+                        (month_key(self.r.ctrl.clock()),))
         return float((r or {}).get("c") or 0)
 
-    def reserve(self, tag: str, target: str, usd: float) -> tuple[Optional[int], str]:
-        """Reserve `usd` for one call. Returns (id, "") or (None, why). Free/GPU calls need no reservation."""
-        if usd <= 0:
+    def reserve(self, tag: str, target: str, usd: float, auto: bool = True) -> tuple[Optional[int], str]:
+        """Reserve `usd` for one paid call. Returns (id, "") or (None, why). Free/GPU calls need no reservation."""
+        info = self.r.info(target)
+        if not info or info["kind"] == "gpu" or info["free"]:
             return 0, ""
         cfg = self.config()
+        st = self.r.settings.get()
         with self._lock:
             open_total = sum(v[2] for v in self._reserved.values())
-            if self.spent_month() + open_total + usd > cfg["allowance_usd"]:
-                return None, (f"would exceed the automatic spending allowance (${cfg['allowance_usd']:.2f}/month); "
-                              "raise it in Models → Routing or approve a manual choice")
-            if tag.startswith("task:") and cfg["task_limit_usd"] > 0:
-                task_open = sum(v[2] for v in self._reserved.values() if v[0] == tag)
-                if self.r.tag_cost(tag) + task_open + usd > cfg["task_limit_usd"]:
-                    return None, f"would exceed the per-task limit (${cfg['task_limit_usd']:.2f})"
+            b = self.r.ctrl.budget.status(st, None, self.r.ctrl.clock())
+            if b["exhausted"] or open_total + max(0.0, usd) > float(b["remaining_usd"]) + 1e-9:
+                cap_note = (f" (total cap ${b['total_cap_usd']:.2f})" if b.get("total_cap_usd") else "")
+                return None, f"budget limit reached{cap_note}: ${max(0.0, float(b['remaining_usd']) - open_total):.4f} available"
+            if auto:
+                if usd <= 0:
+                    return 0, ""
+                if self.spent_month() + open_total + usd > cfg["allowance_usd"]:
+                    return None, (f"would exceed the automatic spending allowance (${cfg['allowance_usd']:.2f}/month); "
+                                  "raise it in Models → Routing or approve a manual choice")
+                if tag.startswith("task:") and cfg["task_limit_usd"] > 0:
+                    task_open = sum(v[2] for v in self._reserved.values() if v[0] == tag)
+                    if self.r.tag_cost(tag) + task_open + usd > cfg["task_limit_usd"]:
+                        return None, f"would exceed the per-task limit (${cfg['task_limit_usd']:.2f})"
+            if tag.startswith("task:"):
+                run_limit = float(st.get("agent_max_usd") or 0.0)
+                if run_limit > 0:
+                    tid = tag.split(":", 1)[1]
+                    run_meta = self.db.kv_get(f"task_run_{tid}") or {} if tid.isdigit() else {}
+                    cost0 = float(run_meta.get("cost0") or 0.0)
+                    task_open = sum(v[2] for v in self._reserved.values() if v[0] == tag)
+                    if self.r.tag_cost(tag) - cost0 + task_open + max(0.0, usd) > run_limit + 1e-9:
+                        return None, f"would exceed the per-run agent limit (${run_limit:.2f})"
+            if usd <= 0:
+                return 0, ""
             self._next += 1
             self._reserved[self._next] = (tag, target, usd)
             return self._next, ""
