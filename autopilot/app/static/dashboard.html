@@ -860,24 +860,20 @@ select.mp-native{position:absolute!important;width:1px!important;height:1px!impo
   #side #tabs{display:flex!important}#side #railToggle{display:none}}
 @media(prefers-reduced-motion:reduce){#side{transition:none}}
 @media(max-width:860px){#bottomNav{grid-template-columns:repeat(5,minmax(0,1fr))!important}#bottomNav button span{white-space:nowrap}}
+/* Compact, grouped side nav (Carbon UI Shell): everything visible without scrolling on a laptop screen */
+.navgrp{display:block;font:500 10px var(--mono);letter-spacing:.14em;text-transform:uppercase;color:var(--faint);padding:14px 12px 4px}
+.navgrp:first-child{padding-top:2px}
+@media(min-width:861px){#side{overflow:hidden}#tabs{flex:none}#tabs button{padding:6px 12px;min-height:34px;font-size:13.5px}
+  #side .sidehead{padding-top:12px}#convList,#taskList{flex:1 1 auto;min-height:0;overflow:auto}
+  #railToggle{min-height:32px;padding:5px 12px;font-size:12.5px}
+  body.rail .navgrp{font-size:0;padding:6px 0;margin:4px 14px;border-top:1px solid var(--line)}body.rail .navgrp:first-child{display:none}}
+@media(min-width:861px) and (max-height:820px){.navgrp{padding:8px 12px 2px}#tabs button{min-height:30px;padding:4px 12px}}
 </style>
 </head>
 <body>
 <aside id="side" class="admin-only">
   <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div class="brandtxt"><span class="brandword" data-brand>NOVA</span><small class="brandsub">AI Development Engine</small></div></div>
-  <nav id="tabs">
-    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Home</button>
-    <button data-view="gpu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>GPU</button>
-    <button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Costs</button>
-    <button data-view="music"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>Music</button>
-    <button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button>
-    <button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Chat</button>
-    <button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Agent</button>
-    <button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button>
-    
-    <button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button>
-    <button data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button>
-  </nav>
+  <nav id="tabs" aria-label="Main"><span class="navgrp">Work</span><button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Home</button><button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Chat</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Agent</button><button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button><span class="navgrp">Create</span><button data-view="music"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>Music</button><button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button><span class="navgrp">System</span><button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Costs</button><button data-view="gpu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>GPU</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button></nav>
   <button class="navbtn" type="button" id="railToggle" title="Collapse or expand navigation" aria-label="Collapse or expand navigation"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/><path d="M19 5v14"/></svg>Collapse</button>
   <div class="sidehead"><span id="sideLabel">Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button></div>
   <div id="convList"></div>
@@ -1563,7 +1559,7 @@ select.mp-native{position:absolute!important;width:1px!important;height:1px!impo
     if (!fromHistory && HIST[HPOS] !== v) { HIST.splice(HPOS + 1); HIST.push(v); HPOS = HIST.length - 1; }
     $("navBack").disabled = HPOS <= 0; $("navFwd").disabled = HPOS >= HIST.length - 1;
     VIEW = v; document.body.dataset.view = v; try { if (("#" + v) !== location.hash) history.replaceState(null, "", "#" + v); } catch (e) {} if ($("sideLabel")) $("sideLabel").textContent = v === "agent" ? "Agent tasks" : "Conversations"; document.body.classList.remove("nav-open"); $("topTitle").textContent = VIEW_NAMES[v]; $("topNew").style.visibility = ["chat", "agent", "home"].includes(v) ? "" : "hidden"; try { sessionStorage.setItem("vellurView", v); } catch (e) {}
-    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v || (b.dataset.view === "tools" && v === "gpu") || (b.dataset.view === "agent" && v === "project")));
+    document.querySelectorAll("#tabs button").forEach(b => b.classList.toggle("on", b.dataset.view === v || (b.dataset.view === "agent" && v === "project")));
     document.querySelectorAll("section[data-tab]").forEach(sec => { sec.hidden = !sec.dataset.tab.split(" ").includes(v); });
     return ({ home: loadHome, mission: loadMission, music: loadMusic, chat: loadConvs, agent: loadAgent, library: loadLibrary, project: () => loadProjectHome(PROJECT_REPO), models: loadLLM, costs: loadCosts, activity: loadHistory, gpu: () => {}, tools: () => {} })[v]();
   }
