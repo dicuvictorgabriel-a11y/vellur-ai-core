@@ -135,3 +135,10 @@ publications in progress are paused for the owner. Model tokens persist as hashe
 once. Restart diagnostics: `app/health.py` (boot records clean/unclean + memory), `/autopilot/api/diagnostics/restarts`.
 Failure injection with the real runner process: `tests/test_recovery_integration.py`. Root cause of the 2026-11-16
 incident is NOT confirmed yet (server logs needed).
+
+## Design system (owner decision 2026-11-16, docs/CARBON.md)
+
+Use **IBM Carbon** (github.com/carbon-design-system/carbon) as the interaction/layout reference from now on, adapted to
+the single static dashboard file (no React, no build step, no copied code). The UI Shell is implemented: phone menu
+button + overlay side nav, desktop rail collapse (`#navOpen`, `#bnMenu`, `#railToggle`, shell script at the end of
+`dashboard.html`). Earlier pattern notes: docs/ASTRYX.md.

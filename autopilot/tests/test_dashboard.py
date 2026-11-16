@@ -238,11 +238,12 @@ def test_pearl_shell_is_wired():
                  'id="hAgent"', 'id="hActivity"', 'id="hUsage"', 'id="searchBox"'):
         assert part in html, part
     assert 'data-act="build"' not in html and 'data-act="explore"' not in html  # no fabricated quick actions
-    assert 'id="navMore"' not in html and 'id="navOpen"' not in html  # no drawer trigger anywhere
+    # owner decision 2026-11-16 (phone screenshot: the side menu could not be opened): Carbon-style menu button
+    assert 'id="navOpen"' in html and 'aria-controls="side"' in html and 'aria-label="Open menu"' in html
     assert 'data-view="home"' in html and 'data-view="tools"' in html
     bottom = html[html.index('id="bottomNav"'):]
     bottom = bottom[:bottom.index('</nav>')]
-    assert bottom.count('data-view="') == 3  # Home / Music / Library only
+    assert bottom.count('data-view="') == 4 and 'id="bnMenu"' in bottom  # Home / Chat / Agent / Library + Menu
     # the agent reports no percentage: the panel must not invent one
     panel = html[html.index("function renderHome()"):html.index("function homeUsage(")]
     import re

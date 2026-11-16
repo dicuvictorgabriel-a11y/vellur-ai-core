@@ -852,11 +852,19 @@ select.mp-native{position:absolute!important;width:1px!important;height:1px!impo
 .kpi{display:flex;flex-direction:column;align-items:flex-start;gap:6px;text-align:left;border:1px solid var(--line);background:var(--panel);border-radius:16px;padding:14px 16px;color:var(--text);font:inherit;cursor:pointer;min-width:0}
 .kpi:hover{background:var(--hover)}.kpi .kl{font-size:12px;color:var(--muted)}.kpi b{font-size:24px;font-weight:500;letter-spacing:-.02em;line-height:1.1}.kpi .oc{font-size:11px;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 @media(max-width:860px){.kpis{grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}.kpi{padding:12px 14px;min-height:96px}.kpi b{font-size:21px}}
+
+/* UI shell (Carbon UI Shell rules): header menu button toggles the side nav as an overlay on small screens */
+#navOpen{display:none}#navOpen .ci{display:none}body.nav-open #navOpen .mi{display:none}body.nav-open #navOpen .ci{display:inline}
+@media(max-width:860px){#navOpen{display:inline-flex;flex:none;margin-right:4px}#topbar{display:flex!important;align-items:center;gap:8px}
+  #side{z-index:40;transition:transform .2s ease}body.nav-open #scrim{display:block;position:fixed;inset:0;background:rgba(0,0,0,.5);z-index:35}
+  #side #tabs{display:flex!important}#side #railToggle{display:none}}
+@media(prefers-reduced-motion:reduce){#side{transition:none}}
+@media(max-width:860px){#bottomNav{grid-template-columns:repeat(5,minmax(0,1fr))!important}#bottomNav button span{white-space:nowrap}}
 </style>
 </head>
 <body>
 <aside id="side" class="admin-only">
-  <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div class="brandtxt"><span class="brandword" data-brand>VELLUR</span><span class="brandword" style="color:var(--accent)">NOVA</span><small class="brandsub">AI Development Engine</small></div></div>
+  <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div class="brandtxt"><span class="brandword" data-brand>NOVA</span><small class="brandsub">AI Development Engine</small></div></div>
   <nav id="tabs">
     <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Home</button>
     <button data-view="gpu"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></svg>GPU</button>
@@ -882,10 +890,12 @@ select.mp-native{position:absolute!important;width:1px!important;height:1px!impo
 <div id="toasts" role="status" aria-live="polite"></div>
 <dialog id="mpDlg" aria-labelledby="mpTitle"><div class="mphead"><b id="mpTitle">Choose a model</b><input id="mpQ" type="search" role="combobox" aria-expanded="true" aria-controls="mpList" aria-autocomplete="list" placeholder="Search by name, provider or ID…" autocomplete="off" spellcheck="false"></div><div id="mpList" role="listbox" aria-label="Models"></div><div class="mpfoot"><span id="mpCount"></span><span class="k">↑↓ move · Enter select · Esc close</span></div></dialog>
 <nav id="bottomNav" class="admin-only" aria-label="Main">
-<button type="button" data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg><span>Home</span></button>
-  <button type="button" data-view="music"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg><span>Music</span></button>
+  <button type="button" data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg><span>Home</span></button>
+  <button type="button" data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/></svg><span>Chat</span></button>
+  <button type="button" data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg><span>Agent</span></button>
   <button type="button" data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg><span>Library</span></button>
-  </nav>
+  <button type="button" id="bnMenu" aria-label="Open menu" aria-controls="side" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h16M4 12h16M4 18h16"/></svg><span>Menu</span></button>
+</nav>
 <dialog id="acctDlg" aria-label="Account and workspace"><div class="acctwrap">
   <div class="accthead"><span class="pearl" id="acctPearl" aria-hidden="true"></span><div class="acctwho"><b id="acctName">Owner</b><small>Artist · NOVA</small></div></div>
   <div class="acctgrid">
@@ -908,7 +918,7 @@ select.mp-native{position:absolute!important;width:1px!important;height:1px!impo
 <dialog id="mcPlanDlg" aria-labelledby="mcPlanTitle"><form method="dialog"><h2 id="mcPlanTitle">Plan</h2><label>Concrete, verifiable steps <textarea id="mcPlanText" rows="10" maxlength="8000" placeholder="One step per line…"></textarea></label><div class="row"><button class="ghost" type="button" id="mcPlanSuggest">Ask NOVA for a plan</button><span class="note" id="mcPlanCost" style="margin:0"></span></div><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary">Save plan</button></div></form></dialog>
 <dialog id="mcRetDlg" aria-label="Send back to backlog"><form method="dialog"><h2>What is not done yet?</h2><p class="note">The item goes back to the backlog; this note is included in the next agent run.</p><textarea id="mcRetText" rows="3" maxlength="1000" placeholder="e.g. tests still failing on X"></textarea><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary">Send back</button></div></form></dialog>
 <main>
-<div id="topbar"><b class="brandmini" data-brand aria-hidden="true">NOVA</b><b id="topTitle">Home</b><span class="sp"></span><button class="iconbtn" id="topNew" aria-label="New chat or task"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button><button class="iconbtn" id="topAcct" aria-label="Account and workspace" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.4"/><path d="M5 19.5c1.6-3.4 4.1-4.6 7-4.6s5.4 1.2 7 4.6"/></svg></button></div>
+<div id="topbar"><button class="iconbtn" id="navOpen" type="button" aria-label="Open menu" title="Open menu" aria-expanded="false" aria-controls="side"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path class="mi" d="M4 6h16M4 12h16M4 18h16"/><path class="ci" d="M6 6l12 12M18 6 6 18"/></svg></button><b class="brandmini" data-brand aria-hidden="true">NOVA</b><b id="topTitle">Home</b><span class="sp"></span><button class="iconbtn" id="topNew" aria-label="New chat or task"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button><button class="iconbtn" id="topAcct" aria-label="Account and workspace" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.4"/><path d="M5 19.5c1.6-3.4 4.1-4.6 7-4.6s5.4 1.2 7 4.6"/></svg></button></div>
 <div class="wrap">
   <div class="pubhead">
   <div class="brand">NOVA</div>
@@ -2460,7 +2470,6 @@ select.mp-native{position:absolute!important;width:1px!important;height:1px!impo
   // Navigation rail (desktop): collapsed by default, the choice is kept in a cookie like the theme.
   const railSaved = (document.cookie.match(/(?:^|; )nova_rail=(0|1)/) || [])[1];
   document.body.classList.toggle("rail", railSaved !== "0");
-  $("railToggle").onclick = () => { const on = document.body.classList.toggle("rail"); document.cookie = "nova_rail=" + (on ? 1 : 0) + "; path=/autopilot; max-age=31536000; SameSite=Lax"; };
   document.querySelectorAll("#tabs button").forEach(b => { b.title = b.textContent.trim(); });
   $("mePearl").addEventListener("click", (e) => { if (document.body.classList.contains("rail") && matchMedia("(min-width:861px)").matches) { e.stopPropagation(); $("meMore").click(); } });
 
@@ -2696,7 +2705,7 @@ select.mp-native{position:absolute!important;width:1px!important;height:1px!impo
   const dayKey = (ts) => new Date(ts * 1000).toLocaleDateString([], { weekday: "short", day: "numeric", month: "short" });
   const usd = (v) => "$" + Number(v || 0).toFixed(4);
   // bottom navigation (phones): same views as the rail; hidden while typing so the composer is never covered
-  document.querySelectorAll("#bottomNav button").forEach(b => b.onclick = () => setView(b.dataset.view));
+  document.querySelectorAll("#bottomNav button[data-view]").forEach(b => b.onclick = () => setView(b.dataset.view));
   const syncBottom = () => document.querySelectorAll("#bottomNav button").forEach(b => b.classList.toggle("on", b.dataset.view === VIEW || (b.dataset.view === "agent" && VIEW === "project")));
   new MutationObserver(syncBottom).observe(document.body, { attributes: true, attributeFilter: ["data-view"] });
   document.addEventListener("focusin", (e) => { if (e.target.matches("textarea, input[type=text], input:not([type])") && matchMedia("(max-width:860px)").matches) document.body.classList.add("typing"); });
@@ -3650,6 +3659,35 @@ select.mp-native{position:absolute!important;width:1px!important;height:1px!impo
       setView(v); loadRouteHints(); setInterval(() => { if (VIEW === "activity") loadHistory(); else if (VIEW === "home" && !document.hidden) loadHome(); }, 15000);
     }
   })();
+})();
+</script>
+<script>
+/* UI shell, kept separate from the main script so navigation keeps working even if a later error stops that script
+   (Carbon UI Shell: menu button with Open/Close label and aria-expanded, overlay, Escape and overlay click close,
+   focus moves into the nav and back to the button; desktop rail collapse remembered in a cookie). */
+(() => {
+  const body = document.body, side = document.getElementById("side"), btns = [document.getElementById("navOpen"), document.getElementById("bnMenu")].filter(Boolean);
+  let opener = null;
+  const sync = () => { const open = body.classList.contains("nav-open"); btns.forEach(b => { b.setAttribute("aria-expanded", String(open)); b.setAttribute("aria-label", open ? "Close menu" : "Open menu"); b.title = open ? "Close menu" : "Open menu"; }); };
+  const setOpen = (open, from) => {
+    body.classList.toggle("nav-open", open); sync();
+    if (open) { opener = from || null; const first = side && side.querySelector("#tabs button, button"); first && first.focus(); }
+    else if (opener) { opener.focus(); opener = null; }
+  };
+  btns.forEach(b => b.addEventListener("click", (e) => { e.stopPropagation(); setOpen(!body.classList.contains("nav-open"), b); }));
+  new MutationObserver(sync).observe(body, { attributes: true, attributeFilter: ["class"] });
+  const scrim = document.getElementById("scrim"); if (scrim) scrim.addEventListener("click", () => setOpen(false));
+  document.addEventListener("keydown", (e) => { if (e.key === "Escape" && !(e.isComposing || e.keyCode === 229) && body.classList.contains("nav-open")) setOpen(false); });
+  if (side) side.addEventListener("click", (e) => { if (e.target.closest("#tabs button[data-view]") && matchMedia("(max-width:860px)").matches) setTimeout(() => setOpen(false), 0); });
+  const rail = document.getElementById("railToggle");
+  if (rail) {
+    const saved = (document.cookie.match(/(?:^|; )nova_rail=(0|1)/) || [])[1];
+    body.classList.toggle("rail", saved !== "0");
+    const label = () => { const on = body.classList.contains("rail"); rail.setAttribute("aria-label", on ? "Expand navigation" : "Collapse navigation"); rail.setAttribute("aria-expanded", String(!on)); rail.title = on ? "Expand navigation" : "Collapse navigation"; };
+    rail.addEventListener("click", () => { const on = body.classList.toggle("rail"); document.cookie = "nova_rail=" + (on ? 1 : 0) + "; path=/autopilot; max-age=31536000; SameSite=Lax"; label(); });
+    label();
+  }
+  sync();
 })();
 </script>
 </body>
