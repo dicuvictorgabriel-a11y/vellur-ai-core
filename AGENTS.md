@@ -154,4 +154,11 @@ tokens or `--nova-accent`.
 
 Any task that touches 3D Studio (`autopilot/app/static/3d/`, `studio3d.py`, `glb_builder.py`) starts by reading
 `docs/agent-handover/3d-studio-ui.md`: verified architecture, API/scene contracts, element ids and messages to keep,
-what works and what is broken (AI Assist), and the acceptance checklist. Precision Studio was removed (2026-11-16).
+what works and what is broken, and the acceptance checklist. Precision Studio was removed (2026-11-16).
+
+## Phone navigation and discoverability (2026-11-16)
+
+Phones: the bottom bar's Menu opens "Everything in NOVA" (`#acctDlg`, `.hubgrid`: every view plus History, Search,
+3D Studio, Theme Studio, Project memory, GitHub connection); the top bar's History button (`#topHist`) opens the
+History sheet (`#histDlg`, conversations + agent tasks, searchable). Do not hide features in places only reachable on
+desktop; add new places to the hub.

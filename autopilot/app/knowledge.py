@@ -246,7 +246,7 @@ RELEASE_RECORDS = [
         "body": "Before changing 3D Studio, read docs/agent-handover/3d-studio-ui.md: files and APIs (studio3d.py scenes, "
                 "glb_builder.py GLB + preview PNG, static/3d/studio3d.js viewer, scene_studio.js editor), element ids and "
                 "postMessage contracts to keep, verified status (procedural create/edit, save, GLB export, snapshots work; "
-                "AI Assist is broken because router.complete does not exist; no agent tool or vision loop; phone layout and "
+                "AI Assist fixed on 2026-11-16 (routed vellur-coder, explains fallbacks); no agent tool or vision loop; phone layout and "
                 "NOVA themes not applied), and the acceptance checklist. The viewport is never themed. Precision Studio was removed."}),
     ("release:recovery-2026-11-16:architecture", {
         "namespace": "Architecture", "status": "implemented", "title": "Agent tasks survive controller restarts",

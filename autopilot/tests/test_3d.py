@@ -277,3 +277,38 @@ async def test_precision_studio_is_gone_and_3d_studio_stays(rig):
         for url in ("/autopilot/studio/", "/autopilot/studio/studio.js", "/autopilot/studio/geometry.js"):
             assert (await c.get(url, headers=h)).status_code == 404, url
         assert (await c.get("/autopilot/3d/", headers=h)).status_code == 200
+
+
+async def test_ai_assist_uses_the_router_and_explains_fallbacks(rig):
+    """AI Assist builds the scene with the routed model; when the model is unavailable it says so and falls back."""
+    import json as _json
+    import httpx
+    from app.api import build_admin
+    from app.router import Router
+    scene = {"title": "AI Pavilion", "objects": [{"id": "orb", "primitive": "sphere", "position": [0, 1, 0], "params": {"radius": 0.7},
+                                                  "material": {"preset": "chrome"}}]}
+    state = {"down": False}
+
+    def upstream(req: httpx.Request):
+        if state["down"]:
+            return httpx.Response(503, json={"error": {"message": "provider overloaded"}})
+        body = _json.loads(req.content)
+        assert body["messages"][0]["role"] == "system" and "scene compiler" in body["messages"][0]["content"]
+        return httpx.Response(200, json={"choices": [{"message": {"content": "Here:\n" + _json.dumps(scene)}}],
+                                         "usage": {"prompt_tokens": 10, "completion_tokens": 20}})
+    ctrl = rig()
+    router = Router(ctrl, transport=httpx.MockTransport(upstream))
+    router.update_provider("deepseek", {"api_key": "sk-deepseek-secret-1234"})
+    ctrl.settings.update({"routes": {"vellur-coder": ["deepseek:coder"]}, "prices": {"deepseek:coder": [0.1, 0.2]}})
+    W = {"X-Vellur-Admin": "s" * 32, "X-Vellur-Request": "1", "Origin": "https://ai.example"}
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=build_admin(ctrl, router=router)), base_url="https://ai.example") as c:
+        r = (await c.post("/autopilot/api/studio3d/scenes", headers=W, json={"prompt": "a chrome orb pavilion", "use_ai": True})).json()
+        assert r["history"][-1]["mode"] == "ai" and r["scene"]["objects"][0]["id"] == "orb"
+        assert "Built by AI Assist" in r["history"][-1]["summary"]
+        state["down"] = True
+        r2 = (await c.post(f"/autopilot/api/studio3d/scenes/{r['id']}/prompt", headers=W,
+                           json={"prompt": "make the glass more transparent", "use_ai": True})).json()
+        last = r2["history"][-1]
+        assert last["mode"] == "procedural" and "AI Assist unavailable" in last["summary"] and "provider overloaded" in last["summary"]
+        assert "built-in rules" in last["summary"]
+    assert ctrl.db.one("SELECT COUNT(*) AS n FROM usage WHERE tag='studio3d'")["n"] >= 1   # the cost is recorded like any call
