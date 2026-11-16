@@ -1661,14 +1661,20 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     } catch (e) { $("chatFileNote").textContent = e.message; }
     finally { WORK_SENDING = false; $("btnSend").disabled = false; }
   }
+  let WORK_EV = { tid: null, list: [], last: 0 };
   async function refreshWork() {
     clearTimeout(WORK_TIMER);
     const cid = CONV, tid = WORK_TASK; if (!tid || VIEW !== "chat") return;
     try {
-      const [task, data] = await Promise.all([send("agent/tasks/" + tid, "GET"), send("agent/tasks/" + tid + "/events?limit=5000", "GET")]);
-      if (cid !== CONV || tid !== WORK_TASK || VIEW !== "chat") return;
+      // Only new events are fetched each poll (the controller has 256 MB; a long task has thousands of large events).
+      if (WORK_EV.tid !== tid) WORK_EV = { tid, list: [], last: 0 };
+      const [task, data] = await Promise.all([send("agent/tasks/" + tid, "GET"), send("agent/tasks/" + tid + "/events?after=" + WORK_EV.last + "&limit=500", "GET")]);
+      if (cid !== CONV || tid !== WORK_TASK || VIEW !== "chat" || WORK_EV.tid !== tid) return;
+      for (const e of data.events || []) { WORK_EV.list.push(e); WORK_EV.last = Math.max(WORK_EV.last, e.id); }
+      if (WORK_EV.list.length > 3000) WORK_EV.list = WORK_EV.list.slice(-3000);
+      if (data.has_more) setTimeout(refreshWork, 50);
       $("workRepo").value = task.repo || ""; $("workBranch").value = task.base || "";
-      const active = !FINAL_STATES.includes(task.state), events = data.events || [], run = task.runs || 1;
+      const active = !FINAL_STATES.includes(task.state), events = WORK_EV.list, run = task.runs || 1;
       let card = $("conversationWork");
       if (!card) { card = document.createElement("article"); card.id = "conversationWork"; card.className = "workcard"; $("msgs").appendChild(card); }
       const signature = JSON.stringify([task.state, task.outcome, task.cost_usd, task.report, task.pr_url, task.can_publish, task.runs, events]);

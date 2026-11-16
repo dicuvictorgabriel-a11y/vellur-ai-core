@@ -203,6 +203,9 @@ def pump(t, stream, path):
             ev["run"] = t["run"]
             if not t.get("session") and isinstance(ev.get("sessionID"), str):
                 t["session"] = ev["sessionID"]
+                # Save it at once: if this container dies mid-run, the controller can still resume the same session.
+                with contextlib.suppress(Exception):
+                    save_state(t)
             out.write((json.dumps(ev) + "\n").encode())
 
 

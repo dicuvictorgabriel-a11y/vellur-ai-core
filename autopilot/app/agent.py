@@ -85,6 +85,11 @@ VISUAL_PROMPT = ("\n\nThe owner explicitly requested AI visual inspection for th
                  "live preview, open the resulting image with the read tool, inspect it and report your observations. "
                  "If screenshots or image inspection are unavailable, report that as unverified, not as a passed test.")
 
+RECOVERY_PROMPT = ("The previous run was interrupted by a server restart before it finished. Do not start over. First "
+                   "inspect the workspace (git status, git diff and the files you were changing) to see which steps are "
+                   "already done; do not repeat finished file writes or commands with side effects; then continue the "
+                   "original task to completion and report as usual. The original request was: ")
+
 
 def _loads(v, default):
     try:
@@ -368,11 +373,15 @@ class AgentManager:
                                         headers={"X-Runner-Secret": self.env.agent_runner_secret},
                                         transport=runner_transport, timeout=httpx.Timeout(30, read=300, write=300))
         self._jobs: dict[int, asyncio.Task] = {}
+        self._closing = False
         self.activity: dict[int, list] = {}      # processes running right now in each task (from the runner)
         self.previews: dict[str, tuple] = {}     # preview link token -> (task id, expiry); minted only for a logged-in owner
         self.attachments = AttachmentStore(ctrl)
         from .knowledge import Knowledge
         self.knowledge = Knowledge(self.db)
+        from .knowledge import RELEASE_RECORDS
+        for source, record in RELEASE_RECORDS:
+            self.knowledge.ensure(source, record)
 
     # ── helpers ─────────────────────────────────────────────────────────────────────────────────
     def available(self) -> tuple:
@@ -662,59 +671,69 @@ class AgentManager:
             started = time.time()
             self._set(tid, state="running", started=t["started"] or started)
             self._ev(tid, run, "status", text="Agent started" if first else "Agent continues", state="running")
-            limit_note = ""
-            while True:
-                await asyncio.sleep(self.poll)
-                info = (await self._runner("GET", f"/tasks/{tid}")).json()
-                self.activity[tid] = info.get("activity") or []
-                self.db.kv_set(f"task_log_{tid}", ANSI_RE.sub("", info.get("log", ""))[-40000:])
-                await self._import_events(tid)
-                await self._import_shots(tid, run)
-                if info["state"] in ("done", "failed", "cancelled", "timeout"):
-                    break
-                state = self.task(tid)["state"]
-                if state == "cancelling":
-                    await self._runner("POST", f"/tasks/{tid}/cancel")
-                elif time.time() - started > 60 * float(st["agent_max_minutes"]):
-                    await self._runner("POST", f"/tasks/{tid}/cancel")
-                    limit_note = f"time limit of {st['agent_max_minutes']} min reached"
-                    self._set(tid, state="cancelling", error=limit_note)
-                elif float(st["agent_max_usd"]) > 0 and self.router.tag_cost(tag) - cost0 >= float(st["agent_max_usd"]):
-                    await self._runner("POST", f"/tasks/{tid}/cancel")
-                    limit_note = f"cost limit of ${st['agent_max_usd']:.2f} per run reached"
-                    self._set(tid, state="cancelling", error=limit_note)
-            self.activity.pop(tid, None)
-            await self._import_events(tid)
-            await self._import_shots(tid, run)
-            final = info["state"]
-            if self.task(tid)["state"] == "cancelling" and not limit_note:
-                final = "cancelled"
-            if limit_note.startswith("cost limit"):
-                final = "over_budget"
-            elif limit_note.startswith("time limit"):
-                final = "timeout"
-            files = []
-            with contextlib.suppress(AgentError):
-                files = (await self._runner("GET", f"/tasks/{tid}/summary")).json().get("files", [])
-            with contextlib.suppress(AgentError):
-                d = (await self._runner("GET", f"/tasks/{tid}/diff")).json()
-                self.db.kv_set(f"task_diff_{tid}", {"stat": d.get("stat", ""), "diff": d.get("diff", "")[:400000]})
-            error = limit_note or info.get("error", "")
-            if final == "failed" and not error:
-                error = f"the agent process exited with code {info.get('exit')}"
-            report = self._report(tid, run, final, error, files, self.router.tag_cost(tag) - cost0)
-            state = "publishing" if final == "done" and report["outcome"] == "completed" else final
-            self._set(tid, state=state, outcome=report["outcome"], report=json.dumps(report),
-                      files_changed=len(files) or int(info.get("changed") or 0), ended=time.time(), error=error)
-            self._ev(tid, run, "report", **report)
-            self.db.event("info" if report["outcome"] == "completed" else "warn", "agent",
-                          f"task {tid} run {run}: {report['outcome']}", files=len(files),
-                          cost=round(self.router.tag_cost(tag), 4))
+            self.db.kv_set(f"task_run_{tid}", {"run": run, "cost0": cost0, "started": started})
+            await self._follow(tid, run, tag, cost0, started)
         except AgentError as e:
             self._set(tid, state="failed", outcome="failed", error=e.message, ended=time.time())
             self._ev(tid, run, "error", message=e.message)
         finally:
-            self.router.revoke_tag(tag)
+            if not self._closing:          # a shutdown keeps the token: the agent may still be working (see recover)
+                self.router.revoke_tag(tag)
+
+    async def _follow(self, tid: int, run: int, tag: str, cost0: float, started: float) -> None:
+        """Watch a run in the runner until it ends, then record its report. Used for a fresh run and to re-attach after
+        a controller restart: events are imported from the persisted cursor, so nothing is imported twice, and the
+        time/cost limits use the persisted start time and starting cost of this run."""
+        st = self.ctrl.settings.get()
+        info: dict = {}
+        limit_note = ""
+        while True:
+            await asyncio.sleep(self.poll)
+            info = (await self._runner("GET", f"/tasks/{tid}")).json()
+            self.activity[tid] = info.get("activity") or []
+            self.db.kv_set(f"task_log_{tid}", ANSI_RE.sub("", info.get("log", ""))[-40000:])
+            await self._import_events(tid)
+            await self._import_shots(tid, run)
+            if info["state"] in ("done", "failed", "cancelled", "timeout"):
+                break
+            state = self.task(tid)["state"]
+            if state == "cancelling":
+                await self._runner("POST", f"/tasks/{tid}/cancel")
+            elif time.time() - started > 60 * float(st["agent_max_minutes"]):
+                await self._runner("POST", f"/tasks/{tid}/cancel")
+                limit_note = f"time limit of {st['agent_max_minutes']} min reached"
+                self._set(tid, state="cancelling", error=limit_note)
+            elif float(st["agent_max_usd"]) > 0 and self.router.tag_cost(tag) - cost0 >= float(st["agent_max_usd"]):
+                await self._runner("POST", f"/tasks/{tid}/cancel")
+                limit_note = f"cost limit of ${st['agent_max_usd']:.2f} per run reached"
+                self._set(tid, state="cancelling", error=limit_note)
+        self.activity.pop(tid, None)
+        await self._import_events(tid)
+        await self._import_shots(tid, run)
+        final = info["state"]
+        if self.task(tid)["state"] == "cancelling" and not limit_note:
+            final = "cancelled"
+        if limit_note.startswith("cost limit"):
+            final = "over_budget"
+        elif limit_note.startswith("time limit"):
+            final = "timeout"
+        files = []
+        with contextlib.suppress(AgentError):
+            files = (await self._runner("GET", f"/tasks/{tid}/summary")).json().get("files", [])
+        with contextlib.suppress(AgentError):
+            d = (await self._runner("GET", f"/tasks/{tid}/diff")).json()
+            self.db.kv_set(f"task_diff_{tid}", {"stat": d.get("stat", ""), "diff": d.get("diff", "")[:400000]})
+        error = limit_note or info.get("error", "")
+        if final == "failed" and not error:
+            error = f"the agent process exited with code {info.get('exit')}"
+        report = self._report(tid, run, final, error, files, self.router.tag_cost(tag) - cost0)
+        state = "publishing" if final == "done" and report["outcome"] == "completed" else final
+        self._set(tid, state=state, outcome=report["outcome"], report=json.dumps(report),
+                  files_changed=len(files) or int(info.get("changed") or 0), ended=time.time(), error=error)
+        self._ev(tid, run, "report", **report)
+        self.db.event("info" if report["outcome"] == "completed" else "warn", "agent",
+                      f"task {tid} run {run}: {report['outcome']}", files=len(files),
+                      cost=round(self.router.tag_cost(tag), 4))
 
     def _attachment_rows(self, tid: int) -> list[dict]:
         rows = self.db.all("SELECT * FROM attachments WHERE task_id=? ORDER BY created,id", (tid,))
@@ -1095,8 +1114,12 @@ class AgentManager:
         self.db.event("info", "agent", f"task {tid} published to {t['base']}", url=url)
         return self.task(tid)
 
+    MAX_RECOVERIES = 2           # automatic resumes per task; after that the owner decides
+
     async def recover(self) -> None:
-        """After a controller restart, tasks that were in flight cannot be resumed: mark them and stop the runner."""
+        """After a controller restart: every task that was in flight is recovered in the background (never blocking
+        startup). See docs/RECOVERY.md. Consequential steps that cannot be verified (a publication in progress) are
+        paused for the owner instead of being repeated."""
         for r in self.db.all("SELECT id FROM tasks WHERE state NOT IN ('done','failed','cancelled','timeout','over_budget')"):
             tid, t = r["id"], self.task(r["id"])
             if t["state"] == "publishing":
@@ -1106,14 +1129,111 @@ class AgentManager:
                 self._set(tid, state="done", report=json.dumps(report), ended=time.time())
                 self._ev(tid, int(t["runs"] or 1), "publication", **report["publication"])
                 continue
-            self._set(tid, state="failed", outcome="failed", error="the controller restarted while this task was running",
-                      ended=time.time())
-            self._ev(tid, int(self.task(tid)["runs"] or 1), "error",
-                     message="The server restarted while this task was running. Send a follow-up to continue.")
-            with contextlib.suppress(Exception):
-                await self._runner("POST", f"/tasks/{tid}/cancel")
+            self._jobs[tid] = asyncio.create_task(self._recover_task(tid))
+
+    async def _recover_task(self, tid: int) -> None:
+        t = self.task(tid)
+        run, tag = int(t["runs"] or 1), f"task:{tid}"
+        was, ctx = t["state"], self.db.kv_get(f"task_run_{tid}") or {}
+        tries = int(self.db.kv_get(f"task_recoveries_{tid}", 0) or 0)
+        self._set(tid, state="recovering")
+        self._ev(tid, run, "status", state="recovering", recovery=True,
+                 text="Execution was interrupted: the NOVA controller restarted. Checking the agent workspace and the last completed step…")
+        self.db.event("warn", "agent", f"task {tid}: recovering after a controller restart (was {was})")
+        try:
+            info = None
+            for attempt in range(12):          # the runner may still be starting too
+                try:
+                    info = (await self._runner("GET", f"/tasks/{tid}")).json()
+                    break
+                except AgentError as e:
+                    if e.code == "expired":
+                        break                  # the runner has no record of this task
+                    if attempt == 11:
+                        raise AgentError("runner", "the agent workspace did not answer after the restart", 502)
+                    await asyncio.sleep(min(30.0, self.poll * (attempt + 1) * 2))
+            if was == "cancelling":
+                with contextlib.suppress(AgentError):
+                    await self._runner("POST", f"/tasks/{tid}/cancel")
+                self._set(tid, state="cancelled", outcome="cancelled", ended=time.time())
+                self._ev(tid, run, "status", state="cancelled", text="You stopped this task before the restart; it stays stopped.")
+                return
+            if info and info.get("state") in ("running", "created") and int(info.get("run") or run) == run:
+                # The agent kept working in its own container: re-attach. Its model token was persisted.
+                self._ev(tid, run, "status", state="running", recovery=True,
+                         text="Reconnected: the agent kept working during the restart. Continuing from where it is.")
+                self._set(tid, state="running")
+                await self._follow_guarded(tid, run, tag, float(ctx.get("cost0", self.router.tag_cost(tag))),
+                                           float(ctx.get("started") or t["started"] or time.time()))
+                return
+            interrupted = bool(info) and info.get("state") == "failed" and "restarted" in (info.get("error") or "")
+            if info and info.get("state") in ("done", "failed", "cancelled", "timeout") and not interrupted \
+                    and int(info.get("run") or run) == run:
+                self._ev(tid, run, "status", state="running", recovery=True,
+                         text="The run ended while NOVA was restarting. Collecting its result.")
+                await self._follow_guarded(tid, run, tag, float(ctx.get("cost0", self.router.tag_cost(tag))),
+                                           float(ctx.get("started") or t["started"] or time.time()))
+                return
+            # The agent process itself was interrupted (or never started). Resume automatically when it is safe.
+            if tries >= self.MAX_RECOVERIES:
+                return self._recovery_failed(tid, run, f"NOVA already resumed this task {tries} times automatically. "
+                                                       "Your files are kept in the workspace; press Resume to continue.")
+            ok, why = self.available()
+            if ok and self.ctrl.budget.status(self.ctrl.settings.get(), None, self.ctrl.clock())["exhausted"]:
+                ok, why = False, "the monthly budget is used up, so NOVA will not start new paid model requests"
+            if not ok:
+                return self._recovery_failed(tid, run, why)
+            self.db.kv_set(f"task_recoveries_{tid}", tries + 1)
+            if not (info or {}).get("session") and not t["started"]:
+                # Nothing was sent to a model yet: starting the first run again repeats no side effect.
+                self._ev(tid, run, "status", state="queued", recovery=True,
+                         text="The run had not started before the restart. Starting it again (automatic recovery).")
+                self._set(tid, state="queued")
+                self._jobs.pop(tid, None)
+                await self._drive(tid, t["prompt"], first=True)
+                return
+            if not (info or {}).get("session"):
+                return self._recovery_failed(tid, run, "the agent workspace lost this task's session, so it cannot be "
+                                                       "continued safely; start a follow-up or a new task")
+            new = run + 1
+            self._set(tid, state="queued", runs=new, error="", outcome="", ended=None)
+            self._ev(tid, new, "status", state="queued", recovery=True,
+                     text=f"Workspace restored. Continuing from the last verified step (automatic recovery {tries + 1} of {self.MAX_RECOVERIES}).")
+            self._jobs.pop(tid, None)
+            await self._drive(tid, RECOVERY_PROMPT + " ".join((t["prompt"] or "").split())[:4000], first=False)
+        except asyncio.CancelledError:
+            raise
+        except AgentError as e:
+            self._recovery_failed(tid, run, e.message)
+        except Exception as e:  # noqa: BLE001
+            self._recovery_failed(tid, run, f"{e.__class__.__name__}: {e}")
+        finally:
+            if self._jobs.get(tid) is asyncio.current_task():
+                self._jobs.pop(tid, None)
+
+    async def _follow_guarded(self, tid: int, run: int, tag: str, cost0: float, started: float) -> None:
+        try:
+            await self._follow(tid, run, tag, cost0, started)
+            t = self.task(tid)
+            if t["state"] in ("publishing", "cancelling") and t["outcome"] == "completed":
+                await self._auto_publish(tid)
+        except AgentError as e:
+            self._set(tid, state="failed", outcome="failed", error=e.message, ended=time.time())
+            self._ev(tid, run, "error", message=e.message)
+        finally:
+            if not self._closing:
+                self.router.revoke_tag(tag)
+
+    def _recovery_failed(self, tid: int, run: int, why: str) -> None:
+        self._set(tid, state="failed", outcome="failed", error="recovery after a restart was not possible: " + why,
+                  ended=time.time())
+        self._ev(tid, run, "error", recovery=True,
+                 message="NOVA could not resume this task automatically after the restart: " + why
+                         + " Your workspace files are kept. Send a follow-up (Resume) to continue.")
+        self.db.event("warn", "agent", f"task {tid}: automatic recovery stopped: {why}")
 
     async def close(self) -> None:
+        self._closing = True
         for j in list(self._jobs.values()):
             j.cancel()
             with contextlib.suppress(BaseException):
