@@ -5,30 +5,33 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
 <title>NOVA</title>
-<style>
-:root{
-  /* NOVA PEARL: graphite and nacre. One lavender accent; green/amber/red only for state. Dark is the default. */
-  --bg:#151719;--side:#101214;--panel:#1b1e20;--raise:#24282b;--sunk:#121416;--hover:#202426;--code:#1c2023;--line:#2a2e31;--line2:#3b4145;--line3:#555e64;
-  --text:#eeeae2;--soft:#c8cccd;--muted:#9ba5aa;--faint:#879297;
-  --accent:#c7d6cf;--lime:#c7d6cf;--accent-ink:#18231f;--accent-dim:rgba(160,190,174,.11);--accent-line:rgba(160,190,174,.34);
-  --good:#86d7a0;--warn:#efcd6c;--warn-line:#5a4a16;--warn-bg:#1b180f;--bad:#ffad98;--bad-line:#5a2a1c;--bad-bg:#1a1110;--info:#a4e0e9;--info-line:#1d4a50;--info-bg:#0f191b;
-  --orange:#ff8a5c;--cyan:#8fd3e0;--bar:#92b2a4;--r:16px;--shadow:0 1px 0 rgba(255,255,255,.03) inset,0 18px 50px rgba(0,0,0,.35);--glass:rgba(28,28,35,.62);
-  --pearl-a:rgba(255,255,255,.85);--pearl-b:rgba(180,160,245,.45);--pearl-c:rgba(255,190,170,.28);
-  --mono:"JetBrains Mono","SF Mono","IBM Plex Mono",ui-monospace,Menlo,Consolas,monospace;
-  --sans:"Inter","SF Pro Display","SF Pro Text",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
-  --send:#eceaf2;--send-ink:#18231f;--pearl-shadow:rgba(10,6,24,.5);color-scheme:dark}
-@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#f5f3ed;--side:#eeece5;--panel:#fcfbf7;--raise:#ffffff;--sunk:#eeece5;--hover:#e7e6df;--code:#eeeee7;--line:#dedfd6;--line2:#c8cdc3;--line3:#a6b0a5;
-  --text:#232a28;--soft:#424c47;--muted:#626d66;--faint:#69756b;
-  --accent:#3c6555;--lime:#3c6555;--accent-ink:#ffffff;--accent-dim:rgba(60,101,85,.10);--accent-line:rgba(60,101,85,.38);
-  --good:#1f7f49;--warn:#8a6406;--warn-line:#dcc98e;--warn-bg:#f7f0d9;--bad:#b0412a;--bad-line:#e5b9ac;--bad-bg:#f9e9e4;--info:#14707d;--info-line:#a9d3d9;--info-bg:#e3f1f3;
-  --orange:#c2532f;--cyan:#1b7f8e;--bar:#3c6555;--shadow:0 1px 2px rgba(60,50,90,.05),0 12px 32px rgba(60,50,90,.07);--glass:rgba(255,255,255,.62);
-  --pearl-a:rgba(255,255,255,.95);--pearl-b:rgba(190,170,245,.55);--pearl-c:rgba(255,205,190,.35);--send:#232a28;--send-ink:#fcfbf7;--pearl-shadow:rgba(90,70,150,.28);color-scheme:light}}
-:root[data-theme="light"]{--bg:#f5f3ed;--side:#eeece5;--panel:#fcfbf7;--raise:#ffffff;--sunk:#eeece5;--hover:#e7e6df;--code:#eeeee7;--line:#dedfd6;--line2:#c8cdc3;--line3:#a6b0a5;
-  --text:#232a28;--soft:#424c47;--muted:#626d66;--faint:#69756b;
-  --accent:#3c6555;--lime:#3c6555;--accent-ink:#ffffff;--accent-dim:rgba(60,101,85,.10);--accent-line:rgba(60,101,85,.38);
-  --good:#1f7f49;--warn:#8a6406;--warn-line:#dcc98e;--warn-bg:#f7f0d9;--bad:#b0412a;--bad-line:#e5b9ac;--bad-bg:#f9e9e4;--info:#14707d;--info-line:#a9d3d9;--info-bg:#e3f1f3;
-  --orange:#c2532f;--cyan:#1b7f8e;--bar:#3c6555;--shadow:0 1px 2px rgba(60,50,90,.05),0 12px 32px rgba(60,50,90,.07);--glass:rgba(255,255,255,.62);
-  --pearl-a:rgba(255,255,255,.95);--pearl-b:rgba(190,170,245,.55);--pearl-c:rgba(255,205,190,.35);--send:#232a28;--send-ink:#fcfbf7;--pearl-shadow:rgba(90,70,150,.28);color-scheme:light}
+<style>:root{
+  /* NOVA Artist Desk: premium graphite, one quiet violet accent. State colors only for truth. */
+  --bg:#0B0C0E;--side:#101114;--panel:#17191D;--raise:#202228;--sunk:#0E0F11;--hover:#17191D;--code:#131417;
+  --line:#2B2D33;--line2:#3A3C44;--line3:#4A4D57;
+  --text:#F2F1EF;--soft:#D3D2D0;--muted:#9A9BA2;--faint:#686B74;
+  --accent:#AD8CF5;--accent-hover:#C2AAFA;--accent-ink:#131018;--accent-dim:rgba(173,140,245,.12);--accent-line:rgba(173,140,245,.30);
+  --good:#5CC98C;--warn:#E3B54A;--warn-line:#5a4a16;--warn-bg:#1b180f;--bad:#E5684E;--bad-line:#5a2a1c;--bad-bg:#1a1110;--info:#6CC5D9;--info-line:#1d4a50;--info-bg:#0f191b;
+  --orange:#E58A5C;--cyan:#6CC5D9;--bar:#AD8CF5;--r:12px;
+  --shadow:0 1px 2px rgba(0,0,0,.35),0 12px 32px rgba(0,0,0,.28);--shadow-raise:0 2px 6px rgba(0,0,0,.4),0 20px 48px rgba(0,0,0,.4);--glass:rgba(16,17,20,.78);
+  --lime:#AD8CF5;
+  --mono:"JetBrains Mono","SF Mono",ui-monospace,Menlo,Consolas,monospace;
+  --sans:"Inter","SF Pro Text","Segoe UI",system-ui,-apple-system,sans-serif;
+  --send:#AD8CF5;--send-ink:#131018;--pearl-shadow:rgba(0,0,0,.5);color-scheme:dark}
+@media (prefers-color-scheme:light){:root:not([data-theme="dark"]){--bg:#F4F3F1;--side:#ECEBE8;--panel:#FFFFFF;--raise:#FFFFFF;--sunk:#ECEBE8;--hover:#E8E7E4;--code:#F0EFEC;
+  --line:#DDDCD8;--line2:#C9C8C4;--line3:#B0AFAA;
+  --text:#1B1C1E;--soft:#3E3F42;--muted:#6E6F74;--faint:#8A8B90;
+  --accent:#7A5CD0;--accent-hover:#6A4BC4;--accent-ink:#FFFFFF;--accent-dim:rgba(122,92,208,.10);--accent-line:rgba(122,92,208,.28);
+  --good:#1F7F49;--warn:#8A6406;--warn-line:#dcc98e;--warn-bg:#f7f0d9;--bad:#B0412A;--bad-line:#e5b9ac;--bad-bg:#f9e9e4;--info:#14707D;--info-line:#a9d3d9;--info-bg:#e3f1f3;
+  --orange:#C2532F;--cyan:#14707D;--bar:#7A5CD0;--shadow:0 1px 2px rgba(30,25,60,.06),0 12px 32px rgba(30,25,60,.08);--shadow-raise:0 2px 6px rgba(30,25,60,.08),0 20px 48px rgba(30,25,60,.12);--glass:rgba(255,255,255,.8);
+  --lime:#7A5CD0;--send:#7A5CD0;--send-ink:#FFFFFF;--pearl-shadow:rgba(90,70,150,.2);color-scheme:light}}
+:root[data-theme="light"]{--bg:#F4F3F1;--side:#ECEBE8;--panel:#FFFFFF;--raise:#FFFFFF;--sunk:#ECEBE8;--hover:#E8E7E4;--code:#F0EFEC;
+  --line:#DDDCD8;--line2:#C9C8C4;--line3:#B0AFAA;
+  --text:#1B1C1E;--soft:#3E3F42;--muted:#6E6F74;--faint:#8A8B90;
+  --accent:#7A5CD0;--accent-hover:#6A4BC4;--accent-ink:#FFFFFF;--accent-dim:rgba(122,92,208,.10);--accent-line:rgba(122,92,208,.28);
+  --good:#1F7F49;--warn:#8A6406;--warn-line:#dcc98e;--warn-bg:#f7f0d9;--bad:#B0412A;--bad-line:#e5b9ac;--bad-bg:#f9e9e4;--info:#14707D;--info-line:#a9d3d9;--info-bg:#e3f1f3;
+  --orange:#C2532F;--cyan:#14707D;--bar:#7A5CD0;--shadow:0 1px 2px rgba(30,25,60,.06),0 12px 32px rgba(30,25,60,.08);--shadow-raise:0 2px 6px rgba(30,25,60,.08),0 20px 48px rgba(30,25,60,.12);--glass:rgba(255,255,255,.8);
+  --lime:#7A5CD0;--send:#7A5CD0;--send-ink:#FFFFFF;--pearl-shadow:rgba(90,70,150,.2);color-scheme:light}
 *{box-sizing:border-box}html,body{margin:0;height:100%;background:var(--bg);color:var(--text)}
 body{font:15px/1.55 var(--sans);-webkit-font-smoothing:antialiased;display:flex;min-height:100dvh;font-feature-settings:"cv11","ss01"}
 code,pre,.mono{font-family:var(--mono)}
@@ -69,8 +72,10 @@ svg.ic{width:17px;height:17px;flex:none;stroke:currentColor;fill:none;stroke-wid
 .bar.warn i{background:var(--warn)}.bar.hot i{background:var(--orange)}
 #sideBudget .label{display:block;margin-bottom:7px}
 main{flex:1;min-width:0;padding:28px 28px 64px;overflow:auto;height:100dvh}
-.wrap{max-width:1060px;margin:0 auto}
+.wrap{max-width:1120px;margin:0 auto}
 #topbar{display:none}
+.brandmini{display:none;font-size:15px;font-weight:700;letter-spacing:-.02em}
+#topAcct{display:none}
 body:not(.is-admin) #side{display:none}body:not(.is-admin) main{height:auto}
 body.is-admin .pubhead{display:none}
 .brand{letter-spacing:.32em;font-weight:700;font-size:11px;color:var(--muted)}
@@ -395,16 +400,16 @@ body{letter-spacing:-.003em}
 .card,.hcard,.tool,.hacts button,.hrec .pc{box-shadow:var(--shadow)}
 .card{border-radius:var(--r)}
 #side{background:var(--side);border-right:1px solid var(--line);padding:22px 16px 16px}
-@media(min-width:861px){#side{width:296px}}
-@media(min-width:861px) and (max-width:1180px){#side{width:232px}}
-.logo{gap:14px;padding:12px 10px 34px;font-size:21px;font-weight:500;letter-spacing:.14em;line-height:1}
-.logo .mark{width:42px;height:42px;flex:none;fill:var(--soft)}
-.logo small{color:var(--muted);font:500 11.5px/1 var(--sans);letter-spacing:.34em;margin-top:8px}
+@media(min-width:861px){#side{width:240px}}
+@media(min-width:861px) and (max-width:1180px){#side{width:228px}}
+.logo{gap:14px;padding:10px 10px 30px;font-size:22px;font-weight:700;letter-spacing:-.02em;line-height:1}
+.logo .mark{width:38px;height:38px;flex:none;fill:var(--text)}
+.logo .brandtxt{display:flex;flex-direction:column;gap:5px;min-width:0}.logo .brandsub{color:var(--faint);font:500 10.5px/1 var(--sans);letter-spacing:.26em;text-transform:uppercase;margin:0}
 #tabs{gap:6px}
 #tabs button,.navbtn{gap:18px;padding:13px 16px;border-radius:12px;font-size:14px;color:var(--soft);font-weight:500}
 #tabs button svg.ic{width:21px;height:21px;stroke-width:1.5}
 #tabs button:hover,.navbtn:hover{background:var(--hover);color:var(--text)}
-#tabs button.on{background:linear-gradient(90deg,var(--raise) 40%,var(--accent-line) 160%);color:var(--text);box-shadow:inset 0 0 0 1px var(--line2)}
+#tabs button.on{background:var(--raise);color:var(--text);box-shadow:inset 0 0 0 1px var(--line)}#tabs button.on svg{color:var(--accent)}
 #tabs button.on:before{display:none}#tabs button.on svg{color:var(--text)}
 .sidehead{margin-top:18px;padding:18px 10px 10px;border-top:1px solid var(--line);font:500 11px/1 var(--sans);letter-spacing:.2em}
 #convList button,#taskList button{padding:9px 12px;border-radius:10px;font-size:13.5px}
@@ -428,10 +433,10 @@ body.is-admin[data-view="home"] .wrap,body.is-admin[data-view="home"] .grid{disp
 .ribbon{position:absolute;top:0;right:0;width:100%;height:560px;pointer-events:none}
 .hdr{display:flex;align-items:center;gap:6px;min-height:46px}.hdr .sp{flex:1}
 .modelpill{width:auto;min-width:190px;border-radius:99px;padding:11px 38px 11px 18px;font-size:14px;font-weight:500;background-color:var(--panel);border-color:var(--line2);margin-left:10px}
-.hhero{display:flex;align-items:center;gap:28px;margin:44px 0 46px}
-.hhero .pearl{width:100px;height:100px;box-shadow:0 14px 40px var(--pearl-shadow)}
-.hhero h1{font-size:44px;line-height:1.1;font-weight:300;letter-spacing:-.025em;margin:0 0 10px}.hhero h1 b{font-weight:600}
-.hhero p{margin:0;font-size:26px;font-weight:300;color:var(--muted);letter-spacing:-.015em}
+.hhero{display:flex;align-items:center;gap:18px;margin:34px 0 30px}
+.hhero .pearl{width:56px;height:56px;box-shadow:0 8px 24px var(--pearl-shadow)}
+.hhero h1{font-size:27px;line-height:1.15;font-weight:500;letter-spacing:-.02em;margin:0 0 6px}.hhero h1 b{font-weight:650}
+.hhero p{margin:0;font-size:15.5px;font-weight:400;color:var(--muted)}
 .hcomp{display:flex;align-items:center;gap:12px;min-height:88px;padding:14px 20px;border-radius:44px;background:var(--glass);border:1px solid var(--line2);box-shadow:var(--shadow);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px)}
 .hcomp:focus-within{border-color:var(--line3)}
 .hcomp.drag{border-color:var(--accent)}
@@ -729,7 +734,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 .polh{margin:24px 0 10px;font-size:12px;font-weight:500;color:var(--muted)}
 #bottomNav{display:none}
 @media(max-width:860px){
-  #bottomNav{display:grid;grid-template-columns:repeat(4,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:4px 4px max(6px,env(safe-area-inset-bottom))}
+  #bottomNav{display:grid;grid-template-columns:repeat(3,1fr);position:fixed;left:0;right:0;bottom:0;z-index:30;background:var(--glass);backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);border-top:1px solid var(--line);padding:4px 4px max(6px,env(safe-area-inset-bottom))}
   body:not(.is-admin) #bottomNav,body.typing #bottomNav,body.staged.stage-full #bottomNav{display:none}
   #bottomNav button{display:flex;flex-direction:column;align-items:center;gap:3px;background:transparent;border:0;color:var(--faint);font:500 10px var(--sans);min-height:52px;justify-content:center;border-radius:12px;padding:0}
   #bottomNav button.on{color:var(--text)}#bottomNav button.on svg{color:var(--accent)}#bottomNav svg.ic{width:20px;height:20px}
@@ -750,26 +755,38 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
   .mcitem-m button{min-height:44px;padding:0 16px;font-size:14px}
   .mcsec h3{margin:16px 0 8px}
 }
+
+/* ============ NOVA Artist Desk: account dialog + shell refinements ============ */
+#acctDlg{border:0;border-radius:16px;background:var(--raise);color:var(--text);padding:0;width:min(420px,92vw);box-shadow:var(--shadow-raise)}
+#acctDlg::backdrop{background:rgba(6,7,9,.55);backdrop-filter:blur(3px)}
+.acctwrap{padding:20px;display:flex;flex-direction:column;gap:14px}
+.accthead{display:flex;align-items:center;gap:12px;padding-bottom:4px}
+.accthead .pearl{width:40px;height:40px}
+.acctwho{display:flex;flex-direction:column;min-width:0}
+.acctwho b{font-size:15px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.acctwho small{color:var(--faint);font-size:11.5px}
+.acctgrid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.acctgrid button{display:flex;align-items:center;gap:8px;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--panel);color:var(--soft);font-size:13px;text-align:left;cursor:pointer}
+.acctgrid button:hover{background:var(--hover);color:var(--text);border-color:var(--line2)}
+.acctgrid .ic{width:15px;height:15px;color:var(--faint);flex:none}
+.acctsect{display:flex;flex-direction:column;gap:8px}
+.brandtxt{display:flex;flex-direction:column;line-height:1.05}
+.brandword{font-size:17px;font-weight:750;letter-spacing:-.02em}
+.brandsub{font-size:8.5px;font-weight:600;letter-spacing:.22em;text-transform:uppercase;color:var(--faint)}
+.brandmini{font-size:15px!important;font-weight:750!important;letter-spacing:-.02em!important}
 </style>
 </head>
 <body>
 <aside id="side" class="admin-only">
-  <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div><span data-brand>NOVA</span><small>ATELIER</small></div></div>
+  <div class="logo"><svg class="mark" viewBox="0 0 40 40" aria-hidden="true"><path d="M20 4 5 34l11-7z" opacity=".55"/><path d="m20 4 15 30-12-9z"/></svg><div class="brandtxt"><span class="brandword" data-brand>NOVA</span><small class="brandsub">Artist Desk</small></div></div>
   <nav id="tabs">
-    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Home</button><button data-view="music"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>Music</button><button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button><div class="navdiv" role="presentation">Advanced</div><button data-view="mission"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/></svg>Mission</button><button data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Conversations</button><button data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Projects</button><button data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button><button data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button><button data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button><button data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Usage</button>
+    <button data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/><path d="M10 19.5v-5h4v5"/></svg>Home</button><button data-view="music"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg>Music</button><button data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg>Library</button><button data-view="mission"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/></svg>Mission Control</button><div id="advViews" hidden aria-label="Advanced views"><div class="navdiv" role="presentation">Workspace</div><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="7"/><circle cx="12" cy="12" r="1.3" fill="currentColor" stroke="none"/><path d="M12 2.5V6M12 18v3.5M2.5 12H6M18 12h3.5"/></svg>Mission</button></div>
   </nav>
   <button class="navbtn" type="button" id="railToggle" title="Collapse or expand navigation" aria-label="Collapse or expand navigation"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m14 7-5 5 5 5"/><path d="M19 5v14"/></svg>Collapse</button>
   <div class="sidehead"><span id="sideLabel">Conversations</span><button class="iconbtn" id="sideNew" title="New chat" style="width:28px;height:28px"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button></div>
   <div id="convList"></div>
   <div id="taskList"></div>
   <div id="me">
-    <div id="meMenu" hidden>
-      <span class="label">Appearance</span>
-      <div class="seg" id="themeSeg"><button type="button" data-theme-set="">System</button><button type="button" data-theme-set="dark">Dark</button><button type="button" data-theme-set="light">Light</button></div>
-      <span class="label" style="margin-top:12px">Your name</span>
-      <div class="row" style="flex-wrap:nowrap"><input id="meNameIn" maxlength="40" placeholder="Shown in the greeting" autocomplete="off"><button class="ghost" type="button" id="meNameSave">Save</button></div>
-      <button class="navbtn" id="btnLogout" style="margin-top:10px">Log out</button>
-    </div>
     <span class="pearl" id="mePearl"></span><div class="who"><b id="meName">Owner</b><small>Owner</small></div><button class="iconbtn plain" id="meMore" aria-label="Account and appearance" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h.01M12 12h.01M19 12h.01"/></svg></button>
   </div>
 </aside>
@@ -779,14 +796,30 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
 <button type="button" data-view="home"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 11.5 12 4l9 7.5"/><path d="M5.5 10v9.5h13V10"/></svg><span>Home</span></button>
   <button type="button" data-view="music"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 18.5V5.5l10-2v13"/><circle cx="6.5" cy="18.5" r="2.5"/><circle cx="16.5" cy="16.5" r="2.5"/></svg><span>Music</span></button>
   <button type="button" data-view="library"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 4h4v16H5zM10 4h4v16h-4z"/><path d="m15.5 4.8 3.8-1 3.2 15.5-3.8.9z"/></svg><span>Library</span></button>
-  <button type="button" id="navMore" aria-label="More views"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.6"/><circle cx="12" cy="12" r="1.6"/><circle cx="19" cy="12" r="1.6"/></svg><span>More</span></button></nav>
+  </nav>
+<dialog id="acctDlg" aria-label="Account and workspace"><div class="acctwrap">
+  <div class="accthead"><span class="pearl" id="acctPearl" aria-hidden="true"></span><div class="acctwho"><b id="acctName">Owner</b><small>Artist · NOVA</small></div></div>
+  <div class="acctgrid">
+    <button type="button" data-view="chat"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 15.5a2 2 0 0 1-2 2H9l-5 3.5V6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2z"/><path d="M8.5 10.7h.01M12 10.7h.01M15.5 10.7h.01"/></svg>Conversations</button>
+    <button type="button" data-view="agent"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg>Projects</button>
+    <button type="button" data-view="activity"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>Activity</button>
+    <button type="button" data-view="models"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 2.8 8 4.6v9.2l-8 4.6-8-4.6V7.4z"/><path d="m4 7.4 8 4.6 8-4.6M12 12v9.2"/></svg>Models</button>
+    <button type="button" data-view="tools"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="2"/><circle cx="17.5" cy="6.5" r="1.2"/><circle cx="6.5" cy="17.5" r="1.2"/><circle cx="18" cy="18" r="2"/><circle cx="12" cy="12" r=".8"/></svg>Tools</button>
+    <button type="button" data-view="costs"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 20v-6M10 20V8M15 20v-9M20 20V4"/></svg>Usage</button>
+  </div>
+  <div class="acctsect"><span class="label">Appearance</span>
+  <div class="seg" id="themeSeg"><button type="button" data-theme-set="">System</button><button type="button" data-theme-set="dark">Dark</button><button type="button" data-theme-set="light">Light</button></div></div>
+  <div class="acctsect"><span class="label">Your name</span>
+  <div class="row" style="flex-wrap:nowrap"><input id="meNameIn" maxlength="40" placeholder="Shown in the greeting" autocomplete="off"><button class="ghost" type="button" id="meNameSave">Save</button></div></div>
+  <button class="navbtn" id="btnLogout" style="margin-top:6px">Log out</button>
+</div></dialog>
 <dialog id="muDlg" aria-labelledby="muDlgTitle"><form method="dialog"><h2 id="muDlgTitle">New release</h2><label>Title <input id="muTitleIn" maxlength="200" autocomplete="off" required></label><label>Artist <input id="muArtistIn" maxlength="200" autocomplete="off" placeholder="Optional"></label><label>Status <select id="muStatusIn"><option value="planned">Planned</option><option value="released">Released</option></select></label><label>Target date <input id="muDateIn" type="date" autocomplete="off"></label><label>Notes <textarea id="muNotesIn" rows="4" maxlength="2000" placeholder="Optional"></textarea></label><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary" id="muDlgOk">Create</button></div></form></dialog>
 <dialog id="askDlg" aria-labelledby="askTitle"><form method="dialog"><h2 id="askTitle"></h2><div id="askBody"></div><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" id="askOk">Continue</button></div></form></dialog>
 <dialog id="mcObjDlg" aria-labelledby="mcObjDlgTitle"><form method="dialog"><h2 id="mcObjDlgTitle">Objective</h2><label>Title <input id="mcObjTitleIn" maxlength="200" autocomplete="off"></label><label>What “done” looks like <textarea id="mcObjDetailIn" rows="4" maxlength="2000"></textarea></label><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary">Set as active</button></div></form></dialog>
 <dialog id="mcPlanDlg" aria-labelledby="mcPlanTitle"><form method="dialog"><h2 id="mcPlanTitle">Plan</h2><label>Concrete, verifiable steps <textarea id="mcPlanText" rows="10" maxlength="8000" placeholder="One step per line…"></textarea></label><div class="row"><button class="ghost" type="button" id="mcPlanSuggest">Ask NOVA for a plan</button><span class="note" id="mcPlanCost" style="margin:0"></span></div><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary">Save plan</button></div></form></dialog>
 <dialog id="mcRetDlg" aria-label="Send back to backlog"><form method="dialog"><h2>What is not done yet?</h2><p class="note">The item goes back to the backlog; this note is included in the next agent run.</p><textarea id="mcRetText" rows="3" maxlength="1000" placeholder="e.g. tests still failing on X"></textarea><div class="row"><button class="ghost" value="no" type="submit">Cancel</button><button value="yes" type="submit" class="primary">Send back</button></div></form></dialog>
 <main>
-<div id="topbar"><button class="iconbtn" id="navOpen" aria-label="Menu"><svg class="ic" viewBox="0 0 24 24"><path d="M4 6h16M4 12h16M4 18h16"/></svg></button><b id="topTitle">Chat</b><button class="iconbtn" id="topNew" aria-label="New chat"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button></div>
+<div id="topbar"><b class="brandmini" data-brand aria-hidden="true">NOVA</b><b id="topTitle">Home</b><span class="sp"></span><button class="iconbtn" id="topNew" aria-label="New chat or task"><svg class="ic" viewBox="0 0 24 24"><path d="M5 12h14M12 5v14"/></svg></button><button class="iconbtn" id="topAcct" aria-label="Account and workspace" aria-haspopup="dialog"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="8.5" r="3.4"/><path d="M5 19.5c1.6-3.4 4.1-4.6 7-4.6s5.4 1.2 7 4.6"/></svg></button></div>
 <div class="wrap">
   <div class="pubhead">
   <div class="brand">NOVA</div>
@@ -911,7 +944,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
         <button class="iconbtn plain" id="btnSearch" title="Search conversations and projects (Ctrl+K)" aria-label="Search"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg></button><button class="iconbtn plain" id="btnTheme" title="Switch between dark and light" aria-label="Switch theme"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4 8.5 8.5 0 1 0 20 14.5z"/></svg></button>
         <select id="homeModel" class="modelpill" aria-label="Model"></select></div>
      <div id="homeMain">
-      <div class="work-label">PERSONAL WORKSPACE <span>NOVA / ATELIER</span></div><div class="hhero"><span class="pearl" id="heroPearl"></span><div><h1 id="greet">Welcome.</h1><p id="heroSub">A little thought. A new possibility.</p></div></div>
+      <div class="work-label"><span>NOVA</span> ARTIST DESK</div><div class="hhero"><span class="pearl" id="heroPearl"></span><div><h1 id="greet">Welcome.</h1><p id="heroSub">A little thought. A new possibility.</p></div></div>
       <div class="hcomp" id="homeComposer">
         <button class="hbtn" type="button" id="homeAttach" title="Attach files" aria-label="Attach files"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12h14M12 5v14"/></svg></button><button class="hbtn" type="button" id="homeSettings" title="Models and routing" aria-label="Models and routing"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h9M17 8h3M4 16h3M11 16h9"/><circle cx="15" cy="8" r="2"/><circle cx="9" cy="16" r="2"/></svg></button>
         <select id="homeMode" class="hmode" aria-label="What to do"><option value="chat">Chat</option><option value="agent">Agent</option><option value="image">Image</option></select>
@@ -925,9 +958,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       </div>
       <article class="return-brief" id="homeBrief" aria-label="Latest project result" hidden></article>
       <article class="return-brief" id="homeRel" aria-label="Latest release" hidden></article>
-      <div class="hacts">
-        <button type="button" data-act="build"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m8 7-5 5 5 5M16 7l5 5-5 5M13.5 5l-3 14"/></svg><b>Build</b><span>Apps, features, systems</span></button><button type="button" data-act="automate"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="m12 3 9 4.5-9 4.5-9-4.5z"/><path d="m3 12 9 4.5 9-4.5"/><path d="m3 16.5 9 4.5 9-4.5"/></svg><b>Automate</b><span>Flows, tasks, processes</span></button><button type="button" data-act="create"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="3.5" y="4.5" width="17" height="15" rx="2.5"/><circle cx="9" cy="10" r="1.6"/><path d="m4 17 5-4.5 3.5 3 3-2.5 5 4"/></svg><b>Create</b><span>Visuals, media, content</span></button><button type="button" data-act="explore"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M11 3.5 12.8 9l5.7 1.9-5.7 1.9L11 18.5l-1.8-5.7L3.5 10.9 9.2 9z"/><path d="M18.5 3v3M17 4.5h3"/></svg><b>Explore</b><span>Ideas, strategies, solutions</span></button>
-      </div>
+      
       <div class="hrh"><h2 id="recTitle">Recent Projects</h2><button type="button" class="linkbtn" id="recAll">View all ↗</button></div>
       <div class="hrec" id="recGrid"></div>
      </div>
@@ -1445,15 +1476,15 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     if (!seed) { seed = 1 + Math.floor(Math.random() * 2147483000); st.pearl_seed = seed; send("settings", "PUT", { pearl_seed: seed }).catch(() => {}); }   // chosen once, then kept on the server
     const name = String(st.owner_name || "").trim(), key = seed + "|" + name;
     if (key === IDENT) return; IDENT = key;
-    $("mePearl").innerHTML = pearlSVG(seed); $("heroPearl").innerHTML = pearlSVG(seed);
-    $("meName").textContent = name || "Owner"; if (document.activeElement !== $("meNameIn")) $("meNameIn").value = name;
+    const pv = pearlSVG(seed); $("mePearl").innerHTML = pv; $("heroPearl").innerHTML = pv; $("acctPearl").innerHTML = pv;
+    $("meName").textContent = name || "Owner"; $("acctName").textContent = name || "Owner"; if (document.activeElement !== $("meNameIn")) $("meNameIn").value = name;
     greet(name);
   }
   function greet(name) {
     const h = new Date().getHours(), part = h < 5 ? "Good evening" : h < 12 ? "Good morning" : h < 18 ? "Good afternoon" : "Good evening";
     $("greet").innerHTML = name ? esc(part) + ", <b>" + esc(name) + ".</b>" : esc(part) + ".";
   }
-  $("meMore").onclick = (e) => { e.stopPropagation(); const m = $("meMenu"); m.hidden = !m.hidden; $("meMore").setAttribute("aria-expanded", String(!m.hidden)); setTheme(themeChoice()); };
+  $("meMore").onclick = (e) => { e.stopPropagation(); acctOpen(); };
   document.addEventListener("click", (e) => { if (!$("me").contains(e.target)) $("meMenu").hidden = true; });
   document.querySelectorAll("[data-theme-set]").forEach(b => b.onclick = () => setTheme(b.dataset.themeSet, true));
   $("btnTheme").onclick = () => setTheme(themeNow() === "dark" ? "light" : "dark", true);
@@ -1507,7 +1538,9 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
     $("recTitle").textContent = tasks.length ? "Recent Projects" : "Recent Conversations";
     $("recGrid").innerHTML = tasks.length ? tasks.map(t => `<button type="button" class="pc" data-task="${t.id}"><span class="meta">${folder}<div><b>${esc(t.title)}</b><small>${esc((t.repo || "Empty workspace").split("/").pop())} · ${esc(outcome(t))}</small></div></span></button>`).join("")
       : convs.length ? convs.map(c => `<button type="button" class="pc" data-conv="${c.id}"><span class="meta">${folder}<div><b>${esc(c.title)}</b><small>Conversation · ${esc(agoShort(c.updated))}</small></div></span></button>`).join("")
-      : HOME.loaded ? '<div class="hempty">Nothing here yet. Your projects and conversations appear here once you start one above.</div>' : "";
+      : "";
+    const hasRecs = tasks.length || convs.length;
+    document.querySelector("#homeCard .hrh").hidden = !hasRecs;
     $("recGrid").querySelectorAll("[data-task]").forEach(b => b.onclick = () => { const t = TASKS.find(x => String(x.id) === b.dataset.task); openRepo(t ? t.repo : ""); });
     $("recGrid").querySelectorAll("[data-conv]").forEach(b => b.onclick = () => openChat(Number(b.dataset.conv)));
     // context panel: only what the server reports. No percentages: the agent does not report one.
@@ -3169,10 +3202,12 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
   const newChat = async () => { if (VIEW === "agent") { newTask(); document.body.classList.remove("nav-open"); $("agIn").focus(); return; }
     if (VIEW !== "chat") await setView("chat"); $("convNew").click(); document.body.classList.remove("nav-open"); };
   $("sideNew").onclick = newChat; $("topNew").onclick = newChat;
-  $("navOpen").onclick = () => document.body.classList.add("nav-open"); $("scrim").onclick = () => document.body.classList.remove("nav-open");
-  $("navMore").onclick = () => { document.body.classList.add("nav-open"); $("tabs").querySelector("button").focus(); };
+  const acctOpen = () => { const d = $("acctDlg"); if (d.showModal) { renderHome(); d.returnValue = ""; d.showModal(); } };
+  $("scrim").onclick = () => document.body.classList.remove("nav-open");
+  $("topAcct").onclick = (e) => { e.stopPropagation(); acctOpen(); };
+  $("acctDlg").querySelectorAll("button[data-view]").forEach(b => b.onclick = () => { $("acctDlg").close(); setView(b.dataset.view); });
   document.addEventListener("keydown", e => {
-    if (e.key === "Escape" && document.body.classList.contains("nav-open")) { document.body.classList.remove("nav-open"); $("navOpen").focus(); }
+    if (e.key === "Escape" && document.body.classList.contains("nav-open")) { document.body.classList.remove("nav-open"); const nb = $("navOpen"); if (nb) nb.focus(); }
     if (e.key === "Tab" && document.body.classList.contains("nav-open")) {
       const items = [...$("side").querySelectorAll("button:not(:disabled),input,a[href]")].filter(x => x.getClientRects().length);
       const first = items[0], last = items[items.length - 1];
@@ -3180,7 +3215,7 @@ button.primary,a.primary{background:var(--send);color:var(--send-ink);border:1px
       else if (!e.shiftKey && document.activeElement === last) { e.preventDefault(); first.focus(); }
     }
   });
-  $("navOpen").addEventListener("click", () => $("tabs").querySelector("button").focus());
+
   const copyPre = (e) => { const pre = e.target.closest(".m pre"); if (!pre || !navigator.clipboard) return;
     navigator.clipboard.writeText(pre.textContent).then(() => { pre.classList.add("copied"); setTimeout(() => pre.classList.remove("copied"), 1400); }); };
   $("msgs").addEventListener("click", copyPre); $("agMsgs").addEventListener("click", copyPre);

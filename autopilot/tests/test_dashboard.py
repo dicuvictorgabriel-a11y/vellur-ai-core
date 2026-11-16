@@ -231,12 +231,18 @@ def test_pearl_shell_is_wired():
     # two themes from one token set; the choice is kept in a cookie (never localStorage)
     assert ':root[data-theme="light"]{' in html and "@media (prefers-color-scheme:light){:root:not([data-theme=\"dark\"]){" in html
     assert "vellur_theme=" in html and "localStorage" not in html
-    # workspace: greeting, composer with three modes, four actions, real context panel
+    # artist desk: greeting, dominant composer, onboarding, one account entry for advanced views
     for part in ('id="homeCard"', 'id="greet"', 'id="homeIn"', 'id="homeMode"', 'id="heroPearl"', 'id="mePearl"',
-                 'data-act="build"', 'data-act="automate"', 'data-act="create"', 'data-act="explore"',
+                 'id="homeFirst"', 'id="homePlan"', 'id="homeExplore"',
+                 'id="acctDlg"', 'id="topAcct"', 'id="acctName"',
                  'id="hAgent"', 'id="hActivity"', 'id="hUsage"', 'id="searchBox"'):
         assert part in html, part
+    assert 'data-act="build"' not in html and 'data-act="explore"' not in html  # no fabricated quick actions
+    assert 'id="navMore"' not in html and 'id="navOpen"' not in html  # no drawer trigger anywhere
     assert 'data-view="home"' in html and 'data-view="tools"' in html
+    bottom = html[html.index('id="bottomNav"'):]
+    bottom = bottom[:bottom.index('</nav>')]
+    assert bottom.count('data-view="') == 3  # Home / Music / Library only
     # the agent reports no percentage: the panel must not invent one
     panel = html[html.index("function renderHome()"):html.index("function homeUsage(")]
     import re
