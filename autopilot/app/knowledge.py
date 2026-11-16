@@ -240,6 +240,14 @@ def dumps(rows: list) -> str:
 # Records shipped with the recovery release (2026-11-16). Verified facts are "implemented"; the incident's root cause is
 # "proposed" until the server's logs confirm it (docs/RECOVERY.md lists the commands).
 RELEASE_RECORDS = [
+    ("release:3d-studio-handover-2026-11-16", {
+        "namespace": "Architecture", "status": "implemented", "title": "3D Studio: read the handover before UI work",
+        "tags": "3d,studio,ui,handover", "paths": "docs/agent-handover/3d-studio-ui.md, autopilot/app/static/3d/, autopilot/app/studio3d.py",
+        "body": "Before changing 3D Studio, read docs/agent-handover/3d-studio-ui.md: files and APIs (studio3d.py scenes, "
+                "glb_builder.py GLB + preview PNG, static/3d/studio3d.js viewer, scene_studio.js editor), element ids and "
+                "postMessage contracts to keep, verified status (procedural create/edit, save, GLB export, snapshots work; "
+                "AI Assist is broken because router.complete does not exist; no agent tool or vision loop; phone layout and "
+                "NOVA themes not applied), and the acceptance checklist. The viewport is never themed. Precision Studio was removed."}),
     ("release:recovery-2026-11-16:architecture", {
         "namespace": "Architecture", "status": "implemented", "title": "Agent tasks survive controller restarts",
         "tags": "recovery,reliability,agent", "paths": "autopilot/app/agent.py, agent/runner.py, autopilot/app/router.py",

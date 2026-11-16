@@ -149,3 +149,9 @@ Ten themes (six NOVA + Carbon White/G10/G90/G100), each a full Carbon token set 
 into `static/carbon/nova-themes.css`. Theme Studio dialog (`#themeDlg`), first-paint boot script in `<head>`
 (`<script data-theme-boot>`), cookie `nova_theme` + server setting `ui_theme`. Never hard-code colours: use `--cds-*`
 tokens or `--nova-accent`.
+
+## 3D Studio (handover: docs/agent-handover/3d-studio-ui.md)
+
+Any task that touches 3D Studio (`autopilot/app/static/3d/`, `studio3d.py`, `glb_builder.py`) starts by reading
+`docs/agent-handover/3d-studio-ui.md`: verified architecture, API/scene contracts, element ids and messages to keep,
+what works and what is broken (AI Assist), and the acceptance checklist. Precision Studio was removed (2026-11-16).
