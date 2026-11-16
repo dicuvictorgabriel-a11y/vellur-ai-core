@@ -49,8 +49,9 @@ def test_agent_tools_markup_and_payloads():
     assert 'id="agToolsNote" role="status" aria-live="polite"' in html
     assert 'id="agInspect" disabled' in html and 'id="agAutoShots" disabled' in html
     assert html.count('visual_inspection: $("agInspect").checked, auto_screenshots: $("agAutoShots").checked') == 2
-    assert '$("agInspect").checked = false' not in html
-    assert '$("agAutoShots").checked = false' not in html
+    assert 'updateVisualInspectionCheckboxes' in html
+    assert '$("agInspect").disabled = !hasVision' in html
+    assert '$("agAutoShots").disabled = !hasVision' in html
 
 
 @pytest.mark.skipif(shutil.which("node") is None, reason="node not installed")

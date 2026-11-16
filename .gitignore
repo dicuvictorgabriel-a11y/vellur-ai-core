@@ -7,3 +7,6 @@ __pycache__/
 discovery-*.txt
 secrets/
 .venv/
+autopilot/venv/
+.vellur/
+dev/preview.json

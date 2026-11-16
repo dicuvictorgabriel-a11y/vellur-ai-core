@@ -85,7 +85,8 @@ async def test_discovery_keeps_capabilities_separate_from_catalog_shape(images):
     assert by_id["openrouter:img/model"]["image_generation"] is True
     assert by_id["openrouter:img/model"]["image_price"] is None
     assert router.capabilities("openrouter:not-in-catalog") == ["text_input", "text_output", "chat"]
-    assert router.chain("vellur-chat", capability="vision") == []
+    # GPU backend now supports vision (Qwen3.8-27B is a vision-language model)
+    assert router.chain("vellur-chat", capability="vision") == ["gpu"]
 
 
 async def test_vision_capability_filters_the_route_chain(images):
