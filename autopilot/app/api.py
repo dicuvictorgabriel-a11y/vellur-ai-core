@@ -153,6 +153,16 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     async def studio3d():
         return FileResponse(os.path.join(STUDIO3D, "studio3d.html"), headers=STUDIO3D_HEADERS)
 
+    # IBM Carbon assets (tokens, IBM Plex fonts, bundled official web components). Public: the login page uses them too.
+    carbon_root = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "carbon"))
+
+    @app.get("/autopilot/carbon/{asset:path}")
+    async def carbon_asset(asset: str):
+        target = os.path.realpath(os.path.join(carbon_root, asset))
+        if not target.startswith(carbon_root + os.sep) or not os.path.isfile(target) or not target.endswith((".css", ".js", ".woff2")):
+            raise HTTPException(404, "not found")
+        return FileResponse(target, headers={"Cache-Control": "public, max-age=86400", "X-Content-Type-Options": "nosniff"})
+
     @app.get("/autopilot/3d/{asset:path}", dependencies=[Depends(admin)])
     async def studio3d_asset(asset: str):
         root = os.path.realpath(STUDIO3D)
