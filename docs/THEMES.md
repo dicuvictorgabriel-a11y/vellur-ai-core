@@ -39,5 +39,4 @@ name a colour; they read tokens, so every surface, Carbon web component (through
   none).
 
 ## Not themed
-User content (images, 3D scenes, code previews). 3D Studio and Precision Studio pages keep their own styles (they
-read only dark/light).
+User content (images, 3D scenes, code previews). The 3D Studio page keeps its own styles (it reads only dark/light).

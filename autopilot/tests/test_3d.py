@@ -259,3 +259,21 @@ async def test_3d_studio_two_prompt_futuristic_room_persistence_glb_and_snapshot
         assert png_res.headers["content-type"] == "image/png"
         assert png_res.content[:8] == b"\x89PNG\r\n\x1a\n"
 
+
+
+async def test_precision_studio_is_gone_and_3d_studio_stays(rig):
+    """Owner decision 2026-11-16: Precision Studio removed. Its routes and files must not come back."""
+    import os
+    import httpx
+    from app.api import build_admin
+    static = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "app", "static")
+    for name in ("studio.html", "studio.js", "studio.css", "geometry.js"):
+        assert not os.path.exists(os.path.join(static, name)), name
+    html = open(os.path.join(static, "dashboard.html")).read()
+    assert "/autopilot/studio/" not in html and "Precision Studio" not in html
+    ctrl = rig()
+    async with httpx.AsyncClient(transport=httpx.ASGITransport(app=build_admin(ctrl)), base_url="https://ai.example") as c:
+        h = {"X-Vellur-Admin": "s" * 32}
+        for url in ("/autopilot/studio/", "/autopilot/studio/studio.js", "/autopilot/studio/geometry.js"):
+            assert (await c.get(url, headers=h)).status_code == 404, url
+        assert (await c.get("/autopilot/3d/", headers=h)).status_code == 200

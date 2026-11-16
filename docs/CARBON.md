@@ -42,4 +42,4 @@ it is now `.iconbtn.sm`, 32×32 at every width (checked in both themes).
 1. `cds-modal` for approvals (`ask()`), knowledge editor and why-dialog.
 2. `cds-combo-box` / `cds-dropdown` behind the model picker and mode selects.
 3. `cds-data-table` for Activity and costs on desktop; `cds-progress-indicator` for the release stepper.
-4. Apply the Carbon layer to 3D Studio and Precision Studio pages (they still use their own styles).
+4. Apply the Carbon layer to the 3D Studio page (it still uses its own styles; see docs/agent-handover/3d-studio-ui.md).
