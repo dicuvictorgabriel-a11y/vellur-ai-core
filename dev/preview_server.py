@@ -45,7 +45,7 @@ def seed(db) -> tuple[int, int]:
     now = time.time()
     cur = db.x("INSERT INTO conversations(title,model,created,updated) VALUES(?,?,?,?)", ("Demo conversation", "vellur-chat", now, now))
     cid = cur.lastrowid
-    for role, text in (("user", "What can you do?"), ("assistant", "This is the **staging preview** of VELLUR AI Core. "
+    for role, text in (("user", "What can you do?"), ("assistant", "This is the **staging preview** of NOVA. "
                                                                   "Nothing here is connected to real models or data.")):
         db.x("INSERT INTO messages(conv_id,role,content,created) VALUES(?,?,?,?)", (cid, role, text, now))
     cur = db.x("INSERT INTO tasks(created,updated,state,repo,base,model,prompt,outcome,runs,files_changed,started,ended) "
@@ -124,7 +124,7 @@ class DemoUpstream:
                                                                          "images": [{"image_url": {"url": url}}]}}],
                                                  "usage": {"cost": 0.02}})
             answer = ("This is the **staging preview** answer. The demo provider is local: no API key, no real model "
-                      "and no cost. Configure a real provider in Models to use VELLUR for real work.")
+                      "and no cost. Configure a real provider in Models to use NOVA for real work.")
             if body.get("stream"):
                 chunks = [{"choices": [{"delta": {"content": answer}}]},
                           {"choices": [], "usage": {"prompt_tokens": 12, "completion_tokens": 28}}]

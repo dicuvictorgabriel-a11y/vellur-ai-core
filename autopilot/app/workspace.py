@@ -685,6 +685,21 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
     # ── releases of VELLUR itself (approval only; installing is done by vac-autoupdate on the host) ──
     release = Release(ctrl.db, ctrl.env.self_repo, agent.github_token, agent.github_transport)
 
+    delivery_cache: dict = {}
+
+    @app.get("/autopilot/api/agent/tasks/{tid}/delivery", dependencies=[Depends(admin)])
+    async def task_delivery(tid: int):
+        task = agent.task(tid)
+        if not task:
+            return JSONResponse(status_code=404, content={"error": "not_found", "message": "unknown task"})
+        key = (task.get("pr_url"), task.get("updated"), release.state()["installed"])
+        hit = delivery_cache.get(tid)
+        if hit and hit[0] == key and time.time() - hit[1]["checked_at"] < 30:   # GitHub is asked at most twice a minute
+            return hit[1]
+        out = await release.delivery(task)
+        delivery_cache[tid] = (key, out)
+        return out
+
     @app.get("/autopilot/api/release", dependencies=[Depends(admin)])
     async def release_overview():
         return await release.overview()

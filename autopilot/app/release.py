@@ -106,3 +106,68 @@ class Release:
         if last and last != self.state()["last"]:
             self.db.event("info", "release", last[:200])
         return self._save(**changes)
+
+
+    # ── delivery truth for one agent task (blueprint: Changes saved → PR open → Reviewed → Merged → Deployed) ──
+    async def delivery(self, task: dict) -> dict:
+        """Where a task's changes really are. Sources: the task record (saved work), GitHub (PR, review, merge) and the
+        server installer's report (installed commit). Anything that cannot be confirmed is "unknown", never "done"."""
+        repo, pr_url = task.get("repo") or "", task.get("pr_url") or ""
+        pub = (task.get("report") or {}).get("publication") or {}
+        s = self.state()
+        out = {"repo": repo, "base": task.get("base") or "", "branch": task.get("branch") or pub.get("branch") or "",
+               "pr": None, "merge_sha": "", "installed": s["installed"], "tracks_deploy": bool(repo and repo == self.repo),
+               "checked_at": time.time(), "errors": []}
+        saved = bool(task.get("files_changed"))
+        m = re.match(r"^https://github\.com/([\w.-]+/[\w.-]+)/pull/(\d+)$", pr_url)
+        pr, review, merged, deployed = "pending", "pending", "pending", "pending"
+        direct = pub.get("status") == "published" and SHA_RE.match(pub.get("commit") or "") and pub.get("branch") == out["base"]
+        if m:
+            saved, pr = True, "unknown"
+            review = merged = "unknown"
+            try:
+                r = await self._gh(f"/repos/{m.group(1)}/pulls/{m.group(2)}")
+                if r.status_code == 200:
+                    j = r.json()
+                    out["pr"] = {"number": int(m.group(2)), "url": pr_url, "state": j.get("state"), "draft": bool(j.get("draft")),
+                                 "merged": bool(j.get("merged")), "title": (j.get("title") or "")[:140]}
+                    pr = "done"
+                    if j.get("merged"):
+                        merged, review, out["merge_sha"] = "done", "done", j.get("merge_commit_sha") or ""
+                    else:
+                        merged = "failed" if j.get("state") == "closed" else "pending"
+                        rv = await self._gh(f"/repos/{m.group(1)}/pulls/{m.group(2)}/reviews?per_page=100")
+                        if rv.status_code == 200:
+                            states = [x.get("state") for x in rv.json()]
+                            review = "done" if "APPROVED" in states else "failed" if "CHANGES_REQUESTED" in states else "pending"
+                        else:
+                            review = "unknown"
+                else:
+                    out["errors"].append(f"GitHub answered {r.status_code} for the pull request")
+            except ReleaseError as e:
+                out["errors"].append(e.message)
+        elif direct:
+            saved, pr, review, merged, out["merge_sha"] = True, "skipped", "skipped", "done", pub["commit"]
+        if not out["tracks_deploy"]:
+            deployed = "untracked"
+        elif merged == "done" and SHA_RE.match(out["merge_sha"]):
+            deployed = "unknown"
+            if not s["installed"]:
+                out["errors"].append("the installed version is not recorded on the server")
+            elif s["installed"] == out["merge_sha"]:
+                deployed = "done"
+            else:
+                try:
+                    c = await self._gh(f"/repos/{self.repo}/compare/{out['merge_sha']}...{s['installed']}")
+                    if c.status_code == 200:
+                        deployed = "done" if c.json().get("status") in ("ahead", "identical") else "pending"
+                    else:
+                        out["errors"].append(f"GitHub answered {c.status_code} comparing the installed version")
+                except ReleaseError as e:
+                    out["errors"].append(e.message)
+        out["stages"] = [{"key": "saved", "label": "Changes saved", "status": "done" if saved else "pending"},
+                         {"key": "pr", "label": "PR open", "status": pr},
+                         {"key": "review", "label": "Reviewed", "status": review},
+                         {"key": "merged", "label": "Merged", "status": merged},
+                         {"key": "deployed", "label": "Deployed", "status": deployed}]
+        return out
