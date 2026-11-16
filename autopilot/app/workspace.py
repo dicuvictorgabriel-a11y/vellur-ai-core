@@ -447,6 +447,51 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
         db.event("info", "llm", "model routes changed", routes=routes)
         return await llm_state()
 
+    # ── NOVA timeline and projects ──────────────────────────────────────────────────────────────
+    from .timeline import CATEGORIES, Timeline
+    timeline = Timeline(db)
+
+    @app.get("/autopilot/api/timeline", dependencies=[Depends(admin)])
+    async def timeline_list(project: str = "", task: Optional[int] = None, category: str = "", limit: int = 100,
+                            before: Optional[float] = None):
+        added = timeline.sync()
+        return {"events": timeline.query(project, task, category, limit, before), "categories": list(CATEGORIES),
+                "synced_at": time.time(), "added": added}
+
+    @app.get("/autopilot/api/projects", dependencies=[Depends(admin)])
+    async def projects_list():
+        timeline.sync()
+        return {"projects": timeline.projects(router.tag_costs), "installed": release.state()["installed"],
+                "self_repo": ctrl.env.self_repo}
+
+    @app.get("/autopilot/api/projects/overview", dependencies=[Depends(admin)])
+    async def project_overview(repo: str = ""):
+        timeline.sync()
+        tasks = db.all("SELECT id,prompt,state,outcome,runs,branch,pr_url,files_changed,updated,ended FROM tasks WHERE repo=? "
+                       "ORDER BY updated DESC LIMIT 20", (repo,))
+        if not tasks:
+            return JSONResponse(status_code=404, content={"error": "not_found", "message": "no work recorded for this project"})
+        links = {}
+        for r in db.all("SELECT key,value FROM kv WHERE key LIKE 'conversation_task_%'"):
+            try:
+                links[int(json.loads(r["value"]))] = int(r["key"].rsplit("_", 1)[1])
+            except (ValueError, TypeError):
+                pass
+        last = agent.task(tasks[0]["id"]) or {}
+        rep = last.get("report") or {}
+        for t in tasks:
+            t["conversation"] = links.get(t["id"])
+            t["cost"] = router.tag_costs(f"task:{t['id']}")
+        unfinished = [t for t in tasks if t["outcome"] not in ("completed", "") or t["state"] not in
+                      ("done", "failed", "cancelled", "timeout", "over_budget")]
+        return {"repo": repo, "tasks": tasks, "last": {"id": last.get("id"), "prompt": last.get("prompt"), "state": last.get("state"),
+                "outcome": last.get("outcome"), "why": rep.get("why") or last.get("error"), "not_done": (rep.get("sections") or {}).get("not_done", ""),
+                "files": rep.get("files") or [], "tests": rep.get("tests") or [], "pr_url": last.get("pr_url"),
+                "conversation": links.get(last.get("id"))},
+                "unfinished": unfinished[:5], "installed": release.state()["installed"], "tracks_deploy": repo == ctrl.env.self_repo,
+                "events": timeline.query(project=repo, limit=40),
+                "knowledge": agent.knowledge.search("", project=repo, limit=20)}
+
     # ── NOVA Knowledge ──────────────────────────────────────────────────────────────────────────
     from .knowledge import KnowledgeError
     kn = agent.knowledge
@@ -771,6 +816,7 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
             return hit[1]
         out = await release.delivery(task)
         delivery_cache[tid] = (key, out)
+        timeline.observe_delivery(task, out)
         return out
 
     @app.get("/autopilot/api/release", dependencies=[Depends(admin)])
