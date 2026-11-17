@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en" data-nova-theme="obsidian">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="robots" content="noindex, nofollow" />
+    <meta name="color-scheme" content="dark light" />
+    <title>NOVA</title>
+    <script>
+      (function () {
+        try {
+          var m = document.cookie.match(/(?:^|; )nova_theme=([^;]*)/);
+          var v = m ? decodeURIComponent(m[1]) : "obsidian";
+          var dark = { obsidian: 1, oxblood: 1, cobalt: 1, petrol: 1, aubergine: 1, "carbon-g90": 1, "carbon-g100": 1 };
+          if (v.indexOf("system:") === 0) {
+            var p = v.slice(7).split("/");
+            v = matchMedia("(prefers-color-scheme: light)").matches ? p[1] : p[0];
+          }
+          document.documentElement.dataset.novaTheme = v || "obsidian";
+          document.documentElement.style.colorScheme = dark[v] ? "dark" : "light";
+        } catch (e) {}
+      })();
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <noscript>NOVA needs JavaScript. The classic dashboard remains available at /autopilot/.</noscript>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>

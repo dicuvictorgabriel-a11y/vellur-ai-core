@@ -20,6 +20,14 @@ jobs:
           node-version: "22"
       - name: Install test dependencies
         run: pip install -q -r autopilot/requirements-dev.txt
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: TypeScript checks and production build
+        working-directory: frontend
+        run: |
+          npm run typecheck
+          npm run build
       - name: Controller, agent and dashboard tests
         run: cd autopilot && python -m pytest -q
       - name: Shell and runner syntax

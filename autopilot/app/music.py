@@ -60,6 +60,11 @@ class TrackBody(BaseModel):
     duration: str = ""
     notes: str = ""
 
+class TrackPatch(BaseModel):
+    title: Optional[str] = None
+    duration: Optional[str] = None
+    notes: Optional[str] = None
+
 
 def register(app: FastAPI, ctrl: Controller, admin, admin_write) -> None:
     db = ctrl.db
@@ -174,6 +179,27 @@ def register(app: FastAPI, ctrl: Controller, admin, admin_write) -> None:
                    (rid, title, clean(body.duration, 20), (body.notes or "").strip()[:1000], pos, time.time()))
         db.x("UPDATE music_releases SET updated=? WHERE id=?", (time.time(), rid))
         return db.one("SELECT id,title,duration,notes,position,created FROM music_tracks WHERE id=?", (cur.lastrowid,))
+
+    @app.patch("/autopilot/api/music/tracks/{tid}", dependencies=[Depends(admin_write)])
+    async def track_update(tid: int, body: TrackPatch):
+        row = db.one("SELECT id,release_id FROM music_tracks WHERE id=?", (tid,))
+        if not row:
+            return err("not_found", "Unknown track.")
+        fields: dict = {}
+        if body.title is not None:
+            title = clean(body.title, 200)
+            if not 1 <= len(title) <= 200:
+                return err("invalid", "A track needs a title (1-200 characters).")
+            fields["title"] = title
+        if body.duration is not None:
+            fields["duration"] = clean(body.duration, 20)
+        if body.notes is not None:
+            fields["notes"] = body.notes.strip()[:1000]
+        if fields:
+            sets = ", ".join(f"{key}=?" for key in fields)
+            db.x(f"UPDATE music_tracks SET {sets} WHERE id=?", (*fields.values(), tid))
+            db.x("UPDATE music_releases SET updated=? WHERE id=?", (time.time(), row["release_id"]))
+        return db.one("SELECT id,title,duration,notes,position,created FROM music_tracks WHERE id=?", (tid,))
 
     @app.delete("/autopilot/api/music/tracks/{tid}", dependencies=[Depends(admin_write)])
     async def track_delete(tid: int):
