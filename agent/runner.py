@@ -209,12 +209,33 @@ def pump(t, stream, path):
             out.write((json.dumps(ev) + "\n").encode())
 
 
+# Dependency, cache and tool folders never belong to a task's result. Kept in .git/info/exclude and re-applied before
+# every run, so workspaces created before a new entry was added get it too (2026-11-17: a visual-inspection run
+# installed tooling into the repository and the result failed with "too many changed files (2101)").
+EXCLUDES = ("__pycache__/", "*.pyc", "node_modules/", ".pytest_cache/", ".mypy_cache/", ".ruff_cache/", ".venv/", "venv/",
+            ".venv-*/", "env/", ".tox/", ".nox/", ".next/", ".nuxt/", ".turbo/", ".parcel-cache/", ".svelte-kit/", ".cache/",
+            ".npm/", ".pnpm-store/", ".yarn/cache/", "bower_components/", "ms-playwright/", ".playwright/",
+            "playwright-report/", "test-results/", "coverage/", ".coverage", "htmlcov/", ".gradle/", "target/debug/",
+            ".DS_Store", ".vellur/attachments/", ".vellur/shots/")
+
+
+def ensure_excludes(repo):
+    path = os.path.join(repo, ".git", "info", "exclude")
+    try:
+        have = set(open(path).read().split())
+    except OSError:
+        have = set()
+    missing = [e for e in EXCLUDES if e not in have]
+    if missing:
+        os.makedirs(os.path.dirname(path), exist_ok=True)
+        with open(path, "a") as f:
+            f.write("\n" + "\n".join(missing) + "\n")
+
+
 def initialize_repo(repo):
     if not os.path.isdir(os.path.join(repo, ".git")):
         git(repo, "init", "-q", "-b", "main")
-        with open(os.path.join(repo, ".git", "info", "exclude"), "a") as f:
-            f.write("\n__pycache__/\n*.pyc\nnode_modules/\n.pytest_cache/\n.mypy_cache/\n.ruff_cache/\n.venv/\n"
-                    ".next/\n.turbo/\n.cache/\n.DS_Store\n.vellur/attachments/\n")
+        ensure_excludes(repo)
         git(repo, "add", "-A")
         git(repo, "commit", "-q", "--allow-empty", "-m", "baseline")
         git(repo, "tag", BASE)
@@ -226,6 +247,7 @@ def run_task(tid):
     log = open(os.path.join(d, "log"), "ab", buffering=0)
     try:
         initialize_repo(repo)
+        ensure_excludes(repo)
         cfg = os.path.join(home, "opencode.json")
         with open(cfg, "w") as f:
             json.dump(opencode_config(t["meta"]), f)
@@ -342,7 +364,14 @@ def changed_files(repo, tree=None):
     parts = [x for x in raw.split("\0") if x]
     files, total = [], 0
     if len(parts) // 2 > MAX_FILES:
-        raise RuntimeError(f"too many changed files ({len(parts) // 2}); is a dependency folder missing from .gitignore?")
+        counts = {}
+        for path in parts[1::2]:
+            top = path.split("/", 2)
+            key = "/".join(top[:2]) if len(top) > 2 else top[0]
+            counts[key] = counts.get(key, 0) + 1
+        biggest = ", ".join(f"{k} ({n})" for k, n in sorted(counts.items(), key=lambda x: -x[1])[:5])
+        raise RuntimeError(f"too many changed files ({len(parts) // 2}). Largest folders: {biggest}. Delete generated or "
+                           "dependency folders (or add them to .gitignore) and run again.")
     for status, path in zip(parts[0::2], parts[1::2]):
         full = os.path.join(repo, path)
         if status.startswith("D"):
