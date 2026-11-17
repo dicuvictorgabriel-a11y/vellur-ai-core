@@ -13,7 +13,7 @@ import uuid
 from dataclasses import dataclass, field
 from typing import Any, Callable, Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
@@ -421,7 +421,7 @@ async def get_mcp_server(request: Request) -> MCPServer:
     return request.app.state._mcp_server
 
 
-def register_mcp_routes(app: FastAPI, context_service: ContextService) -> None:
+def register_mcp_routes(app: FastAPI, context_service: ContextService, admin_write: Callable) -> None:
     """Register MCP endpoints on the FastAPI app."""
     # Store context_service in app state for dependencies
     app.state.context_service = context_service
@@ -461,24 +461,24 @@ def register_mcp_routes(app: FastAPI, context_service: ContextService) -> None:
 
         return StreamingResponse(event_stream(), media_type="text/event-stream")
 
-    @app.post("/autopilot/api/mcp/tokens", dependencies=[Depends(verify_mcp_token)])
+    @app.post("/autopilot/api/mcp/tokens", dependencies=[Depends(admin_write)])
     async def create_mcp_token(
         request: Request,
-        client_name: str,
-        scopes: list[str],
+        client_name: str = Body(...),
+        scopes: list[str] = Body(...),
     ):
         """Create a new MCP token (admin only via X-Vellur-Admin)."""
         context_service: ContextService = request.app.state.context_service
         token = context_service.create_mcp_token(client_name, scopes)
         return {"client_name": client_name, "token": token, "scopes": scopes}
 
-    @app.get("/autopilot/api/mcp/tokens", dependencies=[Depends(verify_mcp_token)])
+    @app.get("/autopilot/api/mcp/tokens", dependencies=[Depends(admin_write)])
     async def list_mcp_tokens(request: Request):
         """List MCP tokens (admin only)."""
         context_service: ContextService = request.app.state.context_service
         return {"tokens": context_service.list_mcp_tokens()}
 
-    @app.delete("/autopilot/api/mcp/tokens/{client_name}", dependencies=[Depends(verify_mcp_token)])
+    @app.delete("/autopilot/api/mcp/tokens/{client_name}", dependencies=[Depends(admin_write)])
     async def revoke_mcp_token(
         request: Request,
         client_name: str,

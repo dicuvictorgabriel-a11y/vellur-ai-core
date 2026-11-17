@@ -444,6 +444,186 @@ class TestMCPEndToEnd:
             assert response.status_code == 401
 
 
+class TestMCPTokenManagementHTTP:
+    """Test MCP token management HTTP endpoints require admin authentication."""
+    
+    @pytest.mark.asyncio
+    async def test_token_list_requires_admin(self, full_setup):
+        """Test that listing tokens requires admin authentication."""
+        app = full_setup["app"]
+        context_service = full_setup["context_service"]
+        
+        # Create a regular read-only token
+        read_token = context_service.create_mcp_token("regular-client", ["read:timeline", "read:knowledge"])
+        
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            # Try to list tokens with read-only token - should fail
+            response = await client.get(
+                "/autopilot/api/mcp/tokens",
+                headers={"Authorization": f"Bearer {read_token}"}
+            )
+            assert response.status_code == 401
+            
+            # Try with invalid token - should fail
+            response = await client.get(
+                "/autopilot/api/mcp/tokens",
+                headers={"Authorization": "Bearer invalid_token"}
+            )
+            assert response.status_code == 401
+            
+            # Try without auth - should fail
+            response = await client.get("/autopilot/api/mcp/tokens")
+            assert response.status_code == 401
+    
+    @pytest.mark.asyncio
+    async def test_token_create_requires_admin(self, full_setup):
+        """Test that creating tokens requires admin authentication."""
+        app = full_setup["app"]
+        context_service = full_setup["context_service"]
+        
+        read_token = context_service.create_mcp_token("regular-client", ["read:timeline"])
+        
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            # Try to create token with read-only token - should fail
+            response = await client.post(
+                "/autopilot/api/mcp/tokens",
+                headers={"Authorization": f"Bearer {read_token}", "Content-Type": "application/json"},
+                json={"client_name": "escalated", "scopes": ["read:context"]}
+            )
+            assert response.status_code == 401
+            
+            # Try without auth - should fail
+            response = await client.post(
+                "/autopilot/api/mcp/tokens",
+                headers={"Content-Type": "application/json"},
+                json={"client_name": "escalated", "scopes": ["read:context"]}
+            )
+            assert response.status_code == 401
+    
+    @pytest.mark.asyncio
+    async def test_token_revoke_requires_admin(self, full_setup):
+        """Test that revoking tokens requires admin authentication."""
+        app = full_setup["app"]
+        context_service = full_setup["context_service"]
+        
+        read_token = context_service.create_mcp_token("regular-client", ["read:timeline"])
+        
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            # Try to revoke token with read-only token - should fail
+            response = await client.delete(
+                "/autopilot/api/mcp/tokens/regular-client",
+                headers={"Authorization": f"Bearer {read_token}"}
+            )
+            assert response.status_code == 401
+            
+            # Try without auth - should fail
+            response = await client.delete("/autopilot/api/mcp/tokens/regular-client")
+            assert response.status_code == 401
+    
+    @pytest.mark.asyncio
+    async def test_token_management_with_admin_header(self, full_setup):
+        """Test that admin can manage tokens via X-Vellur-Admin header."""
+        app = full_setup["app"]
+        context_service = full_setup["context_service"]
+        env = full_setup["env"]
+        admin_secret = env.admin_header_secret
+        
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            # List tokens (should be empty initially)
+            response = await client.get(
+                "/autopilot/api/mcp/tokens",
+                headers={"X-Vellur-Admin": admin_secret, "X-Vellur-Request": "1"}
+            )
+            assert response.status_code == 200
+            assert response.json()["tokens"] == []
+            
+            # Create a token
+            response = await client.post(
+                "/autopilot/api/mcp/tokens",
+                headers={"X-Vellur-Admin": admin_secret, "X-Vellur-Request": "1", "Content-Type": "application/json"},
+                json={"client_name": "admin-created", "scopes": ["read:context", "read:release"]}
+            )
+            assert response.status_code == 200
+            data = response.json()
+            assert data["client_name"] == "admin-created"
+            assert "token" in data
+            assert set(data["scopes"]) == {"read:context", "read:release"}
+            created_token = data["token"]
+            
+            # List tokens - should show the new token
+            response = await client.get(
+                "/autopilot/api/mcp/tokens",
+                headers={"X-Vellur-Admin": admin_secret, "X-Vellur-Request": "1"}
+            )
+            assert response.status_code == 200
+            tokens = response.json()["tokens"]
+            assert len(tokens) == 1
+            assert tokens[0]["client_name"] == "admin-created"
+            assert tokens[0]["revoked_at"] is None
+            
+            # Verify the created token works for MCP
+            response = await client.post(
+                "/autopilot/api/mcp",
+                headers={"Authorization": f"Bearer {created_token}", "Content-Type": "application/json"},
+                json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {"protocolVersion": "2024-11-05"}}
+            )
+            assert response.status_code == 200
+            
+            # Revoke the token
+            response = await client.delete(
+                "/autopilot/api/mcp/tokens/admin-created",
+                headers={"X-Vellur-Admin": admin_secret, "X-Vellur-Request": "1"}
+            )
+            assert response.status_code == 200
+            assert response.json()["revoked"] is True
+            
+            # List tokens - should show the revoked token
+            response = await client.get(
+                "/autopilot/api/mcp/tokens",
+                headers={"X-Vellur-Admin": admin_secret, "X-Vellur-Request": "1"}
+            )
+            assert response.status_code == 200
+            tokens = response.json()["tokens"]
+            assert len(tokens) == 1
+            assert tokens[0]["revoked_at"] is not None
+            
+            # The revoked token should no longer work for MCP
+            response = await client.post(
+                "/autopilot/api/mcp",
+                headers={"Authorization": f"Bearer {created_token}", "Content-Type": "application/json"},
+                json={"jsonrpc": "2.0", "id": 1, "method": "initialize", "params": {}}
+            )
+            assert response.status_code == 401
+    
+    @pytest.mark.asyncio
+    async def test_admin_without_csrf_fails(self, full_setup):
+        """Test that admin requests without CSRF header fail."""
+        app = full_setup["app"]
+        env = full_setup["env"]
+        admin_secret = env.admin_header_secret
+        
+        transport = httpx.ASGITransport(app=app)
+        async with httpx.AsyncClient(transport=transport, base_url="http://test") as client:
+            # Try without X-Vellur-Request header
+            response = await client.get(
+                "/autopilot/api/mcp/tokens",
+                headers={"X-Vellur-Admin": admin_secret}
+            )
+            assert response.status_code == 403
+            assert "cross-origin" in response.json()["detail"].lower() or "missing" in response.json()["detail"].lower()
+            
+            # Try with wrong CSRF header
+            response = await client.get(
+                "/autopilot/api/mcp/tokens",
+                headers={"X-Vellur-Admin": admin_secret, "X-Vellur-Request": "0"}
+            )
+            assert response.status_code == 403
+
+
 class TestContextBridgeAgentIntegration:
     """Test that context bridge integrates with agent prompt."""
     
