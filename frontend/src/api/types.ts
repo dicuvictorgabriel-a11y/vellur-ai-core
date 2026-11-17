@@ -244,6 +244,23 @@ export interface AgentEvent {
   [key: string]: unknown;
 }
 
+export interface AgentRepo {
+  name: string;
+  default_branch?: string;
+  private?: boolean;
+  pushed_at?: string;
+}
+
+export interface AgentRepos {
+  github_token_set: boolean;
+  repos: AgentRepo[];
+}
+
+export interface AgentBranches {
+  default: string;
+  branches: string[];
+}
+
 export interface ProjectInfo {
   repo: string;
   name: string;

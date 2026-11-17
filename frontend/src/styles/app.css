@@ -566,6 +566,142 @@ pre {
   outline: 2px solid var(--cds-focus);
   outline-offset: -2px;
 }
+.nova-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+  min-inline-size: 0;
+}
+.nova-field-hint {
+  margin: 0;
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.5;
+}
+.nova-linkbtn {
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--cds-link-primary);
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+}
+.nova-linkbtn:hover {
+  color: var(--cds-link-primary-hover);
+}
+.nova-modelgroup {
+  min-inline-size: 0;
+  margin: 0 0 1rem;
+  padding: 0;
+  border: 0;
+}
+.nova-modelgroup-legend {
+  padding: 0;
+  color: var(--cds-text-primary);
+  font-size: 0.8rem;
+  font-weight: 600;
+}
+.nova-modelgroup-intro {
+  margin-block: 0.2rem 0.65rem;
+}
+.nova-modelcards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(13rem, 1fr));
+  gap: 0.75rem;
+  margin-block-end: 0.6rem;
+}
+.nova-modelcard {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  gap: 0.3rem;
+  padding: 0.85rem 0.95rem;
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer-01);
+  cursor: pointer;
+  transition:
+    border-color 120ms ease,
+    background-color 120ms ease,
+    box-shadow 120ms ease;
+}
+.nova-modelcard:hover {
+  border-color: var(--cds-border-strong-01);
+  background: var(--cds-layer-hover-01);
+}
+.nova-modelcard:has(input:focus-visible) {
+  outline: 2px solid var(--cds-focus);
+  outline-offset: 2px;
+}
+.nova-modelcard.is-selected {
+  border-color: var(--nova-accent);
+  background: var(--cds-layer-02);
+  box-shadow: inset 0 0 0 1px var(--nova-accent);
+}
+.nova-modelcard input {
+  position: absolute;
+  inline-size: 1px;
+  block-size: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+.nova-modelcard-head {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  min-block-size: 1.5rem;
+  padding-inline-end: 1.4rem;
+}
+.nova-modelcard-head strong {
+  font-size: 0.95rem;
+}
+.nova-modelcard-check {
+  position: absolute;
+  inset-block-start: 0.9rem;
+  inset-inline-end: 0.9rem;
+  color: var(--nova-accent);
+  opacity: 0;
+}
+.nova-modelcard.is-selected .nova-modelcard-check {
+  opacity: 1;
+}
+.nova-modelcard-short {
+  color: var(--cds-text-primary);
+  font-size: 0.78rem;
+  font-weight: 500;
+}
+.nova-modelcard-desc {
+  color: var(--cds-text-secondary);
+  font-size: 0.75rem;
+  line-height: 1.45;
+}
+.nova-modelcard-status {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-block-start: 0.1rem;
+  color: var(--cds-text-secondary);
+  font-size: 0.72rem;
+}
+.nova-dot {
+  inline-size: 0.45rem;
+  block-size: 0.45rem;
+  border-radius: 50%;
+  background: var(--cds-icon-secondary);
+}
+.nova-modelcard-status.is-ok .nova-dot {
+  background: var(--cds-support-success);
+}
+.nova-modelcard-status.is-warn .nova-dot {
+  background: var(--cds-support-warning);
+}
+.nova-modelcard-id {
+  margin-block-start: auto;
+  padding-block-start: 0.3rem;
+  color: var(--cds-text-secondary);
+  font-family: var(--cds-code-01-font-family);
+  font-size: 0.68rem;
+}
 
 /* ── chat ───────────────────────────────────────────────────────────────────────────────── */
 .nova-chat-layout {

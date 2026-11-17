@@ -1,4 +1,6 @@
 import type {
+  AgentBranches,
+  AgentRepos,
   AgentState,
   AgentTask,
   Attachment,
@@ -99,6 +101,8 @@ export const api = {
     request<Json>("llm/test", { method: "POST", body: JSON.stringify({ target }) }),
 
   agent: () => request<AgentState>("agent"),
+  repos: () => request<AgentRepos>("agent/repos"),
+  branches: (repo: string) => request<AgentBranches>(`agent/branches?repo=${encodeURIComponent(repo)}`),
   task: (id: number) => request<AgentTask>(`agent/tasks/${id}`),
   createTask: (body: Json) => request<AgentTask>("agent/tasks", { method: "POST", body: JSON.stringify(body) }),
   sendTaskMessage: (id: number, text: string) =>

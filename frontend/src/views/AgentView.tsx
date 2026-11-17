@@ -3,19 +3,42 @@ import {
   Button,
   Checkbox,
   InlineNotification,
+  Select,
+  SelectItem,
   TextArea,
   TextInput,
   Tag,
 } from "@carbon/react";
-import { Add, ArrowRight, Play, Send, Warning } from "@carbon/icons-react";
+import { Add, ArrowRight, Checkmark, Play, Send, Warning } from "@carbon/icons-react";
 import { api } from "../api/client";
-import type { AgentEvent, AgentReport } from "../api/types";
+import type { AgentBranches, AgentEvent, AgentReport } from "../api/types";
 import { EmptyState, LoadError, Loading, PageHeader, SectionTitle, Stat } from "../components/Ui";
 import { useAsync } from "../hooks";
 import { navigate, type Route } from "../router";
 import { dateTime, errorMessage, money, num, tagType, timeAgo } from "../utils";
 
 const RUNNING = new Set(["running", "working", "started", "publishing", "cancelling"]);
+
+const MODEL_ROLES = [
+  {
+    id: "vellur-coder",
+    name: "Coder",
+    short: "Best for agent tasks",
+    description: "Writes, edits and tests code. Start here for almost every repository task.",
+  },
+  {
+    id: "vellur-max",
+    name: "Max",
+    short: "Strongest reasoning",
+    description: "Use when a task is unusually hard or Coder keeps getting stuck.",
+  },
+  {
+    id: "vellur-chat",
+    name: "Chat",
+    short: "Cheapest",
+    description: "Light questions and tiny edits. Less reliable for complex code changes.",
+  },
+] as const;
 
 export function AgentView({ route }: { route: Route }) {
   if (route.param === "new") return <NewTask />;
@@ -85,13 +108,92 @@ function TaskList() {
 function NewTask() {
   const agent = useAsync(() => api.agent(), []);
   const projects = useAsync(() => api.projects(), []);
+  const repos = useAsync(() => api.repos(), []);
+  const llm = useAsync(() => api.llm(), []);
   const [prompt, setPrompt] = useState("");
   const [repo, setRepo] = useState("");
+  const [repoMode, setRepoMode] = useState<"list" | "manual">("list");
   const [base, setBase] = useState("");
+  const [branchMode, setBranchMode] = useState<"list" | "manual">("list");
+  const [branches, setBranches] = useState<AgentBranches | null>(null);
+  const [branchLoading, setBranchLoading] = useState(false);
+  const [branchError, setBranchError] = useState("");
   const [model, setModel] = useState("vellur-coder");
   const [visual, setVisual] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+
+  const repoChoices = useMemo(() => {
+    const seen = new Set<string>();
+    const rows: Array<{ value: string; label: string }> = [];
+    const add = (value?: string, detail?: string) => {
+      const clean = (value || "").trim();
+      if (!clean || seen.has(clean)) return;
+      seen.add(clean);
+      rows.push({ value: clean, label: detail ? `${clean} · ${detail}` : clean });
+    };
+    add(projects.data?.self_repo, "this repository");
+    projects.data?.projects?.forEach((project) =>
+      add(project.repo, `${project.tasks} task${project.tasks === 1 ? "" : "s"}`),
+    );
+    repos.data?.repos?.forEach((item) =>
+      add(item.name, item.default_branch ? `default ${item.default_branch}` : undefined),
+    );
+    return rows;
+  }, [projects.data, repos.data]);
+
+  useEffect(() => {
+    if (!/^[^/\s]+\/[^/\s]+$/.test(repo)) {
+      setBranches(null);
+      setBranchError("");
+      setBranchLoading(false);
+      return;
+    }
+    let active = true;
+    const timer = window.setTimeout(() => {
+      setBranchLoading(true);
+      setBranchError("");
+      api.branches(repo)
+        .then((result) => {
+          if (!active) return;
+          setBranches(result);
+          setBase((current) =>
+            current && current !== result.default && !result.branches.includes(current) ? "" : current,
+          );
+        })
+        .catch((reason) => {
+          if (active) setBranchError(errorMessage(reason));
+        })
+        .finally(() => {
+          if (active) setBranchLoading(false);
+        });
+    }, 350);
+    return () => {
+      active = false;
+      window.clearTimeout(timer);
+    };
+  }, [repo]);
+
+  const chooseRepo = (value: string) => {
+    setBranchMode("list");
+    setBase("");
+    setBranches(null);
+    if (value === "__manual__") {
+      setRepoMode("manual");
+      setRepo("");
+      return;
+    }
+    setRepoMode("list");
+    setRepo(value);
+  };
+
+  const modelStatus = (role: string) => {
+    if (llm.loading) return { tone: "muted", text: "Checking availability…" };
+    if (llm.error) return { tone: "muted", text: "Availability unknown" };
+    const usable = (llm.data?.effective?.[role] || []).filter((target) => target.usable);
+    if (!usable.length) return { tone: "warn", text: "No endpoint configured" };
+    return { tone: "ok", text: `Ready · ${usable.length} endpoint${usable.length === 1 ? "" : "s"}` };
+  };
 
   const create = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -143,40 +245,138 @@ function NewTask() {
           required
         />
         <div className="nova-form-grid">
-          <TextInput
-            id="task-repo"
-            labelText="Repository (owner/name)"
-            placeholder={(projects.data?.self_repo as string | undefined) || "owner/name"}
-            value={repo}
-            onChange={(event) => setRepo(event.target.value)}
-          />
-          <TextInput
-            id="task-base"
-            labelText="Base branch (optional)"
-            placeholder="main"
-            value={base}
-            onChange={(event) => setBase(event.target.value)}
-          />
-          <div className="nova-field">
-            <label htmlFor="task-model">Model role</label>
-            <select id="task-model" value={model} onChange={(event) => setModel(event.target.value)}>
-              <option value="vellur-coder">vellur-coder · coding</option>
-              <option value="vellur-max">vellur-max · hard problems</option>
-              <option value="vellur-chat">vellur-chat · economical</option>
-            </select>
+          <div className="nova-stack">
+            <Select
+              id="task-repo"
+              labelText="Repository"
+              value={repoMode === "manual" ? "__manual__" : repo}
+              onChange={(event) => chooseRepo(event.target.value)}
+              helperText="From GitHub and your existing projects."
+            >
+              <SelectItem value="" text="No repository (empty workspace)" />
+              {repoChoices.map((choice) => (
+                <SelectItem key={choice.value} value={choice.value} text={choice.label} />
+              ))}
+              <SelectItem value="__manual__" text="Other repository…" />
+            </Select>
+            {repoMode === "manual" ? (
+              <TextInput
+                id="task-repo-manual"
+                labelText="Repository name"
+                placeholder="owner/name"
+                value={repo}
+                onChange={(event) => setRepo(event.target.value)}
+              />
+            ) : null}
+            {repos.error ? (
+              <p className="nova-field-hint">
+                GitHub repository list unavailable. Choose a known project or “Other repository…”.
+              </p>
+            ) : null}
           </div>
-          <Checkbox
-            id="task-visual"
-            labelText="Ask for visual inspection (uses a vision-capable endpoint)"
-            checked={visual}
-            onChange={(_: unknown, { checked }: { checked: boolean }) => setVisual(Boolean(checked))}
-          />
+          <div className="nova-stack">
+            <Select
+              id="task-base"
+              labelText="Base branch"
+              value={branchMode === "manual" ? "__manual__" : base}
+              onChange={(event) => {
+                const value = event.target.value;
+                if (value === "__manual__") {
+                  setBranchMode("manual");
+                  setBase("");
+                  return;
+                }
+                setBranchMode("list");
+                setBase(value);
+              }}
+              helperText={
+                branchLoading
+                  ? "Loading branches…"
+                  : branches
+                    ? `${branches.branches.length} branch${branches.branches.length === 1 ? "" : "es"} found.`
+                    : "Default branch unless you choose another."
+              }
+            >
+              <SelectItem
+                value=""
+                text={branches?.default ? `Default branch (${branches.default})` : "Default branch"}
+              />
+              {(branches?.branches || [])
+                .filter((branch) => branch !== branches?.default)
+                .map((branch) => (
+                  <SelectItem key={branch} value={branch} text={branch} />
+                ))}
+              <SelectItem value="__manual__" text="Other branch…" />
+            </Select>
+            {branchMode === "manual" ? (
+              <TextInput
+                id="task-base-manual"
+                labelText="Branch name"
+                placeholder={branches?.default || "main"}
+                value={base}
+                onChange={(event) => setBase(event.target.value)}
+              />
+            ) : null}
+            {branchError ? (
+              <p className="nova-field-hint">
+                Branch list unavailable; choose the default or “Other branch…” and type it.
+              </p>
+            ) : null}
+          </div>
         </div>
-        {projects.data?.projects.length ? (
-          <div className="nova-note">
-            Known repositories: {projects.data.projects.map((project) => project.repo).join(", ")}
+        <fieldset className="nova-modelgroup">
+          <legend className="nova-modelgroup-legend">Model role</legend>
+          <p className="nova-field-hint nova-modelgroup-intro">
+            Choose what the task needs. NOVA resolves the role to the best available endpoint and can fall back
+            automatically.
+          </p>
+          <div className="nova-modelcards">
+            {MODEL_ROLES.map((role) => {
+              const status = modelStatus(role.id);
+              const selected = model === role.id;
+              return (
+                <label key={role.id} className={`nova-modelcard${selected ? " is-selected" : ""}`}>
+                  <input
+                    type="radio"
+                    name="task-model"
+                    value={role.id}
+                    checked={selected}
+                    onChange={() => setModel(role.id)}
+                  />
+                  <span className="nova-modelcard-head">
+                    <strong>{role.name}</strong>
+                    {role.id === "vellur-coder" ? (
+                      <Tag size="sm" type="green">
+                        Recommended
+                      </Tag>
+                    ) : null}
+                    <Checkmark size={16} className="nova-modelcard-check" aria-hidden="true" />
+                  </span>
+                  <span className="nova-modelcard-short">{role.short}</span>
+                  <span className="nova-modelcard-desc">{role.description}</span>
+                  <span className={`nova-modelcard-status is-${status.tone}`}>
+                    <span className="nova-dot" aria-hidden="true" />
+                    {status.text}
+                  </span>
+                  <span className="nova-modelcard-id">{role.id}</span>
+                </label>
+              );
+            })}
           </div>
-        ) : null}
+          <p className="nova-field-hint">
+            Pick a role; the exact model is set in{" "}
+            <button type="button" className="nova-linkbtn" onClick={() => navigate("models")}>
+              Models
+            </button>
+            .
+          </p>
+        </fieldset>
+        <Checkbox
+          id="task-visual"
+          labelText="Ask for visual inspection (uses a vision-capable endpoint)"
+          checked={visual}
+          onChange={(_: unknown, { checked }: { checked: boolean }) => setVisual(Boolean(checked))}
+        />
         <div className="nova-row">
           <Button type="submit" renderIcon={Play} disabled={busy || !prompt.trim()}>
             {busy ? "Starting…" : "Start task"}
