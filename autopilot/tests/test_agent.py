@@ -186,7 +186,14 @@ class FakeGitHub:
         if p.endswith("/git/refs") or "/git/refs/heads/" in p:
             return httpx.Response(201 if req.method == "POST" else 200, json={})
         if p.endswith("/pulls"):
-            return httpx.Response(201, json={"html_url": "https://github.com/o/r/pull/5"})
+            if getattr(self, "pulls_fail", 0):
+                self.pulls_fail -= 1
+                return httpx.Response(403, json={"message": "Resource not accessible by personal access token"})
+            self.pr_n = getattr(self, "pr_n", 4) + 1
+            return httpx.Response(201, json={"html_url": f"https://github.com/o/r/pull/{self.pr_n}"})
+        if "/pulls/" in p:
+            st = getattr(self, "pr_state", "open")
+            return httpx.Response(200, json={"state": "closed" if st != "open" else "open", "merged": st == "merged"})
         return httpx.Response(404)
 
 
@@ -250,6 +257,60 @@ async def test_task_runs_and_publishes_only_on_request(agents):
     await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)
     assert [m for m, p, _ in gh.calls if p.endswith("/pulls")] == ["POST"]
     assert ("PATCH", f"/repos/o/r/git/refs/heads/vellur/task-{tid}") in [(m, p) for m, p, _ in gh.calls]
+
+
+@pytest.mark.parametrize("state", ["merged", "closed"])
+async def test_publish_after_merged_or_closed_pr_opens_a_new_pr_on_a_fresh_branch(agents, state):
+    """Owner incident: the old PR (#35) was merged; Retry pull request force-moved its branch and kept
+    pointing at the merged PR, so no new PR ever appeared."""
+    ctrl, router, mgr, runner, gh, admin = agents()
+    mgr.set_github_token("github_pat_" + "a" * 30)
+    tid = (await mgr.create("Add a health endpoint", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    first = (await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)).json()
+    gh.pr_state, gh.calls = state, []
+    r = (await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)).json()
+    assert r["pr_url"] != first["pr_url"] and r["branch"].startswith(f"vellur/task-{tid}-r")
+    assert not [p for m, p, _ in gh.calls if m == "PATCH"]            # the merged branch is never force-moved
+    assert [b["head"] for m, p, b in gh.calls if p.endswith("/pulls")] == [r["branch"]]
+    # a third click while the new PR is open updates it: no duplicate PR
+    gh.pr_state, gh.calls = "open", []
+    again = (await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)).json()
+    assert again["pr_url"] == r["pr_url"] and not [p for m, p, _ in gh.calls if p.endswith("/pulls")]
+
+
+async def test_publish_pr_failure_is_reported_and_retry_recovers(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    mgr.set_github_token("github_pat_" + "a" * 30)
+    tid = (await mgr.create("Add a health endpoint", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    gh.pulls_fail = 1
+    j = (await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)).json()
+    assert j["error"] == "github_forbidden" and j["details"]["status"] == 403 and j["details"]["operation"] == "POST /pulls"
+    assert not mgr.task(tid)["pr_url"]
+    ok = (await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)).json()
+    assert ok["pr_url"].startswith("https://github.com/o/r/pull/")
+    assert (await runner_files_intact(runner))
+
+
+async def runner_files_intact(runner):
+    return runner.state != "cancelled"
+
+
+async def test_stale_finished_job_does_not_block_and_running_job_does(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    mgr.set_github_token("github_pat_" + "a" * 30)
+    tid = (await mgr.create("Add a health endpoint", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    done = asyncio.get_running_loop().create_future(); done.set_result(None)
+    mgr._jobs[tid] = done                                    # left behind by an interrupted finalization
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)
+    assert r.status_code == 200 and tid not in mgr._jobs
+    live = asyncio.get_running_loop().create_future()
+    mgr._jobs[tid] = live                                    # a genuinely running job keeps the task protected
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)
+    assert r.status_code == 409 and "still finishing" in r.json()["message"]
+    live.cancel()
 
 
 async def test_repository_and_branch_pickers(agents):
