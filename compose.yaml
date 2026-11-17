@@ -135,6 +135,9 @@ services:
     environment:
       AGENT_RUNNER_SECRET: ${AGENT_RUNNER_SECRET:-}
       VELLUR_IMAGE_URL: "http://autopilot:8080/autopilot/api/agent/images"
+      # Cap each Node process (tsc, vite, tests) so a big build fails with a readable error instead of the
+      # whole agent being killed by the 2 GB container limit (exit -9).
+      NODE_OPTIONS: "--max-old-space-size=1024"
     volumes:
       - agent-work:/work
     tmpfs: ["/tmp:size=512m,exec"]

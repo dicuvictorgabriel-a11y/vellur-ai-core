@@ -831,6 +831,9 @@ class AgentManager:
         error = limit_note or info.get("error", "")
         if final == "failed" and not error:
             error = f"the agent process exited with code {info.get('exit')}"
+            if str(info.get("exit")) in ("-9", "137"):
+                error += (" (killed: almost always out of memory — the agent workspace has 2 GB. Ask for smaller "
+                          "steps, e.g. build or test one part at a time, and do not run the preview and a build together)")
         report = self._report(tid, run, final, error, files, self.router.tag_cost(tag) - cost0)
         state = "publishing" if final == "done" and report["outcome"] == "completed" else final
         self._set(tid, state=state, outcome=report["outcome"], report=json.dumps(report),
