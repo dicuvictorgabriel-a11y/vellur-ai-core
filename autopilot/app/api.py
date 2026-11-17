@@ -338,7 +338,7 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     from .context import ContextService
     context_service = ContextService(ctrl.db)
     app.state.context_service = context_service
-    register_mcp_routes(app, context_service)
+    register_mcp_routes(app, context_service, admin_write)
 
     # Context API for dashboard (behind login)
     from .context import ContextService

@@ -728,5 +728,210 @@ class TestMCPReadOnlyEnforcement:
         assert "result" in response.model_dump()
 
 
+class TestMCPAdminTokenManagementHTTP:
+    """HTTP regression tests for admin token management endpoints."""
+
+    @pytest.fixture
+    def client(self, full_setup):
+        """Create a TestClient for the admin app."""
+        from fastapi.testclient import TestClient
+        return TestClient(full_setup["app"])
+
+    @pytest.fixture
+    def admin_headers(self, full_setup):
+        """Headers that simulate a valid admin session (via secret header)."""
+        return {"x-vellur-admin": full_setup["env"].admin_header_secret}
+
+    @pytest.fixture
+    def csrf_headers(self, full_setup):
+        """Headers with CSRF protection (same-origin request header)."""
+        return {
+            "x-vellur-admin": full_setup["env"].admin_header_secret,
+            "x-vellur-request": "1",
+        }
+
+    def test_create_token_success(self, client, csrf_headers):
+        """Admin can create an MCP token with valid CSRF headers."""
+        resp = client.post(
+            "/autopilot/api/mcp/tokens",
+            json={"client_name": "test-client", "scopes": ["read:timeline", "read:knowledge"]},
+            headers=csrf_headers,
+        )
+        assert resp.status_code == 200
+        data = resp.json()
+        assert data["client_name"] == "test-client"
+        assert data["scopes"] == ["read:timeline", "read:knowledge"]
+        assert "token" in data
+        assert len(data["token"]) > 20
+
+    def test_create_token_missing_client_name(self, client, csrf_headers):
+        """Creating token without client_name returns 400."""
+        resp = client.post(
+            "/autopilot/api/mcp/tokens",
+            json={"scopes": ["read:timeline"]},
+            headers=csrf_headers,
+        )
+        assert resp.status_code == 400
+
+    def test_create_token_missing_scopes(self, client, csrf_headers):
+        """Creating token without scopes returns 400."""
+        resp = client.post(
+            "/autopilot/api/mcp/tokens",
+            json={"client_name": "test-client"},
+            headers=csrf_headers,
+        )
+        assert resp.status_code == 400
+
+    def test_create_token_empty_scopes(self, client, csrf_headers):
+        """Creating token with empty scopes returns 400."""
+        resp = client.post(
+            "/autopilot/api/mcp/tokens",
+            json={"client_name": "test-client", "scopes": []},
+            headers=csrf_headers,
+        )
+        assert resp.status_code == 400
+
+    def test_list_tokens_success(self, client, csrf_headers):
+        """Admin can list MCP tokens."""
+        # First create a token
+        client.post(
+            "/autopilot/api/mcp/tokens",
+            json={"client_name": "list-test", "scopes": ["read:timeline"]},
+            headers=csrf_headers,
+        )
+        resp = client.get("/autopilot/api/mcp/tokens", headers=csrf_headers)
+        assert resp.status_code == 200
+        data = resp.json()
+        assert "tokens" in data
+        assert isinstance(data["tokens"], list)
+        # Should contain our test token
+        names = [t["client_name"] for t in data["tokens"]]
+        assert "list-test" in names
+
+    def test_revoke_token_success(self, client, csrf_headers):
+        """Admin can revoke an MCP token."""
+        # Create a token first
+        client.post(
+            "/autopilot/api/mcp/tokens",
+            json={"client_name": "revoke-test", "scopes": ["read:timeline"]},
+            headers=csrf_headers,
+        )
+        # Revoke it
+        resp = client.delete("/autopilot/api/mcp/tokens/revoke-test", headers=csrf_headers)
+        assert resp.status_code == 200
+        assert resp.json()["revoked"] is True
+        # Verify it's marked as revoked in the list
+        resp = client.get("/autopilot/api/mcp/tokens", headers=csrf_headers)
+        tokens = resp.json()["tokens"]
+        revoked_token = next((t for t in tokens if t["client_name"] == "revoke-test"), None)
+        assert revoked_token is not None
+        assert revoked_token["revoked_at"] is not None
+
+    def test_revoke_nonexistent_token(self, client, csrf_headers):
+        """Revoking a non-existent token returns success but revoked=False."""
+        resp = client.delete("/autopilot/api/mcp/tokens/nonexistent", headers=csrf_headers)
+        assert resp.status_code == 200
+        assert resp.json()["revoked"] is False
+
+
+class TestMCPAdminTokenManagementUnauthorized:
+    """HTTP regression tests for unauthorized access to token management endpoints."""
+
+    @pytest.fixture
+    def client(self, full_setup):
+        from fastapi.testclient import TestClient
+        return TestClient(full_setup["app"])
+
+    def test_create_token_no_auth(self, client):
+        """Creating token without any auth returns 401."""
+        resp = client.post(
+            "/autopilot/api/mcp/tokens",
+            json={"client_name": "test", "scopes": ["read:timeline"]},
+        )
+        assert resp.status_code == 401
+
+    def test_create_token_only_secret_no_csrf(self, client, full_setup):
+        """Creating token with secret header but no CSRF returns 403."""
+        headers = {"x-vellur-admin": full_setup["env"].admin_header_secret}
+        resp = client.post(
+            "/autopilot/api/mcp/tokens",
+            json={"client_name": "test", "scopes": ["read:timeline"]},
+            headers=headers,
+        )
+        assert resp.status_code == 403
+
+    def test_create_token_invalid_secret(self, client):
+        """Creating token with invalid secret returns 401."""
+        headers = {
+            "x-vellur-admin": "invalid-secret-that-is-long-enough-to-pass-length-check",
+            "x-vellur-request": "1",
+        }
+        resp = client.post(
+            "/autopilot/api/mcp/tokens",
+            json={"client_name": "test", "scopes": ["read:timeline"]},
+            headers=headers,
+        )
+        assert resp.status_code == 401
+
+    def test_list_tokens_no_auth(self, client):
+        """Listing tokens without auth returns 401."""
+        resp = client.get("/autopilot/api/mcp/tokens")
+        assert resp.status_code == 401
+
+    def test_list_tokens_only_secret_no_csrf(self, client, full_setup):
+        """Listing tokens with secret but no CSRF returns 403."""
+        headers = {"x-vellur-admin": full_setup["env"].admin_header_secret}
+        resp = client.get("/autopilot/api/mcp/tokens", headers=headers)
+        assert resp.status_code == 403
+
+    def test_revoke_token_no_auth(self, client):
+        """Revoking token without auth returns 401."""
+        resp = client.delete("/autopilot/api/mcp/tokens/some-client")
+        assert resp.status_code == 401
+
+    def test_revoke_token_only_secret_no_csrf(self, client, full_setup):
+        """Revoking token with secret but no CSRF returns 403."""
+        headers = {"x-vellur-admin": full_setup["env"].admin_header_secret}
+        resp = client.delete("/autopilot/api/mcp/tokens/some-client", headers=headers)
+        assert resp.status_code == 403
+
+
+class TestMCPBearerTokenCannotManageTokens:
+    """HTTP regression tests ensuring MCP bearer tokens cannot manage credentials."""
+
+    @pytest.fixture
+    def client(self, full_setup):
+        from fastapi.testclient import TestClient
+        return TestClient(full_setup["app"])
+
+    @pytest.fixture
+    def mcp_token(self, full_setup):
+        """Create a valid MCP bearer token (read-only)."""
+        context_service = full_setup["context_service"]
+        return context_service.create_mcp_token("mcp-client", ["read:timeline", "read:knowledge"])
+
+    def test_mcp_bearer_cannot_create_token(self, client, mcp_token):
+        """MCP bearer token cannot create new tokens (returns 401 - no admin auth)."""
+        headers = {"Authorization": f"Bearer {mcp_token}"}
+        resp = client.post(
+            "/autopilot/api/mcp/tokens",
+            json={"client_name": "attacker", "scopes": ["read:timeline"]},
+            headers=headers,
+        )
+        assert resp.status_code == 401
+
+    def test_mcp_bearer_cannot_list_tokens(self, client, mcp_token):
+        """MCP bearer token cannot list tokens (returns 401 - no admin auth)."""
+        headers = {"Authorization": f"Bearer {mcp_token}"}
+        resp = client.get("/autopilot/api/mcp/tokens", headers=headers)
+        assert resp.status_code == 401
+
+    def test_mcp_bearer_cannot_revoke_token(self, client, mcp_token):
+        """MCP bearer token cannot revoke tokens (returns 401 - no admin auth)."""
+        headers = {"Authorization": f"Bearer {mcp_token}"}
+        resp = client.delete("/autopilot/api/mcp/tokens/some-client", headers=headers)
+        assert resp.status_code == 401
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])
