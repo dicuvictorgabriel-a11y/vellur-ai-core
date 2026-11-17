@@ -106,7 +106,23 @@ install -m 644 "$SRC/opencode/"* "$DEST/opencode/"
 install -m 644 "$SRC/autopilot/Dockerfile" "$SRC/autopilot/requirements.txt" "$SRC/autopilot/.dockerignore" "$DEST/autopilot/"
 install -m 644 "$SRC/autopilot/app/"*.py "$DEST/autopilot/app/"
 install -m 644 "$SRC/autopilot/app/providers/"*.py "$DEST/autopilot/app/providers/"
-cp -r "$SRC/autopilot/app/static/." "$DEST/autopilot/app/static/"   # includes subdirs (3d/vendor)
+# The React UI is built by CI, never on this server. Release folders are named after their commit, so a release
+# that arrives without the build (installed by an older vac-autoupdate that did not know about it) fetches the CI
+# build for exactly that commit here. Without it the classic dashboard keeps working; /autopilot/react/ says so.
+react_sha=$(basename "$(cd "$SRC" && pwd)")
+if [ -f "$SRC/frontend/package.json" ] && [ ! -f "$SRC/autopilot/app/static/react/index.html" ] &&
+	printf '%s' "$react_sha" | grep -Eq '^[0-9a-f]{40}$'; then
+	react_tmp=$(mktemp -d)
+	if curl -fsSL -m 300 "${AUTOUPDATE_GITHUB:-https://github.com}/${AUTOUPDATE_REPO:-dicuvictorgabriel-a11y/vellur-ai-core}/releases/download/nova-build-$react_sha/nova-react-build.tar.gz" |
+		tar -xz -C "$react_tmp" 2>/dev/null && [ -f "$react_tmp/index.html" ]; then
+		rm -rf -- "$SRC/autopilot/app/static/react"; mkdir -p "$SRC/autopilot/app/static"
+		mv "$react_tmp" "$SRC/autopilot/app/static/react"; echo "React UI: CI build for ${react_sha:0:7} added"
+	else
+		rm -rf -- "$react_tmp"; echo "WARNING: no CI React build for ${react_sha:0:7}; /autopilot/react/ stays unavailable"
+	fi
+fi
+if [ -f "$SRC/autopilot/app/static/react/index.html" ]; then rm -rf -- "$DEST/autopilot/app/static/react"; fi
+cp -r "$SRC/autopilot/app/static/." "$DEST/autopilot/app/static/"   # includes subdirs (3d/vendor) and react/
 # Files copied from Windows or a private temp folder can arrive without read rights for others; the controller runs
 # as a non-root user inside its container, so every app file must be world-readable (dirs traversable).
 chmod -R u=rwX,go=rX "$DEST/autopilot/app"

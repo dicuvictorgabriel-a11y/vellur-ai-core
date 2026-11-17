@@ -42,3 +42,34 @@ def test_autoupdate_installs_the_ci_react_build():
     assert 'react_build "$tmp" "$sha"' in AUTOUPDATE
     assert "name: Publish installable React build" in CI
     assert "nova-react-build.tar.gz" in CI
+
+
+def test_install_fetches_the_react_build_when_an_older_updater_left_it_out(tmp_path):
+    """Incident 2026-11-17: the release with the React app was installed by the PREVIOUS vac-autoupdate, which had no
+    react_build step, so /autopilot/react/ answered 'not built'. install.sh (always from the new release) must fetch
+    the CI build for its own commit, and a release without frontend/ must not try."""
+    import subprocess, tarfile
+    sha = "a" * 40
+    src = tmp_path / sha
+    (src / "frontend").mkdir(parents=True)
+    (src / "frontend" / "package.json").write_text("{}")
+    srv = tmp_path / "gh" / "o" / "r" / "releases" / "download" / f"nova-build-{sha}"
+    srv.mkdir(parents=True)
+    build = tmp_path / "build"; (build / "assets").mkdir(parents=True)
+    (build / "index.html").write_text('<script src="./assets/index-abc123.js"></script>')
+    (build / "assets" / "index-abc123.js").write_text("console.log(1)")
+    with tarfile.open(srv / "nova-react-build.tar.gz", "w:gz") as t:
+        t.add(build, arcname=".")
+    text = INSTALL if "INSTALL" in globals() else open(os.path.join(ROOT, "install.sh")).read()
+    start = text.index("react_sha=$(basename"); end = text.index('cp -r "$SRC/autopilot/app/static/."')
+    snippet = "set -e\n" + text[start:end]
+    env = dict(os.environ, SRC=str(src), DEST=str(tmp_path / "dest"), AUTOUPDATE_GITHUB=f"file://{tmp_path}/gh",
+               AUTOUPDATE_REPO="o/r")
+    r = subprocess.run(["bash", "-c", snippet], env=env, capture_output=True, text=True)
+    assert r.returncode == 0, r.stderr
+    react = src / "autopilot" / "app" / "static" / "react"
+    assert (react / "index.html").is_file() and (react / "assets" / "index-abc123.js").is_file(), r.stdout
+    # missing artifact: a warning, never a failed install (the classic dashboard must keep working)
+    other = tmp_path / ("b" * 40); (other / "frontend").mkdir(parents=True); (other / "frontend" / "package.json").write_text("{}")
+    r = subprocess.run(["bash", "-c", snippet], env=dict(env, SRC=str(other)), capture_output=True, text=True)
+    assert r.returncode == 0 and "WARNING: no CI React build" in r.stdout
