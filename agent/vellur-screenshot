@@ -11,12 +11,16 @@ Examples (inside the agent workspace):
 Start the project's dev or preview server first (in the background) when the page needs one. The picture is taken with
 headless Chromium inside this isolated container; nothing is published to the internet.
 """
+import atexit
 import glob
 import os
 import re
+import shutil
+import signal
 import subprocess
 import sys
 import tempfile
+import time
 
 NODE_SHOT = """
 const [exe, url, out, w, h] = process.argv.slice(1);
@@ -32,8 +36,178 @@ let pw; try { pw = require('playwright-core'); } catch (e) { pw = require('playw
 """
 SIZES = {"desktop": (1280, 800), "mobile": (390, 844), "tablet": (820, 1180)}
 
+# Chromium writes a profile and shared-memory files while it runs. /tmp inside the agent container is a small tmpfs
+# shared by every browser and test of the container; when it fills up the browser dies with SIGTRAP. Every capture
+# therefore gets its own directory on the task workspace (the /work volume) and is removed as soon as it ends.
+TMP_PREFIX = "vellur-shot-"
+STALE_SECONDS = 24 * 3600         # a directory without a live owner and older than this is garbage
+DEAD_SECONDS = 300                # ...or this old when its recorded pid no longer exists
+
+_temp_dirs = set()
+_child = None
+_cleaned = True
+
+
+def _usable(path):
+    """Create path (mode 0700) and prove a file can be written there."""
+    try:
+        os.makedirs(path, mode=0o700, exist_ok=True)
+        if not os.path.isdir(path) or not os.access(path, os.W_OK | os.X_OK):
+            return False
+        fd, probe = tempfile.mkstemp(dir=path, prefix=".probe-")
+        os.close(fd)
+        os.unlink(probe)
+        return True
+    except OSError:
+        return False
+
+
+def _tmp_base(shots):
+    """A writable temp root OUTSIDE the container's small /tmp tmpfs.
+
+    Order: explicit override, the task workspace next to VELLUR_SHOTS, the agent work volume, /var/tmp (the
+    container's writable disk layer). /tmp is deliberately not a candidate.
+    """
+    candidates = [os.environ.get("VELLUR_SCREENSHOT_TMPDIR", "")]
+    if shots:
+        candidates.append(os.path.join(os.path.dirname(os.path.abspath(shots)), "tmp"))
+    if os.environ.get("AGENT_WORK"):
+        candidates.append(os.path.join(os.environ["AGENT_WORK"], ".tmp", "screenshots"))
+    candidates.append("/var/tmp/vellur-screenshot")
+    return next((c for c in candidates if c and _usable(c)), None)
+
+
+def _sweep(base):
+    """Remove directories left behind by a browser killed with SIGKILL (no handler can run then)."""
+    now = time.time()
+    try:
+        entries = list(os.scandir(base))
+    except OSError:
+        return
+    for e in entries:
+        if not e.name.startswith(TMP_PREFIX):
+            continue
+        try:
+            if not e.is_dir(follow_symlinks=False):
+                continue
+            age = now - e.stat().st_mtime
+            pid = None
+            try:
+                with open(os.path.join(e.path, ".pid")) as f:
+                    pid = int(f.read().strip())
+            except (OSError, ValueError):
+                pass
+            alive = False
+            if pid is not None:
+                try:
+                    os.kill(pid, 0)
+                    alive = True
+                except ProcessLookupError:
+                    alive = False
+                except OSError:
+                    alive = True
+            if not alive and (age > STALE_SECONDS or (pid is not None and age > DEAD_SECONDS)):
+                shutil.rmtree(e.path, ignore_errors=True)
+        except OSError:
+            continue
+
+
+def _stop_child():
+    p = _child
+    if p is not None and p.poll() is None:
+        try:
+            p.terminate()
+            p.wait(timeout=5)
+        except (OSError, subprocess.TimeoutExpired):
+            try:
+                p.kill()
+            except OSError:
+                pass
+
+
+def _cleanup():
+    global _cleaned
+    if _cleaned:
+        return
+    _cleaned = True
+    for d in list(_temp_dirs):
+        shutil.rmtree(d, ignore_errors=True)
+    _temp_dirs.clear()
+
+
+def _on_signal(signum, _frame):
+    _stop_child()
+    _cleanup()
+    signal.signal(signum, signal.SIG_DFL)
+    os.kill(os.getpid(), signum)
+
+
+def _install_handlers():
+    """Clean up on normal exit, error, cancellation and SIGTERM; SIGKILL is covered by _sweep on the next run."""
+    atexit.register(_cleanup)
+    for sig in (signal.SIGTERM, signal.SIGINT, signal.SIGHUP):
+        try:
+            signal.signal(sig, _on_signal)
+        except (ValueError, OSError):
+            pass  # not the main thread (the module was imported, e.g. by tests)
+
+
+def _run(cmd, env, timeout):
+    """subprocess.run with a child pointer, so a signal handler can stop the browser before cleaning up."""
+    global _child
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, env=env)
+    _child = p
+    try:
+        out, err = p.communicate(timeout=timeout)
+    except subprocess.TimeoutExpired:
+        p.kill()
+        out, err = p.communicate()
+        raise subprocess.TimeoutExpired(cmd, timeout, output=out, stderr=err)
+    finally:
+        _child = None
+    return subprocess.CompletedProcess(cmd, p.returncode, out, err)
+
+
+def _browser_env(tmp):
+    env = dict(os.environ)
+    env.update({"TMPDIR": tmp, "TMP": tmp, "TEMP": tmp})
+    return env
+
+
+def _capture(browser, target, out, w, h, tmp):
+    env = _browser_env(tmp)
+    err = ""
+    node_ok = False
+    # Preferred: drive the browser from Node (Playwright): wait for the page to load, give its scripts a moment to
+    # draw, then capture. Works for pages that keep a live connection open.
+    if subprocess.run(["sh", "-c", "command -v node"], capture_output=True, env=env).returncode == 0:
+        root = subprocess.run(["npm", "root", "-g"], capture_output=True, text=True, env=env).stdout.strip()
+        if root:
+            env["NODE_PATH"] = root + (os.pathsep + env["NODE_PATH"] if env.get("NODE_PATH") else "")
+        try:
+            r = _run(["node", "-e", NODE_SHOT, browser, target, out, str(w), str(h)], env, timeout=90)
+        except subprocess.TimeoutExpired:
+            r = None
+            err = "the browser timed out after 90 s"
+        if r is not None:
+            node_ok = r.returncode == 0 and os.path.exists(out) and os.path.getsize(out) > 0
+            err = (r.stderr or "")[-600:]
+    if not node_ok:        # fallback: the browser's own command line (captures right after the page loads)
+        prof = os.path.join(tmp, "profile")
+        try:
+            r = _run([browser, "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
+                      "--hide-scrollbars", "--no-first-run", "--disable-extensions", f"--user-data-dir={prof}",
+                      f"--window-size={w},{h}", "--timeout=8000", f"--screenshot={out}", target],
+                     _browser_env(tmp), timeout=60)
+        except subprocess.TimeoutExpired:
+            return False, (err + "\nthe browser timed out after 60 s")[-800:]
+        if r.returncode != 0 or not os.path.exists(out) or os.path.getsize(out) == 0:
+            return False, ((r.stderr or "") + err)[-800:]
+    return True, ""
+
 
 def main(argv):
+    global _cleaned
     if len(argv) < 2 or argv[0] in ("-h", "--help"):
         print(__doc__.strip())
         return 2
@@ -72,29 +246,25 @@ def main(argv):
     if not browser:
         print("error: no browser is installed in this agent image, so screenshots are unavailable", file=sys.stderr)
         return 1
+    tmp_root = _tmp_base(shots)
+    if not tmp_root:
+        print("error: no writable temporary directory outside /tmp is available for the browser", file=sys.stderr)
+        return 1
+    _sweep(tmp_root)
+    _install_handlers()
+    _cleaned = False
+    tmp = tempfile.mkdtemp(prefix=TMP_PREFIX, dir=tmp_root)
+    _temp_dirs.add(tmp)
+    with open(os.path.join(tmp, ".pid"), "w") as f:
+        f.write(str(os.getpid()))
     out = os.path.join(shots, f"{name}.png")
-    err = ""
-    # Preferred: drive the browser from Node (Playwright): wait for the page to load, give its scripts a moment to
-    # draw, then capture. Works for pages that keep a live connection open.
-    node_ok = False
-    if subprocess.run(["sh", "-c", "command -v node"], capture_output=True).returncode == 0:
-        env = dict(os.environ)
-        root = subprocess.run(["npm", "root", "-g"], capture_output=True, text=True).stdout.strip()
-        if root:
-            env["NODE_PATH"] = root + (os.pathsep + env["NODE_PATH"] if env.get("NODE_PATH") else "")
-        r = subprocess.run(["node", "-e", NODE_SHOT, browser, target, out, str(w), str(h)], capture_output=True, text=True,
-                           timeout=90, env=env)
-        node_ok = r.returncode == 0 and os.path.exists(out) and os.path.getsize(out) > 0
-        err = (r.stderr or "")[-600:]
-    if not node_ok:        # fallback: the browser's own command line (captures right after the page loads)
-        with tempfile.TemporaryDirectory() as prof:
-            r = subprocess.run([browser, "--headless=new", "--no-sandbox", "--disable-gpu", "--disable-dev-shm-usage",
-                                "--hide-scrollbars", "--no-first-run", "--disable-extensions", f"--user-data-dir={prof}",
-                                f"--window-size={w},{h}", "--timeout=8000", f"--screenshot={out}", target],
-                               capture_output=True, text=True, timeout=60)
-        if r.returncode != 0 or not os.path.exists(out) or os.path.getsize(out) == 0:
-            print("error: the browser could not take the screenshot:\n" + ((r.stderr or "") + err)[-800:], file=sys.stderr)
-            return 1
+    try:
+        ok, err = _capture(browser, target, out, w, h, tmp)
+    finally:
+        _cleanup()
+    if not ok:
+        print("error: the browser could not take the screenshot:\n" + err, file=sys.stderr)
+        return 1
     print(f"screenshot saved: {name}.png ({w}x{h}) — it will appear in the owner's conversation")
     return 0
 
