@@ -62,8 +62,10 @@ def main(argv):
     if len([n for n in os.listdir(shots) if n.endswith(".png")]) >= 80:
         print("error: screenshot limit (80) reached for this task", file=sys.stderr)
         return 1
-    shells = sorted(glob.glob(os.path.join(os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "/opt/pw-browsers"),
-                                           "chromium_headless_shell-*", "chrome-*", "chrome-headless-shell")))
+    base = os.environ.get("PLAYWRIGHT_BROWSERS_PATH", "/opt/pw-browsers")
+    # Playwright <= 1.56 ships chrome-linux/headless_shell; newer builds chrome-headless-shell-linux64/chrome-headless-shell.
+    shells = sorted(glob.glob(os.path.join(base, "chromium_headless_shell-*", "chrome-*", "chrome-headless-shell"))
+                    + glob.glob(os.path.join(base, "chromium_headless_shell-*", "chrome-linux", "headless_shell")))
     candidates = [os.environ.get("VELLUR_BROWSER", "")] + shells[-1:] + ["chromium", "chromium-browser"]
     browser = next((b for b in candidates if b and subprocess.run(["sh", "-c", 'command -v "$0"', b],
                                                                    capture_output=True).returncode == 0), None)
