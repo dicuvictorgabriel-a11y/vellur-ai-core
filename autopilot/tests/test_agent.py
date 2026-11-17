@@ -69,7 +69,7 @@ class FakeRunner:
         elif p.endswith("/diff"):
             return httpx.Response(200, json={"stat": " app.py | 2 +-", "diff": "--- a/app.py\n+++ b/app.py\n"})
         elif p.endswith("/files"):
-            return httpx.Response(200, json={"files": [
+            return httpx.Response(200, json={"files": getattr(self, "files", None) or [
                 {"path": "app.py", "mode": "100644", "content_b64": base64.b64encode(b"print('x')\n").decode()},
                 {"path": "old.txt", "deleted": True}]})
         elif p.endswith("/checkpoints") or p.endswith("/restore"):
@@ -143,6 +143,9 @@ class FakeGitHub:
             return httpx.Response(self.patch_status, json={"message": self.patch_message}, headers=self.patch_headers)
         p, body = req.url.path, json.loads(req.content or b"{}")
         self.calls.append((req.method, p, body))
+        if p.endswith("/git/trees") and getattr(self, "trees_forbidden", False):
+            return httpx.Response(403, json={"message": "Resource not accessible by personal access token"},
+                                  headers={"x-accepted-github-permissions": "contents=write"})
         if p == "/user":
             if self.user_status != 200:
                 return httpx.Response(self.user_status, json={"message": self.user_message})
@@ -874,3 +877,31 @@ def test_runner_excludes_dependency_folders_even_in_existing_workspaces(tmp_path
     (repo / "app.py").write_text("changed")
     runner.git(str(repo), "add", "-A")                    # as the runner does before collecting changes
     assert [f["path"] for f in runner.changed_files(str(repo))] == ["app.py"]
+
+
+async def test_publish_names_the_failing_operation_and_workflow_permission(agents):
+    """Owner report: Create pull request → 403 'Resource not accessible by personal access token' (contents=write)
+    although the PAT has Contents + Pull requests write. A fine-grained PAT also needs Workflows write to commit
+    files under .github/workflows/; the error must say which operation failed and why, never leak the token."""
+    ctrl, router, mgr, runner, gh, admin = agents()
+    token = "github_pat_" + "b" * 30
+    mgr.set_github_token(token)
+    tid = (await mgr.create("Add CI", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    runner.files = [{"path": ".github/workflows/ci.yml", "mode": "100644",
+                     "content_b64": base64.b64encode(b"on: push\n").decode()},
+                    {"path": "app.py", "mode": "100644", "content_b64": base64.b64encode(b"x=1\n").decode()}]
+    gh.trees_forbidden = True
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)
+    j = r.json()
+    assert r.status_code == 502 and j["error"] == "github_forbidden", j
+    assert "Workflows" in j["message"] and ".github/workflows/ci.yml" in j["message"]
+    assert j["details"]["operation"] == "POST /git/trees"
+    assert j["details"]["workflow_files"] == [".github/workflows/ci.yml"]
+    assert token not in r.text
+    assert not [c for c in gh.calls if c[1].endswith("/pulls")]   # no PR attempted after a failed commit
+    # Without workflow files the generic message stays, but the failing operation is still named.
+    runner.files = None
+    j = (await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)).json()
+    assert j["error"] == "github_forbidden" and "Workflows" not in j["message"]
+    assert j["details"]["operation"] == "POST /git/trees"
