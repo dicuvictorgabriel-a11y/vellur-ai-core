@@ -104,6 +104,8 @@ export const api = {
   sendTaskMessage: (id: number, text: string) =>
     request<Json>(`agent/tasks/${id}/messages`, { method: "POST", body: JSON.stringify({ text }) }),
   taskDiff: (id: number) => request<{ diff?: string; [key: string]: unknown }>(`agent/tasks/${id}/diff`),
+  publishTask: (id: number) => request<AgentTask>(`agent/tasks/${id}/publish`, { method: "POST", body: "{}" }),
+  pushTask: (id: number) => request<AgentTask>(`agent/tasks/${id}/publish-direct`, { method: "POST", body: "{}" }),
   delivery: (id: number) => request<Delivery>(`agent/tasks/${id}/delivery`),
   release: () => request<ReleaseState>("release"),
 

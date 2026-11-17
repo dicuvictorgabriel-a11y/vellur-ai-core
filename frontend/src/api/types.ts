@@ -198,6 +198,10 @@ export interface AgentTask {
   outcome?: string | null;
   why?: string;
   pr_url?: string;
+  base?: string;
+  files_changed?: number;
+  can_publish?: boolean;
+  publish_why?: string;
   branch?: string;
   model?: string;
   created?: number;
