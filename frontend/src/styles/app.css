@@ -1595,3 +1595,144 @@ pre {
   text-decoration: underline;
 }
 .nova-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: center; }
+
+.nova-delivery-say {
+  margin-block: 0 0.5rem;
+  color: var(--cds-text-primary);
+  font-size: 0.875rem;
+}
+.nova-delivery-say code {
+  font-size: 0.78rem;
+}
+.nova-stepper {
+  list-style: none;
+  display: grid;
+  gap: 0.4rem;
+  margin: 0 0 0.75rem;
+  padding: 0;
+}
+.nova-stepper li {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3rem 0.6rem;
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer);
+  color: var(--cds-text-secondary);
+  font-size: 0.78rem;
+}
+.nova-stepper li b {
+  font-weight: 600;
+  color: var(--cds-text-secondary);
+}
+.nova-stepper li.done {
+  border-color: var(--cds-border-subtle);
+  background: var(--cds-layer);
+}
+.nova-stepper li.done::before,
+.nova-stepper li.current::before {
+  content: "✓";
+  color: var(--nova-accent);
+  font-weight: 700;
+}
+.nova-stepper li.current {
+  border-color: var(--nova-accent);
+  color: var(--cds-text-primary);
+}
+.nova-stepper li.current b {
+  color: var(--cds-text-primary);
+}
+.nova-stepper li.failed::before {
+  content: "✕";
+  color: var(--cds-support-error);
+}
+.nova-stepper li.skipped,
+.nova-stepper li.untracked {
+  opacity: 0.65;
+}
+.nova-stepper li small {
+  color: var(--cds-text-secondary);
+}
+.nova-shots {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(11rem, 1fr));
+  gap: 0.5rem;
+  margin-block: 0.75rem;
+}
+.nova-shots a {
+  display: grid;
+  gap: 0.25rem;
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer);
+  padding: 0.35rem;
+  font-size: 0.72rem;
+  color: var(--cds-text-secondary);
+  text-decoration: none;
+}
+.nova-shots img {
+  width: 100%;
+  aspect-ratio: 16 / 10;
+  object-fit: cover;
+  display: block;
+  background: var(--cds-layer-02);
+}
+.nova-preview-frame {
+  width: 100%;
+  height: 26rem;
+  border: 1px solid var(--cds-border-subtle);
+  background: #ffffff;
+}
+.nova-preview-3d {
+  background: var(--cds-layer-02);
+  height: 22rem;
+}
+.nova-not-done {
+  border: 1px solid var(--cds-border-subtle);
+  background: var(--cds-layer);
+  padding: 0.5rem 0.75rem;
+  margin-block: 0.5rem;
+  font-size: 0.8rem;
+}
+.nova-not-done b {
+  display: block;
+  margin-block-end: 0.2rem;
+}
+.nova-checkpoints {
+  list-style: none;
+  display: grid;
+  gap: 0.35rem;
+  margin: 0;
+  padding: 0;
+  font-size: 0.8rem;
+}
+.nova-checkpoints li {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  border: 1px solid var(--cds-border-subtle);
+  padding: 0.35rem 0.6rem;
+}
+.nova-checkpoints li.is-current {
+  border-color: var(--nova-accent);
+}
+.nova-checkpoints li small {
+  display: block;
+  color: var(--cds-text-secondary);
+  font-size: 0.72rem;
+}
+.nova-diff-wrap {
+  border: 1px solid var(--cds-border-subtle);
+  margin-block: 0.5rem;
+  font-size: 0.8rem;
+}
+.nova-diff-wrap summary {
+  padding: 0.4rem 0.6rem;
+  cursor: pointer;
+  background: var(--cds-layer);
+}
+.nova-diff-wrap .nova-pre {
+  margin: 0;
+  max-block-size: 24rem;
+  overflow: auto;
+}

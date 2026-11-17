@@ -202,6 +202,7 @@ export interface AgentTask {
   files_changed?: number;
   can_publish?: boolean;
   publish_why?: string;
+  can_message?: boolean;
   branch?: string;
   model?: string;
   created?: number;
@@ -380,6 +381,36 @@ export interface ReleaseState {
 
 export interface Delivery {
   task?: AgentTask;
-  stages?: Array<{ key: string; label: string; state: string; detail?: string }>;
+  repo?: string;
+  base?: string;
+  branch?: string;
+  pr?: {
+    number?: number;
+    title?: string;
+    url?: string;
+    state?: string;
+    draft?: boolean;
+    merged?: boolean;
+  } | null;
+  merge_sha?: string;
+  installed?: string;
+  tracks_deploy?: boolean;
+  checked_at?: number;
+  errors?: string[];
+  stages?: Array<{ key: string; label: string; status: string; detail?: string }>;
+  [key: string]: unknown;
+}
+
+export interface PreviewInfo {
+  mode?: string;
+  why?: string;
+  url?: string;
+  [key: string]: unknown;
+}
+
+export interface Checkpoint {
+  id: string;
+  label: string;
+  created?: number;
   [key: string]: unknown;
 }

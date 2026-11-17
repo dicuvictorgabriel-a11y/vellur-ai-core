@@ -4,6 +4,7 @@ import type {
   AgentState,
   AgentTask,
   Attachment,
+  Checkpoint,
   ConversationDetail,
   ConversationSummary,
   Costs,
@@ -16,6 +17,7 @@ import type {
   MusicRelease,
   MusicState,
   MusicTrack,
+  PreviewInfo,
   Projects,
   ReleaseState,
   Status,
@@ -114,6 +116,16 @@ export const api = {
   publishTask: (id: number) => request<AgentTask>(`agent/tasks/${id}/publish`, { method: "POST", body: "{}" }),
   pushTask: (id: number) => request<AgentTask>(`agent/tasks/${id}/publish-direct`, { method: "POST", body: "{}" }),
   delivery: (id: number) => request<Delivery>(`agent/tasks/${id}/delivery`),
+  cancelTask: (id: number) => request<AgentTask>(`agent/tasks/${id}/cancel`, { method: "POST", body: "{}" }),
+  taskPreview: (id: number) => request<PreviewInfo>(`agent/tasks/${id}/preview`, { method: "POST", body: "{}" }),
+  checkpoints: (id: number) => request<{ checkpoints: Checkpoint[] }>(`agent/tasks/${id}/checkpoints`),
+  saveCheckpoint: (id: number, label: string) =>
+    request<Json>(`agent/tasks/${id}/checkpoints`, { method: "POST", body: JSON.stringify({ label }) }),
+  restoreCheckpoint: (id: number, checkpointId: string) =>
+    request<Json>(`agent/tasks/${id}/restore`, {
+      method: "POST",
+      body: JSON.stringify({ id: checkpointId }),
+    }),
   release: () => request<ReleaseState>("release"),
 
   projects: () => request<Projects>("projects"),
