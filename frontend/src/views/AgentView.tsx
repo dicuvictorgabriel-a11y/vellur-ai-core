@@ -199,15 +199,22 @@ function TaskDetail({ id }: { id: number }) {
   const [follow, setFollow] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
-  const endRef = useRef<HTMLDivElement>(null);
+  const feedRef = useRef<HTMLOListElement>(null);
+  // Survives the poll restarting when the task state changes: only new events are fetched and appended.
+  const cursorRef = useRef(0);
+  useEffect(() => {
+    cursorRef.current = 0;
+    setEvents([]);
+  }, [id]);
+  const [following, setFollowing] = useState(true);   // live-follow only while the reader is at the bottom
   const state = String(task.data?.state || "");
   const running = RUNNING.has(state);
 
   useEffect(() => {
     let active = true;
     let timer: number | undefined;
-    let cursor = 0;
     const pull = async () => {
+      const cursor = cursorRef.current;
       try {
         const result = await api.taskEvents(id, cursor);
         if (!active) return;
@@ -216,7 +223,7 @@ function TaskDetail({ id }: { id: number }) {
             const seen = new Set(current.map((event) => event.id));
             return [...current, ...(result.events as unknown as AgentEvent[]).filter((event) => !seen.has(event.id))];
           });
-          cursor = Number(result.events[result.events.length - 1]?.id ?? cursor);
+          cursorRef.current = Number(result.events[result.events.length - 1]?.id ?? cursor);
         }
         setEventError("");
         if (RUNNING.has(String(result.task?.state))) timer = window.setTimeout(pull, 2500);
@@ -231,9 +238,17 @@ function TaskDetail({ id }: { id: number }) {
     };
   }, [id, task.data?.state]);
 
+  // Scroll only the feed's own container, never the page, and only while following the newest events.
   useEffect(() => {
-    endRef.current?.scrollIntoView({ block: "nearest" });
-  }, [events.length]);
+    const feed = feedRef.current;
+    if (feed && following) feed.scrollTop = feed.scrollHeight;
+  }, [events.length, following]);
+  const onFeedScroll = () => {
+    const feed = feedRef.current;
+    if (!feed) return;
+    const atBottom = feed.scrollHeight - feed.scrollTop - feed.clientHeight < 48;
+    setFollowing((current) => (current === atBottom ? current : atBottom));
+  };
 
   const report = useMemo<AgentReport | null>(() => {
     const explicit = task.data?.report;
@@ -289,13 +304,17 @@ function TaskDetail({ id }: { id: number }) {
       <div className="nova-columns">
         <section className="nova-card nova-span-2">
           <SectionTitle hint={`${events.length} events`}>Live timeline</SectionTitle>
-          <ol className="nova-events">
+          <ol className="nova-events" ref={feedRef} onScroll={onFeedScroll} data-testid="agent-feed">
             {events.map((event) => (
               <EventRow key={event.id} event={event} />
             ))}
             {events.length === 0 ? <li className="nova-note">No events recorded.</li> : null}
           </ol>
-          <div ref={endRef} />
+          {!following && events.length ? (
+            <Button kind="tertiary" size="sm" className="nova-jump-latest" onClick={() => setFollowing(true)}>
+              Jump to latest
+            </Button>
+          ) : null}
           {running ? (
             <div className="nova-follow">
               <TextArea
