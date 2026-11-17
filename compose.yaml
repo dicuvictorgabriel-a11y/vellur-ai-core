@@ -125,7 +125,10 @@ services:
   agent:
     <<: *hardening
     profiles: ["agent"]
-    build: ./agent
+    build:
+      context: ./agent
+      args:
+        AGENT_BROWSER: "1"
     image: vellur-ai-core/agent:local
     container_name: vellur-ai-agent
     networks: [agents]
