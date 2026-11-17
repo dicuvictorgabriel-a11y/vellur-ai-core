@@ -686,8 +686,14 @@ async def test_visual_inspection_requires_capability_and_is_explicit_on_create(a
     ctrl, router, mgr, runner, gh, admin = agents()
     url = "/autopilot/api/agent/tasks"
     body = {"prompt": "Inspect the page", "visual_inspection": True}
+    ctrl.settings.update({"routes": {"vellur-coder": ["textonly:model"]}})   # a route that declares no image support
     r = await admin.post(url, headers=WRITE, json=body)
-    assert r.status_code == 400 and r.json()["error"] == "vision_unavailable"
+    # owner report 2026-11-17: never reject the message (it carries attachments); send it without visual inspection
+    assert r.status_code == 200
+    tid0 = r.json()["id"]
+    await wait_final(mgr, tid0)
+    assert runner.meta["vision"] is False and "explicitly requested AI visual inspection" not in runner.meta["prompt"]
+    assert any(e["kind"] == "notice" and "visual inspection was skipped" in e["data"].get("text", "") for e in mgr.events(tid0))
     ctrl.settings.update({"agent_vision": True})
     r = await admin.post(url, headers=WRITE, json={**body, "auto_screenshots": True})
     assert r.status_code == 200

@@ -510,6 +510,18 @@ class AgentManager:
             raise AgentError("runner", f"agent workspace error {r.status_code}: {r.text[:200]}", 502)
         return r
 
+    def _vision_allowed(self, requested: bool, model: str) -> tuple[bool, str]:
+        """AI visual inspection needs a model that accepts images. It is allowed when the owner marked the agent models as
+        image-capable OR the routed model declares vision. Otherwise the message is still sent (attachments included)
+        without visual inspection, with a note — it is never rejected (owner report 2026-11-17)."""
+        if not requested:
+            return False, ""
+        if self.ctrl.settings.get().get("agent_vision") or self.router.can_vision(model):
+            return True, ""
+        return False, ("AI visual inspection was skipped: the selected model does not declare image support. Your message "
+                       "and attachments were sent. Choose a vision-capable model in Models, or tick 'supports images' in "
+                       "the GitHub connection panel if it does.")
+
     def _check_can_run(self) -> None:
         ok, why = self.available()
         if not ok:
@@ -531,8 +543,7 @@ class AgentManager:
             raise AgentError("invalid", "repository must look like owner/name")
         if base and not BRANCH_RE.match(base):
             raise AgentError("invalid", "invalid branch name")
-        if visual_inspection and not self.ctrl.settings.get().get("agent_vision"):
-            raise AgentError("vision_unavailable", "Enable image support for the selected model and its fallbacks before requesting AI visual inspection")
+        visual_inspection, vision_note = self._vision_allowed(visual_inspection, model)
         self._check_can_run()
         try:
             rows = self.attachments.select(attachments or [])
@@ -544,6 +555,8 @@ class AgentManager:
         tid = cur.lastrowid
         self.attachments.select([r["id"] for r in rows], task_id=tid)
         self._ev(tid, 1, "user", text=prompt, attachments=[self.attachments.public(r) for r in rows])
+        if vision_note:
+            self._ev(tid, 1, "notice", text=vision_note)
         self.db.event("info", "agent", f"task {tid} created", repo=repo, model=model)
         self._jobs[tid] = asyncio.create_task(self._drive(tid, prompt, first=True, visual_inspection=visual_inspection, auto_screenshots=auto_screenshots))
         return self.task(tid)
@@ -563,8 +576,7 @@ class AgentManager:
             raise AgentError("invalid", "unknown model")
         if not t["started"]:
             raise AgentError("expired", "this task never started an agent session; start a new task", 410)
-        if visual_inspection and not self.ctrl.settings.get().get("agent_vision"):
-            raise AgentError("vision_unavailable", "Enable image support for the selected model and its fallbacks before requesting AI visual inspection")
+        visual_inspection, vision_note = self._vision_allowed(visual_inspection, model or t["model"])
         self._check_can_run()
         try:
             rows = self.attachments.select(attachments or [], task_id=tid)
@@ -573,6 +585,8 @@ class AgentManager:
         run = int(t["runs"] or 1) + 1
         self._set(tid, state="queued", runs=run, error="", outcome="", model=model or t["model"], ended=None)
         self._ev(tid, run, "user", text=text, attachments=[self.attachments.public(r) for r in rows])
+        if vision_note:
+            self._ev(tid, run, "notice", text=vision_note)
         self._jobs[tid] = asyncio.create_task(self._drive(tid, text, first=False, visual_inspection=visual_inspection, auto_screenshots=auto_screenshots))
         return self.task(tid)
 
