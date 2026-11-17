@@ -17,6 +17,7 @@ from pydantic import BaseModel, Field
 
 from .agent import AgentError, AgentManager
 from .budget import month_key
+from .context import ContextService
 from .images import ImageError, ImageService, wants_image
 from .config import ROLES
 from .lifecycle import Controller
@@ -514,30 +515,47 @@ def register(app: FastAPI, ctrl: Controller, router: Router, agent: AgentManager
                 "projects": [r["project"] for r in db.all("SELECT DISTINCT project FROM knowledge WHERE project<>'' ORDER BY project")]}
 
     @app.post("/autopilot/api/knowledge", dependencies=[Depends(admin_write)])
-    async def knowledge_create(body: dict):
+    async def knowledge_create(body: dict, request: Request):
         try:
-            return kn.create(body, source="owner")
+            result = kn.create(body, source="owner")
+            project = result.get("project") or "default"
+            context_service: ContextService = request.app.state.context_service
+            context_service.refresh_source(project, "knowledge", triggered_by="manual")
+            return result
         except KnowledgeError as e:
             return kerr(e)
 
     @app.put("/autopilot/api/knowledge/{kid}", dependencies=[Depends(admin_write)])
-    async def knowledge_update(kid: int, body: dict):
+    async def knowledge_update(kid: int, body: dict, request: Request):
         try:
-            return kn.update(kid, {k: v for k, v in body.items() if k != "version"}, int(body.get("version") or 0))
+            result = kn.update(kid, {k: v for k, v in body.items() if k != "version"}, int(body.get("version") or 0))
+            project = result.get("project") or "default"
+            context_service: ContextService = request.app.state.context_service
+            context_service.refresh_source(project, "knowledge", triggered_by="manual")
+            return result
         except KnowledgeError as e:
             return kerr(e)
 
     @app.post("/autopilot/api/knowledge/{kid}/lock", dependencies=[Depends(admin_write)])
-    async def knowledge_lock(kid: int, body: dict):
+    async def knowledge_lock(kid: int, body: dict, request: Request):
         try:
-            return kn.lock(kid, bool(body.get("locked", True)))
+            result = kn.lock(kid, bool(body.get("locked", True)))
+            project = result.get("project") or "default"
+            context_service: ContextService = request.app.state.context_service
+            context_service.refresh_source(project, "knowledge", triggered_by="manual")
+            return result
         except KnowledgeError as e:
             return kerr(e)
 
     @app.delete("/autopilot/api/knowledge/{kid}", dependencies=[Depends(admin_write)])
-    async def knowledge_delete(kid: int):
+    async def knowledge_delete(kid: int, request: Request):
         try:
+            # Get project before delete
+            rec = db.one("SELECT project FROM knowledge WHERE id=?", (kid,))
+            project = rec["project"] if rec else "default"
             kn.delete(kid)
+            context_service: ContextService = request.app.state.context_service
+            context_service.refresh_source(project, "knowledge", triggered_by="manual")
             return {"ok": True}
         except KnowledgeError as e:
             return kerr(e)

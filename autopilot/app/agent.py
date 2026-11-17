@@ -381,6 +381,8 @@ class AgentManager:
         self.attachments = AttachmentStore(ctrl)
         from .knowledge import Knowledge
         self.knowledge = Knowledge(self.db)
+        from .context import ContextService
+        self.context = ContextService(self.db)
         from .knowledge import RELEASE_RECORDS
         for source, record in RELEASE_RECORDS:
             self.knowledge.ensure(source, record)
@@ -590,7 +592,7 @@ class AgentManager:
         self._jobs[tid] = asyncio.create_task(self._drive(tid, text, first=False, visual_inspection=visual_inspection, auto_screenshots=auto_screenshots))
         return self.task(tid)
 
-    def _first_prompt(self, prompt: str, repo: str = "") -> str:
+    def _first_prompt(self, prompt: str, repo: str = "", task_id: int | None = None) -> str:
         st = self.ctrl.settings.get()
         memory = st["memory"].strip()
         notes = f"Notes from the owner (always follow them):\n{memory}\n\n" if memory else ""
@@ -599,9 +601,63 @@ class AgentManager:
             extra += ("\n- This repository is VELLUR AI Core itself, the application you are running in. You work on a "
                       "copy: the live server is not affected until the owner publishes and installs a release. Read "
                       "AGENTS.md first; never change the frozen login files; run the tests it names before reporting.")
-        known, _ = self.knowledge.for_task(prompt, repo)
-        known = known + "\n\n" if known else ""
-        return f"{AGENT_GUIDE}{extra}\n\n{notes}{known}Task from the owner:\n{prompt}"
+        
+        # Get context from Context Bridge (includes knowledge, tasks, runs, decisions, sessions, health, screenshots)
+        project = repo or "default"
+        task_id_str = str(task_id) if task_id else None
+        context = self.context.get_agent_context(project, task_id_str, max_items=30, max_tokens=6000)
+        
+        # Format context for agent prompt
+        context_parts = []
+        
+        if context["knowledge"]:
+            context_parts.append("=== PROJECT KNOWLEDGE (from NOVA Context Bridge) ===")
+            for k in context["knowledge"]:
+                title = k.get("title", "")
+                summary = k.get("summary", "")
+                if summary:
+                    context_parts.append(f"- {title}: {summary[:300]}")
+                else:
+                    context_parts.append(f"- {title}")
+        
+        if context["recent_decisions"]:
+            context_parts.append("\n=== RECENT DECISIONS & EVENTS ===")
+            for d in context["recent_decisions"][:8]:
+                title = d.get("title", "")
+                summary = d.get("summary", "")
+                source = d.get("source", "")
+                context_parts.append(f"- [{source}] {title}: {summary[:200] if summary else 'N/A'}")
+        
+        if context["active_sessions"]:
+            context_parts.append("\n=== ACTIVE GPU SESSIONS ===")
+            for s in context["active_sessions"]:
+                summary = s.get("summary", "")
+                meta = s.get("metadata", {})
+                profile = meta.get("profile", "unknown") if isinstance(meta, dict) else "unknown"
+                context_parts.append(f"- {profile}: {summary}")
+        
+        if context["health_status"] != "unknown":
+            context_parts.append(f"\n=== SYSTEM HEALTH: {context['health_status'].upper()} ===")
+        
+        if context["latest_release"]:
+            rel = context["latest_release"]
+            meta = rel.get("metadata", {})
+            version = meta.get("version", "unknown") if isinstance(meta, dict) else "unknown"
+            status = rel.get("summary", "unknown")
+            context_parts.append(f"\n=== LATEST RELEASE: {version} ({status}) ===")
+        
+        if context["screenshots"]:
+            context_parts.append("\n=== RECENT SCREENSHOTS (metadata only) ===")
+            for s in context["screenshots"][:3]:
+                title = s.get("title", "")
+                meta = s.get("metadata", {})
+                viewport = meta.get("viewport", "") if isinstance(meta, dict) else ""
+                context_parts.append(f"- {title} [{viewport}]")
+        
+        context_block = "\n".join(context_parts) if context_parts else ""
+        context_block = f"\n\n{context_block}\n" if context_block else ""
+        
+        return f"{AGENT_GUIDE}{extra}{context_block}{notes}Task from the owner:\n{prompt}"
 
     async def _drive(self, tid: int, prompt: str, first: bool, visual_inspection: bool = False,
                      auto_screenshots: bool = False) -> None:
@@ -665,7 +721,7 @@ class AgentManager:
                 images = bool(self.db.one("SELECT 1 FROM attachments WHERE task_id=? AND kind='image'", (tid,)))
                 vision = bool(visual_inspection or (images and (st.get("agent_vision") or self.router.can_vision(t["model"]))))
                 manifest = self._attachment_manifest(tid, vision)
-                await self._runner("POST", "/tasks", json={"id": tid, "prompt": self._first_prompt(prompt, t["repo"]) + manifest + (VISUAL_PROMPT if visual_inspection else ""),
+                await self._runner("POST", "/tasks", json={"id": tid, "prompt": self._first_prompt(prompt, t["repo"], task_id=tid) + manifest + (VISUAL_PROMPT if visual_inspection else ""),
                                                            "model": t["model"], "proxy_url": self.env.agent_proxy_url,
                                                            "proxy_token": token, "max_minutes": st["agent_max_minutes"],
                                                            "vision": vision,
