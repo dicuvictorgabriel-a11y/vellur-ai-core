@@ -136,13 +136,13 @@ services:
       AGENT_RUNNER_SECRET: ${AGENT_RUNNER_SECRET:-}
       VELLUR_IMAGE_URL: "http://autopilot:8080/autopilot/api/agent/images"
       # Cap each Node process (tsc, vite, tests) so a big build fails with a readable error instead of the
-      # whole agent being killed by the 2 GB container limit (exit -9).
+      # whole agent being killed by the container limit (exit -9).
       NODE_OPTIONS: "--max-old-space-size=1024"
     volumes:
       - agent-work:/work
     tmpfs: ["/tmp:size=512m,exec"]
     cap_drop: [ALL]
-    mem_limit: 2g
+    mem_limit: 3584m   # the VPS has 7.7 GB; npm ci + OpenCode + tsc did not fit in 2 GB (OOM 2026-11-17)
     cpus: 1.5
     pids_limit: 1024
     stop_grace_period: 10s
