@@ -10,6 +10,8 @@ import subprocess
 
 ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 INSTALL = open(os.path.join(ROOT, "install.sh")).read()
+AUTOUPDATE = open(os.path.join(ROOT, "bin", "vac-autoupdate")).read()
+CI = open(os.path.join(ROOT, ".github", "workflows", "ci.yml")).read()
 
 
 def test_install_globs_never_hit_a_directory():
@@ -33,3 +35,10 @@ def test_docs_copy_skips_subfolders(tmp_path):
     assert r.returncode == 0, r.stderr
     copied = sorted(os.listdir(dest / "docs"))
     assert "OBSIDIAN.md" in copied and "obsidian" not in copied
+
+
+def test_autoupdate_installs_the_ci_react_build():
+    assert "releases/download/nova-build-$sha/nova-react-build.tar.gz" in AUTOUPDATE
+    assert 'react_build "$tmp" "$sha"' in AUTOUPDATE
+    assert "name: Publish installable React build" in CI
+    assert "nova-react-build.tar.gz" in CI

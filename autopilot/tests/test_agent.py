@@ -259,6 +259,22 @@ async def test_task_runs_and_publishes_only_on_request(agents):
     assert ("PATCH", f"/repos/o/r/git/refs/heads/vellur/task-{tid}") in [(m, p) for m, p, _ in gh.calls]
 
 
+async def test_publish_waits_for_a_final_task_cleanup(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    await admin.put("/autopilot/api/agent/github", headers=WRITE, json={"token": "github_pat_" + "a" * 30})
+    tid = (await admin.post("/autopilot/api/agent/tasks", headers=WRITE,
+                            json={"prompt": "Publish just after the run ends", "repo": "o/r"})).json()["id"]
+    await wait_final(mgr, tid)
+
+    async def cleanup():                       # the database says done, but the job is still in its finally block
+        await asyncio.sleep(0.15)
+        mgr._jobs.pop(tid, None)
+
+    mgr._jobs[tid] = asyncio.create_task(cleanup())
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)
+    assert r.status_code == 200 and r.json()["pr_url"].startswith("https://github.com/o/r/pull/")
+
+
 @pytest.mark.parametrize("state", ["merged", "closed"])
 async def test_publish_after_merged_or_closed_pr_opens_a_new_pr_on_a_fresh_branch(agents, state):
     """Owner incident: the old PR (#35) was merged; Retry pull request force-moved its branch and kept

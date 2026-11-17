@@ -8,6 +8,8 @@ permissions:
   contents: read
 jobs:
   tests:
+    permissions:
+      contents: write
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -28,9 +30,35 @@ jobs:
         run: |
           npm run typecheck
           npm run build
+      - name: Upload React build
+        uses: actions/upload-artifact@v4
+        with:
+          name: nova-react-build
+          path: autopilot/app/static/react
+          if-no-files-found: error
+          retention-days: 14
       - name: Controller, agent and dashboard tests
         run: cd autopilot && python -m pytest -q
       - name: Shell and runner syntax
         run: |
           bash -n install.sh bin/vac bin/vac-autoupdate dev/preview.sh dev/test.sh dev/env.sh
           python -m py_compile agent/runner.py agent/vellur-screenshot agent/vellur-image dev/preview_server.py
+      - name: Publish installable React build
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          TAG: nova-build-${{ github.sha }}
+        run: |
+          set -euo pipefail
+          test -f autopilot/app/static/react/index.html
+          tar -C autopilot/app/static/react -czf /tmp/nova-react-build.tar.gz .
+          if gh release view "$TAG" >/dev/null 2>&1; then
+            gh release upload "$TAG" /tmp/nova-react-build.tar.gz --clobber
+          else
+            gh release create "$TAG" /tmp/nova-react-build.tar.gz \
+              --target "$GITHUB_SHA" \
+              --title "NOVA React build ${GITHUB_SHA:0:7}" \
+              --notes "CI-built static UI for commit $GITHUB_SHA; read by bin/vac-autoupdate, not a product release." \
+              --prerelease \
+              --latest=false
+          fi

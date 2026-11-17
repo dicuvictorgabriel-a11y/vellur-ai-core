@@ -16,7 +16,7 @@ The React app is served at `/autopilot/react/` when `frontend/` has been built i
 - `autopilot/app/api.py` — additive `GET /autopilot/react[/...]` static route. Path containment, `no-store` for
   HTML, immutable caching for hashed assets, 404 when the build is absent.
 
-Build off the VPS and copy only `autopilot/app/static/react/`:
+For local preview, build off the VPS and use only `autopilot/app/static/react/`:
 
 ```bash
 cd frontend
@@ -25,8 +25,12 @@ npm run typecheck
 npm run build
 ```
 
-CI runs the same `npm ci`, typecheck and production build on Node 22 before the Python suite. Browser journeys stay
-local/CI-image work because they need Chromium; they are not part of the production test job.
+CI runs the same `npm ci`, typecheck and production build on Node 22 before the Python suite. On a push to `main` it
+also publishes the result as the release asset `nova-react-build.tar.gz` under the tag `nova-build-<full commit sha>`.
+`bin/vac-autoupdate` downloads the source and that exact asset for the approved commit, extracts it into
+`autopilot/app/static/react/`, and refuses the install (keeping the previous release) if a commit with `frontend/`
+has no matching asset. The VPS never runs Node. Browser journeys stay local/CI-image work because they need Chromium;
+they are not part of the production test job.
 
 ## Migration matrix
 
@@ -95,11 +99,13 @@ min-content, now contained at 390 px.
 The React app is opt-in and same-origin. No Caddy change is needed: the existing `/autopilot/*` site already proxies
 to the controller, and FastAPI serves `/autopilot/react/` plus its hashed assets.
 
-Before any cutover, the owner must approve the exact commit and the release artifact must be built outside the VPS:
+Before any cutover, the owner must approve the exact commit and the release artifact must be built outside the VPS.
+The CI workflow already typechecks, builds and uploads the generated folder as the `nova-react-build` artifact for
+that exact commit:
 
-1. Run `cd frontend && npm ci && npm run typecheck && npm run build` on a trusted build machine (Node 22).
-2. Copy the generated `autopilot/app/static/react/` directory to the release/install path on the VPS. Do not install
-   Node, `node_modules` or a browser on the VPS.
+1. Download `nova-react-build` from the green GitHub Actions run for the approved commit.
+2. Copy its contents to `autopilot/app/static/react/` on the VPS. Do not install Node, `node_modules` or a browser
+   on the VPS.
 3. Keep `/autopilot/` pointed at `dashboard.html`. Verify `/autopilot/react/` loads, login/CSRF/SSE work, and
    `/autopilot/` is byte-for-byte unaffected.
 4. Only after a later, separately approved cutover should the controller or Caddy route `/autopilot/` to the React
@@ -113,8 +119,9 @@ Rollback does not require a Caddy edit:
 - Full removal: also delete the three additive `/autopilot/react` route declarations in `autopilot/app/api.py`, then
   deploy normally. No database, session or theme migration is involved; both UIs share the same cookies and APIs.
 
-The remaining distribution decision is how the generated folder enters a release (CI artifact vs installer-built
-bundle). Until that is decided, production cutover is blocked even though the preview is reviewable.
+Distribution is CI-artifact based: the VPS never builds JavaScript. A normal approved release now carries the React
+files automatically; the installer/Caddy smoke test still happens on a disposable install before cutover. This does
+not block owner review of `/autopilot/react/`.
 
 ## Remaining work
 
@@ -122,6 +129,6 @@ bundle). Until that is decided, production cutover is blocked even though the pr
 2. Optional parity gaps: chat image preview/size controls, agent checkpoints/diff/screenshots/publication, Models
    catalog refresh/provider keys/paid test, Costs budget editing, GPU advanced policy, Music cover-art blending and
    provider-specific settings panels.
-3. Choose how the CI-built frontend artifact reaches the release/install path. This is the only critical blocker
-   before a production cutover; it does not block owner review of `/autopilot/react/`.
-4. Run the Caddy/installer smoke tests against the static-serving change when it is proposed for production.
+3. Run the Caddy/installer smoke tests and verify `vac-autoupdate` downloads `nova-build-<sha>` on a disposable
+   install before any production cutover. This is the remaining pre-cutover gate; it does not block owner review.
+4. Decide, separately and explicitly, whether `/autopilot/` should ever route to React. This branch does not.

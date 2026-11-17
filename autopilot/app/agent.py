@@ -597,6 +597,8 @@ class AgentManager:
     async def message(self, tid: int, text: str, model: Optional[str] = None, visual_inspection: bool = False,
                       auto_screenshots: bool = False, attachments: Optional[list[str]] = None) -> dict:
         """Follow-up: continue the same OpenCode session in the same workspace (the agent keeps its context)."""
+        if not await self._wait_for_finishing(tid):
+            raise AgentError("busy", "the agent is still working on this task; wait or stop it first", 409)
         t = self.task(tid)
         if not t:
             raise AgentError("not_found", "unknown task", 404)
@@ -1035,9 +1037,21 @@ class AgentManager:
         d = self.db.kv_get(f"task_diff_{tid}") or {}
         return {"stat": d.get("stat", ""), "diff": d.get("diff", "")}
 
+    async def _wait_for_finishing(self, tid: int, seconds: float = 20) -> bool:
+        """A final task can still have its job in cleanup. Wait for that short window instead of refusing the owner."""
+        if not self._busy(tid):
+            return True
+        t = self.task(tid)
+        if not t or t["state"] not in FINAL:
+            return False
+        until = time.monotonic() + seconds
+        while self._busy(tid) and time.monotonic() < until:
+            await asyncio.sleep(0.05)
+        return not self._busy(tid)
+
     async def publish(self, tid: int) -> dict:
         """Owner-initiated: push the result as a branch and open (or update) a draft pull request."""
-        if self._busy(tid):
+        if not await self._wait_for_finishing(tid):
             raise AgentError("busy", "the task is still finishing", 409)
         self._jobs[tid] = asyncio.current_task()
         try:
@@ -1181,7 +1195,7 @@ class AgentManager:
         return {"id": r["id"], "checkpoints": r["checkpoints"], "task": self.task(tid)}
 
     async def publish_direct(self, tid: int) -> dict:
-        if self._busy(tid):
+        if not await self._wait_for_finishing(tid):
             raise AgentError("busy", "the task is still finishing", 409)
         self._jobs[tid] = asyncio.current_task()
         try:
