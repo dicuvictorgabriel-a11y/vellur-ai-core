@@ -10,3 +10,8 @@ secrets/
 autopilot/venv/
 .vellur/
 dev/preview.json
+frontend/node_modules/
+frontend/*.tsbuildinfo
+autopilot/app/static/react/
+frontend/test-results/
+frontend/playwright-report/

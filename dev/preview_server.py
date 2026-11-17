@@ -34,6 +34,7 @@ from dataclasses import replace
 
 from app.agent import AgentManager  # noqa: E402
 from app.api import build_admin  # noqa: E402
+from app.auth import Auth  # noqa: E402
 from app.images import ImageResult  # noqa: E402
 from app.main import build  # noqa: E402
 from app.model_intel import infer_capabilities, labels  # noqa: E402
@@ -250,9 +251,12 @@ async def main() -> None:
     runner = DemoRunner()
     manager = AgentManager(ctrl, router, runner_transport=httpx.MockTransport(runner.handler),
                            github_transport=httpx.MockTransport(lambda req: httpx.Response(403)), poll_seconds=0.5)
+    real_auth = os.environ.get("PREVIEW_REAL_AUTH") == "1"
+    if real_auth:
+        Auth(ctrl.db).set_password(os.environ.get("PREVIEW_AUTH_PASSWORD") or "preview-temporary-password", True)
     admin_app = build_admin(ctrl, router=router, agent=manager)
     seed_demo_image(admin_app, ctrl.db, cid, tid)
-    app = AsOwner(admin_app)
+    app = admin_app if real_auth else AsOwner(admin_app)
     port = int(os.environ.get("PORT", "4173"))
     await uvicorn.Server(uvicorn.Config(app, host="127.0.0.1", port=port, log_level="warning")).serve()
 

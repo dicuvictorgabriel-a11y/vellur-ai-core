@@ -15,7 +15,7 @@ from typing import Optional
 
 import httpx
 from fastapi import Depends, FastAPI, HTTPException, Request
-from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
+from fastapi.responses import FileResponse, JSONResponse, RedirectResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .auth import COOKIE, SESSION_SECONDS, Auth, AuthError, temp_password
@@ -144,6 +144,28 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     @app.get("/autopilot/3d/", dependencies=[Depends(admin)])
     async def studio3d():
         return FileResponse(os.path.join(STUDIO3D, "studio3d.html"), headers=STUDIO3D_HEADERS)
+
+    # Opt-in React migration preview. The classic dashboard above remains the production entry point.
+    react_root = os.path.realpath(os.path.join(STATIC, "react"))
+
+    @app.get("/autopilot/react")
+    async def react_preview_redirect():
+        return RedirectResponse("/autopilot/react/", status_code=308)
+
+    @app.get("/autopilot/react/")
+    async def react_preview():
+        index = os.path.join(react_root, "index.html")
+        if not os.path.isfile(index):
+            raise HTTPException(404, "React preview is not built on this server")
+        return FileResponse(index, headers={"Cache-Control": "no-store"})
+
+    @app.get("/autopilot/react/{asset:path}")
+    async def react_preview_asset(asset: str):
+        target = os.path.realpath(os.path.join(react_root, asset))
+        if not target.startswith(react_root + os.sep) or not os.path.isfile(target):
+            raise HTTPException(404, "not found")
+        cache = "no-store" if asset.endswith(".html") else "public, max-age=31536000, immutable"
+        return FileResponse(target, headers={"Cache-Control": cache, "X-Content-Type-Options": "nosniff"})
 
     # IBM Carbon assets (tokens, IBM Plex fonts, bundled official web components). Public: the login page uses them too.
     carbon_root = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "carbon"))

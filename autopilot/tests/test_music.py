@@ -63,6 +63,12 @@ async def test_release_validation_and_delete(music):
     rel = (await admin.post(M + "/releases", headers=WRITE, json={"title": "Short set"})).json()
     tr = (await admin.post(M + f"/releases/{rel['id']}/tracks", headers=WRITE, json={"title": "One"})).json()
     assert (await admin.post(M + f"/releases/{rel['id']}/tracks", headers=WRITE, json={"title": " "})).status_code == 400
+    r = await admin.patch(M + f"/tracks/{tr['id']}", headers=WRITE,
+                          json={"title": " One (edited) ", "duration": "4:02", "notes": "new mix"})
+    assert r.status_code == 200
+    assert r.json()["title"] == "One (edited)" and r.json()["duration"] == "4:02" and r.json()["notes"] == "new mix"
+    assert (await admin.patch(M + f"/tracks/{tr['id']}", headers=WRITE, json={"title": " "})).status_code == 400
+    assert (await admin.patch(M + "/tracks/999", headers=WRITE, json={"notes": "x"})).status_code == 404
     assert (await admin.delete(M + f"/tracks/{tr['id']}", headers=WRITE)).json() == {"ok": True}
     assert (await admin.delete(M + f"/releases/{rel['id']}", headers=WRITE)).json() == {"ok": True}
     d = (await admin.get(M, headers=ADMIN)).json()
