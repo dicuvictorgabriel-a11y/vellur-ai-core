@@ -194,7 +194,9 @@ class GitHub:
         except ValueError:
             payload = {}
         github_message = str((payload or {}).get("message") or "").strip()[:300]
-        details = {"status": r.status_code}
+        # Which GitHub operation failed (method + path without the repository; never headers or the token).
+        op = re.sub(r"^/repos/[^/]+/[^/]+", "", path) or path
+        details = {"status": r.status_code, "operation": f"{method} {op}"[:160]}
         if github_message:
             details["github_message"] = github_message
         accepted = (r.headers.get("x-accepted-github-permissions") or "").strip()
@@ -297,6 +299,19 @@ class GitHub:
         return (await self._req("GET", f"/repos/{repo}/git/ref/heads/{branch}")).json()["object"]["sha"]
 
     async def _commit(self, repo: str, base_sha: str, files: list, message: str) -> str:
+        try:
+            return await self._commit_inner(repo, base_sha, files, message)
+        except AgentError as e:
+            wf = [f["path"] for f in files if str(f.get("path", "")).startswith(".github/workflows/")]
+            if e.code == "github_forbidden" and wf:
+                e.data = dict(e.data or {}, workflow_files=wf[:10])
+                e.message = ("GitHub denied the commit because it changes GitHub Actions workflow files "
+                             f"({', '.join(wf[:3])}). A fine-grained token also needs the “Workflows: Read and write” "
+                             "permission for that, even with Contents: Read and write. Grant it, or remove the "
+                             "workflow changes from the task.")
+            raise
+
+    async def _commit_inner(self, repo: str, base_sha: str, files: list, message: str) -> str:
         base_tree = (await self._req("GET", f"/repos/{repo}/git/commits/{base_sha}")).json()["tree"]["sha"]
         entries = []
         for f in files:
