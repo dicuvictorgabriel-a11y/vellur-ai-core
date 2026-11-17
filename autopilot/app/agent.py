@@ -194,7 +194,9 @@ class GitHub:
         except ValueError:
             payload = {}
         github_message = str((payload or {}).get("message") or "").strip()[:300]
-        details = {"status": r.status_code}
+        # Which GitHub operation failed (method + path without the repository; never headers or the token).
+        op = re.sub(r"^/repos/[^/]+/[^/]+", "", path) or path
+        details = {"status": r.status_code, "operation": f"{method} {op}"[:160]}
         if github_message:
             details["github_message"] = github_message
         accepted = (r.headers.get("x-accepted-github-permissions") or "").strip()
@@ -297,6 +299,19 @@ class GitHub:
         return (await self._req("GET", f"/repos/{repo}/git/ref/heads/{branch}")).json()["object"]["sha"]
 
     async def _commit(self, repo: str, base_sha: str, files: list, message: str) -> str:
+        try:
+            return await self._commit_inner(repo, base_sha, files, message)
+        except AgentError as e:
+            wf = [f["path"] for f in files if str(f.get("path", "")).startswith(".github/workflows/")]
+            if e.code == "github_forbidden" and wf:
+                e.data = dict(e.data or {}, workflow_files=wf[:10])
+                e.message = ("GitHub denied the commit because it changes GitHub Actions workflow files "
+                             f"({', '.join(wf[:3])}). A fine-grained token also needs the “Workflows: Read and write” "
+                             "permission for that, even with Contents: Read and write. Grant it, or remove the "
+                             "workflow changes from the task.")
+            raise
+
+    async def _commit_inner(self, repo: str, base_sha: str, files: list, message: str) -> str:
         base_tree = (await self._req("GET", f"/repos/{repo}/git/commits/{base_sha}")).json()["tree"]["sha"]
         entries = []
         for f in files:
@@ -354,15 +369,13 @@ class GitHub:
             raise
         return commit
 
-    async def pull_request(self, repo: str, number: int) -> Optional[dict]:
-        """The state of one pull request, or None when GitHub no longer has it."""
-        try:
-            j = (await self._req("GET", f"/repos/{repo}/pulls/{int(number)}")).json()
-        except AgentError as e:
-            if e.code == "github_not_found":
-                return None
-            raise
-        return {"state": str(j.get("state") or ""), "merged": bool(j.get("merged"))}
+    async def pr_open(self, repo: str, url: str) -> bool:
+        """Whether a previously opened PR can still be updated (open and not merged)."""
+        m = re.search(r"/pull/(\d+)", url or "")
+        if not m:
+            return False
+        pr = (await self._req("GET", f"/repos/{repo}/pulls/{m.group(1)}")).json()
+        return pr.get("state") == "open" and not pr.get("merged")
 
     async def open_pr(self, repo: str, head: str, base: str, title: str, body: str) -> str:
         payload = {"title": title, "head": head, "base": base, "body": body, "draft": True}
@@ -402,6 +415,14 @@ class AgentManager:
         if not self.env.agent_runner_url or len(self.env.agent_runner_secret) < 24:
             return False, "The agent workspace is not installed on the server (sudo vac agent enable)."
         return True, ""
+
+    def _busy(self, tid: int) -> bool:
+        """True only while a job for this task is really running; a finished job left behind is dropped."""
+        j = self._jobs.get(tid)
+        if j is not None and j.done():
+            self._jobs.pop(tid, None)
+            return False
+        return j is not None
 
     def github_token(self) -> str:
         return self.db.kv_get("github_token", "") or ""
@@ -584,7 +605,7 @@ class AgentManager:
         text = (text or "").strip()
         if not 1 <= len(text) <= 20000:
             raise AgentError("invalid", "write a message (up to 20000 characters)")
-        if t["state"] not in FINAL or tid in self._jobs:
+        if t["state"] not in FINAL or self._busy(tid):
             raise AgentError("busy", "the agent is still working on this task; wait or stop it first", 409)
         if model and model not in ROLES:
             raise AgentError("invalid", "unknown model")
@@ -1018,15 +1039,15 @@ class AgentManager:
 
     async def _wait_for_finishing(self, tid: int, seconds: float = 20) -> bool:
         """A final task can still have its job in cleanup. Wait for that short window instead of refusing the owner."""
-        if tid not in self._jobs:
+        if not self._busy(tid):
             return True
         t = self.task(tid)
         if not t or t["state"] not in FINAL:
             return False
         until = time.monotonic() + seconds
-        while tid in self._jobs and time.monotonic() < until:
+        while self._busy(tid) and time.monotonic() < until:
             await asyncio.sleep(0.05)
-        return tid not in self._jobs
+        return not self._busy(tid)
 
     async def publish(self, tid: int) -> dict:
         """Owner-initiated: push the result as a branch and open (or update) a draft pull request."""
@@ -1052,23 +1073,18 @@ class AgentManager:
         title = "VELLUR agent: " + " ".join(t["prompt"].split())[:70]
         rep = t["report"]
         try:
-            update, old_pr = False, None
-            if t["pr_url"]:
-                m = re.search(r"/pull/(\d+)(?:$|[?#])", t["pr_url"])
-                old_pr = await gh.pull_request(t["repo"], int(m.group(1))) if m else None
-                update = bool(old_pr and old_pr.get("state") == "open")
-                if not update:
-                    # A merged/closed PR can never be updated. Push a fresh branch so GitHub opens a new PR
-                    # instead of leaving the old number (and its merged/installed state) on the task.
-                    branch = (f"vellur/task-{tid}-pr{m.group(1)}" if m
-                              else f"vellur/task-{tid}-{int(time.time())}")
+            # Never reuse a merged or closed PR: its branch is history. Update only a PR that is still open;
+            # otherwise publish on a fresh branch and open a new draft PR.
+            reuse = bool(t["pr_url"]) and await gh.pr_open(t["repo"], t["pr_url"])
+            if t["pr_url"] and not reuse:
+                branch = f"vellur/task-{tid}-r{int(time.time())}"
             await gh.publish(t["repo"], t["base"], branch, files, title + f"\n\nTask {tid}, model {t['model']}.",
-                             update=update)
-            url = t["pr_url"] if update else await gh.open_pr(t["repo"], branch, t["base"], title, pr_body(t, rep))
+                             update=reuse)
+            url = t["pr_url"] if reuse else await gh.open_pr(t["repo"], branch, t["base"], title, pr_body(t, rep))
         finally:
             await gh.c.aclose()
         self._set(tid, branch=branch, pr_url=url)
-        self._ev(tid, int(t["runs"] or 1), "pr", url=url, updated=update)
+        self._ev(tid, int(t["runs"] or 1), "pr", url=url, updated=reuse)
         self.db.event("info", "agent", f"task {tid} published", url=url)
         return self.task(tid)
 
@@ -1157,7 +1173,7 @@ class AgentManager:
         t = self.task(tid)
         if not t:
             raise AgentError("not_found", "unknown task", 404)
-        if t["state"] not in FINAL or tid in self._jobs:
+        if t["state"] not in FINAL or self._busy(tid):
             raise AgentError("busy", "the agent is working; a checkpoint is saved automatically when it finishes", 409)
         label = " ".join((label or "").split())[:100] or "Checkpoint"
         r = (await self._runner("POST", f"/tasks/{tid}/checkpoints", json={"label": label})).json()
@@ -1168,7 +1184,7 @@ class AgentManager:
         t = self.task(tid)
         if not t:
             raise AgentError("not_found", "unknown task", 404)
-        if t["state"] not in FINAL or tid in self._jobs:
+        if t["state"] not in FINAL or self._busy(tid):
             raise AgentError("busy", "stop the agent before restoring an earlier version", 409)
         if not re.fullmatch(r"[0-9a-f]{40}", cid or ""):
             raise AgentError("invalid", "unknown checkpoint")
