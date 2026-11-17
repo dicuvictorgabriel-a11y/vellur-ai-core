@@ -40,6 +40,8 @@ SHOT_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,39}\.png$")
 
 AGENT_GUIDE = """You are an autonomous AI developer working for the owner of this repository through VELLUR AI Core.
 You run unattended in an isolated copy of the repository: nobody can answer questions during the run, so make
+Never install tools, browsers or dependencies inside the repository (no node_modules, virtualenvs or Playwright
+browsers in the working tree): use your home directory or /tmp, and delete generated folders before you finish.
 reasonable decisions and mention them in your report.
 
 How to work:

@@ -847,3 +847,24 @@ async def test_conversation_work_relinks_when_linked_task_never_started(agents):
     new = r.json()['task_id']
     assert new != tid and ctrl.db.kv_get(f'conversation_task_{cid}') == new
     await wait_final(mgr, new)
+
+
+def test_runner_excludes_dependency_folders_even_in_existing_workspaces(tmp_path):
+    spec = importlib.util.spec_from_file_location("agent_runner_excl", Path(__file__).resolve().parents[2] / "agent" / "runner.py")
+    runner = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(runner)
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    (repo / "app.py").write_text("x")
+    runner.initialize_repo(str(repo))
+    exclude = repo / ".git" / "info" / "exclude"
+    exclude.write_text("node_modules/\n")                 # an old workspace with the short list
+    runner.ensure_excludes(str(repo))
+    text = exclude.read_text()
+    assert "ms-playwright/" in text and "venv/" in text and text.count("node_modules/") == 1
+    for d in ("ms-playwright/chromium", "venv/lib", "node_modules/x"):
+        (repo / d).mkdir(parents=True)
+        (repo / d / "f.js").write_text("1")
+    (repo / "app.py").write_text("changed")
+    runner.git(str(repo), "add", "-A")                    # as the runner does before collecting changes
+    assert [f["path"] for f in runner.changed_files(str(repo))] == ["app.py"]
