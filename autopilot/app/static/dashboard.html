@@ -3554,8 +3554,8 @@ body[data-agent="attention"] .kpis .kpi[data-k="att"] b,body[data-agent="working
       if (!await ask("Publish these changes directly to “" + CUR.base + "” in " + CUR.repo + "?\n\nIf this project deploys from that branch, the changes go live." + warn)) return;
       ev.target.disabled = true; ev.target.textContent = "Publishing…";
       try { await send("agent/tasks/" + TASK + "/publish-direct", "POST", {}); await openTask(TASK); } catch (e) { if (e.message && e.message.includes("changed on GitHub since")) { ev.target.textContent = "Creating pull request…"; try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e2) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; toast(e2.message); } } else { ev.target.disabled = false; ev.target.textContent = "Publish to " + CUR.base; toast(e.message); } } });
-    if (CUR.can_publish) add(CUR.pr_url ? "Update pull request" : "Pull request instead", "ghost", async (ev) => {
-      if (!await ask(CUR.pr_url ? "Push these changes to the existing pull request branch?" : "Create a branch and a draft pull request on GitHub with these changes?")) return;
+    if (CUR.can_publish) add(CUR.pr_url ? "Publish pull request" : "Pull request instead", "ghost", async (ev) => {
+      if (!await ask(CUR.pr_url ? "Publish these changes to GitHub? An open pull request is updated; if it was merged or closed, NOVA opens a new one." : "Create a branch and a draft pull request on GitHub with these changes?")) return;
       ev.target.disabled = true; ev.target.textContent = "Publishing…";
       try { await send("agent/tasks/" + TASK + "/publish", "POST", {}); await openTask(TASK); } catch (e) { ev.target.disabled = false; ev.target.textContent = "Retry pull request"; toast(e.message); } });
     if (CUR.pr_url) { const l = document.createElement("a"); l.href = CUR.pr_url; l.target = "_blank"; l.rel = "noopener"; l.className = "chip"; l.style.cssText = "display:inline-flex;align-items:center;text-decoration:none"; l.textContent = "Open pull request ↗"; a.appendChild(l); }

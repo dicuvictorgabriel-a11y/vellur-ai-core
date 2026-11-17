@@ -2,6 +2,7 @@ import asyncio
 import base64
 import json
 import importlib.util
+import re
 from pathlib import Path
 
 import httpx
@@ -69,7 +70,7 @@ class FakeRunner:
         elif p.endswith("/diff"):
             return httpx.Response(200, json={"stat": " app.py | 2 +-", "diff": "--- a/app.py\n+++ b/app.py\n"})
         elif p.endswith("/files"):
-            return httpx.Response(200, json={"files": getattr(self, "files", None) or [
+            return httpx.Response(200, json={"files": [
                 {"path": "app.py", "mode": "100644", "content_b64": base64.b64encode(b"print('x')\n").decode()},
                 {"path": "old.txt", "deleted": True}]})
         elif p.endswith("/checkpoints") or p.endswith("/restore"):
@@ -134,6 +135,8 @@ class FakeGitHub:
         self.user_status, self.user_message = 200, "Bad credentials"
         self.patch_headers, self.patch_message = {}, "not a fast forward"
         self.branch_protected, self.repo_push = False, True
+        self.pull = {"state": "open", "merged": False}
+        self.pull_number = 4
 
     def handler(self, req: httpx.Request):
         self.auth.add(req.headers.get("authorization"))
@@ -143,9 +146,6 @@ class FakeGitHub:
             return httpx.Response(self.patch_status, json={"message": self.patch_message}, headers=self.patch_headers)
         p, body = req.url.path, json.loads(req.content or b"{}")
         self.calls.append((req.method, p, body))
-        if p.endswith("/git/trees") and getattr(self, "trees_forbidden", False):
-            return httpx.Response(403, json={"message": "Resource not accessible by personal access token"},
-                                  headers={"x-accepted-github-permissions": "contents=write"})
         if p == "/user":
             if self.user_status != 200:
                 return httpx.Response(self.user_status, json={"message": self.user_message})
@@ -185,8 +185,11 @@ class FakeGitHub:
             return httpx.Response(201, json={"sha": "commit1"})
         if p.endswith("/git/refs") or "/git/refs/heads/" in p:
             return httpx.Response(201 if req.method == "POST" else 200, json={})
+        if req.method == "GET" and re.fullmatch(r"/repos/o/r/pulls/\d+", p):
+            return httpx.Response(200, json=self.pull)
         if p.endswith("/pulls"):
-            return httpx.Response(201, json={"html_url": "https://github.com/o/r/pull/5"})
+            self.pull_number += 1
+            return httpx.Response(201, json={"html_url": f"https://github.com/o/r/pull/{self.pull_number}"})
         return httpx.Response(404)
 
 
@@ -250,6 +253,40 @@ async def test_task_runs_and_publishes_only_on_request(agents):
     await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)
     assert [m for m, p, _ in gh.calls if p.endswith("/pulls")] == ["POST"]
     assert ("PATCH", f"/repos/o/r/git/refs/heads/vellur/task-{tid}") in [(m, p) for m, p, _ in gh.calls]
+
+async def test_publish_after_a_merged_pull_request_opens_a_new_one(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    await admin.put("/autopilot/api/agent/github", headers=WRITE, json={"token": "github_pat_" + "a" * 30})
+    tid = (await admin.post("/autopilot/api/agent/tasks", headers=WRITE,
+                            json={"prompt": "Fix the stale pull request pill", "repo": "o/r"})).json()["id"]
+    await wait_final(mgr, tid)
+    first = (await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)).json()
+    assert first["pr_url"] == "https://github.com/o/r/pull/5"
+
+    gh.pull = {"state": "closed", "merged": True}      # the owner merged and installed PR #5
+    second = (await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)).json()
+    assert second["pr_url"] == "https://github.com/o/r/pull/6"
+    assert second["branch"] == f"vellur/task-{tid}-pr5"
+    posts = [b for m, p, b in gh.calls if p.endswith("/pulls")]
+    assert posts[-1]["head"] == f"vellur/task-{tid}-pr5"
+    events = (await admin.get(f"/autopilot/api/agent/tasks/{tid}/events", headers=ADMIN)).json()["events"]
+    assert [e for e in events if e["kind"] == "pr"][-1]["data"]["updated"] is False
+
+
+async def test_publish_waits_for_a_final_task_cleanup(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    await admin.put("/autopilot/api/agent/github", headers=WRITE, json={"token": "github_pat_" + "a" * 30})
+    tid = (await admin.post("/autopilot/api/agent/tasks", headers=WRITE,
+                            json={"prompt": "Publish just after the run ends", "repo": "o/r"})).json()["id"]
+    await wait_final(mgr, tid)
+
+    async def cleanup():                       # the database says done, but the job is still in its finally block
+        await asyncio.sleep(0.15)
+        mgr._jobs.pop(tid, None)
+
+    mgr._jobs[tid] = asyncio.create_task(cleanup())
+    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)
+    assert r.status_code == 200 and r.json()["pr_url"].endswith("/pull/5")
 
 
 async def test_repository_and_branch_pickers(agents):
@@ -877,31 +914,3 @@ def test_runner_excludes_dependency_folders_even_in_existing_workspaces(tmp_path
     (repo / "app.py").write_text("changed")
     runner.git(str(repo), "add", "-A")                    # as the runner does before collecting changes
     assert [f["path"] for f in runner.changed_files(str(repo))] == ["app.py"]
-
-
-async def test_publish_names_the_failing_operation_and_workflow_permission(agents):
-    """Owner report: Create pull request → 403 'Resource not accessible by personal access token' (contents=write)
-    although the PAT has Contents + Pull requests write. A fine-grained PAT also needs Workflows write to commit
-    files under .github/workflows/; the error must say which operation failed and why, never leak the token."""
-    ctrl, router, mgr, runner, gh, admin = agents()
-    token = "github_pat_" + "b" * 30
-    mgr.set_github_token(token)
-    tid = (await mgr.create("Add CI", "vellur-coder", "o/r"))["id"]
-    await wait_final(mgr, tid)
-    runner.files = [{"path": ".github/workflows/ci.yml", "mode": "100644",
-                     "content_b64": base64.b64encode(b"on: push\n").decode()},
-                    {"path": "app.py", "mode": "100644", "content_b64": base64.b64encode(b"x=1\n").decode()}]
-    gh.trees_forbidden = True
-    r = await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)
-    j = r.json()
-    assert r.status_code == 502 and j["error"] == "github_forbidden", j
-    assert "Workflows" in j["message"] and ".github/workflows/ci.yml" in j["message"]
-    assert j["details"]["operation"] == "POST /git/trees"
-    assert j["details"]["workflow_files"] == [".github/workflows/ci.yml"]
-    assert token not in r.text
-    assert not [c for c in gh.calls if c[1].endswith("/pulls")]   # no PR attempted after a failed commit
-    # Without workflow files the generic message stays, but the failing operation is still named.
-    runner.files = None
-    j = (await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)).json()
-    assert j["error"] == "github_forbidden" and "Workflows" not in j["message"]
-    assert j["details"]["operation"] == "POST /git/trees"

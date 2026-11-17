@@ -47,6 +47,7 @@ test("chat streams an answer and renders markdown", async ({ page }) => {
   await expect(conversation).toBeVisible();
   await conversation.click();
   await expect(page.locator("#nova-chat-input")).toBeVisible();
+  await expect(page.locator(".nova-message.is-assistant").first()).toBeVisible();
   const before = await page.locator(".nova-message.is-assistant").count();
   await page.locator("#nova-chat-input").fill("Reply with one short sentence.");
   await page.locator("#nova-chat-input").press("Enter");
