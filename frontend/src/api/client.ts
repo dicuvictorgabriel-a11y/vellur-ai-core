@@ -105,8 +105,11 @@ export const api = {
   branches: (repo: string) => request<AgentBranches>(`agent/branches?repo=${encodeURIComponent(repo)}`),
   task: (id: number) => request<AgentTask>(`agent/tasks/${id}`),
   createTask: (body: Json) => request<AgentTask>("agent/tasks", { method: "POST", body: JSON.stringify(body) }),
-  sendTaskMessage: (id: number, text: string) =>
-    request<Json>(`agent/tasks/${id}/messages`, { method: "POST", body: JSON.stringify({ text }) }),
+  sendTaskMessage: (id: number, text: string, attachments: string[] = []) =>
+    request<Json>(`agent/tasks/${id}/messages`, {
+      method: "POST",
+      body: JSON.stringify({ text, attachments }),
+    }),
   taskDiff: (id: number) => request<{ diff?: string; [key: string]: unknown }>(`agent/tasks/${id}/diff`),
   publishTask: (id: number) => request<AgentTask>(`agent/tasks/${id}/publish`, { method: "POST", body: "{}" }),
   pushTask: (id: number) => request<AgentTask>(`agent/tasks/${id}/publish-direct`, { method: "POST", body: "{}" }),

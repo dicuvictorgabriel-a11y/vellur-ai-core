@@ -9,15 +9,33 @@ import {
   TextInput,
   Tag,
 } from "@carbon/react";
-import { Add, ArrowRight, Checkmark, Play, Send, Warning } from "@carbon/icons-react";
-import { api } from "../api/client";
-import type { AgentBranches, AgentEvent, AgentReport } from "../api/types";
+import {
+  Add,
+  ArrowRight,
+  Attachment as AttachmentIcon,
+  Checkmark,
+  Close,
+  Play,
+  Send,
+  Warning,
+} from "@carbon/icons-react";
+import { api, uploadAttachment } from "../api/client";
+import type {
+  AgentBranches,
+  AgentEvent,
+  AgentReport,
+  Attachment as AttachmentInfo,
+} from "../api/types";
 import { EmptyState, LoadError, Loading, PageHeader, SectionTitle, Stat } from "../components/Ui";
 import { useAsync } from "../hooks";
 import { navigate, type Route } from "../router";
 import { dateTime, errorMessage, money, num, tagType, timeAgo } from "../utils";
 
 const RUNNING = new Set(["running", "working", "started", "publishing", "cancelling"]);
+
+interface PendingAttachment extends AttachmentInfo {
+  localName?: string;
+}
 
 const MODEL_ROLES = [
   {
@@ -122,6 +140,30 @@ function NewTask() {
   const [visual, setVisual] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  const [pending, setPending] = useState<PendingAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [attachError, setAttachError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+
+  const pickFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUploading(true);
+    setAttachError("");
+    try {
+      for (const file of Array.from(files)) {
+        const uploaded = await uploadAttachment(file);
+        setPending((items) => [...items, { ...uploaded, localName: file.name }]);
+      }
+    } catch (reason) {
+      setAttachError(errorMessage(reason));
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+
+  const removeAttachment = (aid: string) =>
+    setPending((items) => items.filter((item) => item.id !== aid));
 
   const repoChoices = useMemo(() => {
     const seen = new Set<string>();
@@ -207,7 +249,9 @@ function NewTask() {
         repo: repo.trim(),
         base: base.trim(),
         visual_inspection: visual || undefined,
+        attachments: pending.map((item) => item.id),
       });
+      setPending([]);
       navigate(`agent/${task.id}`);
     } catch (reason) {
       setError(errorMessage(reason));
@@ -244,6 +288,45 @@ function NewTask() {
           onChange={(event) => setPrompt(event.target.value)}
           required
         />
+        {attachError ? (
+          <InlineNotification kind="error" lowContrast title="Upload failed" subtitle={attachError} hideCloseButton />
+        ) : null}
+        {pending.length ? (
+          <div className="nova-attach-list">
+            {pending.map((file) => (
+              <span key={file.id} className="nova-chip">
+                <AttachmentIcon size={12} />
+                {file.localName || file.name}
+                <button
+                  type="button"
+                  aria-label={`Remove ${file.localName || file.name}`}
+                  onClick={() => removeAttachment(file.id)}
+                >
+                  <Close size={12} />
+                </button>
+              </span>
+            ))}
+          </div>
+        ) : null}
+        <div className="nova-row">
+          <input
+            ref={fileRef}
+            type="file"
+            multiple
+            hidden
+            onChange={(event) => void pickFiles(event.target.files)}
+          />
+          <Button
+            kind="ghost"
+            size="sm"
+            renderIcon={AttachmentIcon}
+            disabled={uploading}
+            onClick={() => fileRef.current?.click()}
+          >
+            {uploading ? "Uploading…" : "Attach files"}
+          </Button>
+          <span className="nova-note">Upload a file and it is referenced by the task.</span>
+        </div>
         <div className="nova-form-grid">
           <div className="nova-stack">
             <Select
@@ -399,6 +482,28 @@ function TaskDetail({ id }: { id: number }) {
   const [follow, setFollow] = useState("");
   const [sending, setSending] = useState(false);
   const [sendError, setSendError] = useState("");
+  const [followAtts, setFollowAtts] = useState<PendingAttachment[]>([]);
+  const [uploading, setUploading] = useState(false);
+  const [attachError, setAttachError] = useState("");
+  const fileRef = useRef<HTMLInputElement>(null);
+  const pickFiles = async (files: FileList | null) => {
+    if (!files?.length) return;
+    setUploading(true);
+    setAttachError("");
+    try {
+      for (const file of Array.from(files)) {
+        const uploaded = await uploadAttachment(file);
+        setFollowAtts((items) => [...items, { ...uploaded, localName: file.name }]);
+      }
+    } catch (reason) {
+      setAttachError(errorMessage(reason));
+    } finally {
+      setUploading(false);
+      if (fileRef.current) fileRef.current.value = "";
+    }
+  };
+  const removeAttachment = (aid: string) =>
+    setFollowAtts((items) => items.filter((item) => item.id !== aid));
   const feedRef = useRef<HTMLOListElement>(null);
   // Survives the poll restarting when the task state changes: only new events are fetched and appended.
   const cursorRef = useRef(0);
@@ -482,8 +587,9 @@ function TaskDetail({ id }: { id: number }) {
     setSending(true);
     setSendError("");
     try {
-      await api.sendTaskMessage(id, follow.trim());
+      await api.sendTaskMessage(id, follow.trim(), followAtts.map((item) => item.id));
       setFollow("");
+      setFollowAtts([]);
       task.reload();
     } catch (reason) {
       setSendError(errorMessage(reason));
@@ -551,18 +657,56 @@ function TaskDetail({ id }: { id: number }) {
           ) : null}
           {running ? (
             <div className="nova-follow">
+              {attachError ? (
+                <InlineNotification kind="error" lowContrast title="Upload failed" subtitle={attachError} hideCloseButton />
+              ) : null}
+              {followAtts.length ? (
+                <div className="nova-attach-list">
+                  {followAtts.map((file) => (
+                    <span key={file.id} className="nova-chip">
+                      <AttachmentIcon size={12} />
+                      {file.localName || file.name}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${file.localName || file.name}`}
+                        onClick={() => removeAttachment(file.id)}
+                      >
+                        <Close size={12} />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              ) : null}
               <TextArea
                 id="task-follow"
                 labelText="Follow up"
                 hideLabel
                 rows={2}
-                placeholder="Add a constraint or ask for a change…"
+                placeholder="Add a constraint, ask for a change, or attach a file…"
                 value={follow}
                 onChange={(event) => setFollow(event.target.value)}
               />
-              <Button size="sm" renderIcon={Send} disabled={sending || !follow.trim()} onClick={() => void send()}>
-                Send
-              </Button>
+              <div className="nova-row">
+                <input
+                  ref={fileRef}
+                  type="file"
+                  multiple
+                  hidden
+                  onChange={(event) => void pickFiles(event.target.files)}
+                />
+                <Button
+                  kind="ghost"
+                  size="sm"
+                  renderIcon={AttachmentIcon}
+                  disabled={uploading}
+                  onClick={() => fileRef.current?.click()}
+                >
+                  {uploading ? "Uploading…" : "Attach files"}
+                </Button>
+                <Button size="sm" renderIcon={Send} disabled={sending || !follow.trim()} onClick={() => void send()}>
+                  Send
+                </Button>
+              </div>
             </div>
           ) : null}
           {sendError ? <InlineNotification kind="error" lowContrast title="Message failed" subtitle={sendError} hideCloseButton /> : null}
