@@ -52,6 +52,13 @@ def tdir(tid):
     return os.path.join(WORK, f"t{int(tid)}")
 
 
+def task_tmp(t):
+    """Per-task temp directory on the /work volume: browsers and tests must not fill the small /tmp tmpfs."""
+    path = os.path.join(t["dir"], "tmp")
+    os.makedirs(path, exist_ok=True)
+    return path
+
+
 def git(repo, *args, check=True, cap=None):
     env = {k: os.environ[k] for k in PASS_ENV if k in os.environ}
     env.update(GIT_ID)
@@ -256,7 +263,9 @@ def run_task(tid):
         os.makedirs(shots, exist_ok=True)
         env = {k: os.environ[k] for k in PASS_ENV if k in os.environ}
         env.update(GIT_ID)
-        env.update({"HOME": home, "XDG_CONFIG_HOME": os.path.join(home, ".config"),
+        tmp = task_tmp(t)
+        env.update({"HOME": home, "TMPDIR": tmp, "TMP": tmp, "TEMP": tmp,
+                    "XDG_CONFIG_HOME": os.path.join(home, ".config"),
                     "XDG_DATA_HOME": os.path.join(home, ".local/share"), "XDG_CACHE_HOME": os.path.join(home, ".cache"),
                     "OPENCODE_CONFIG": cfg, "CI": "1", "TERM": "dumb", "NO_COLOR": "1", "VELLUR_SHOTS": shots,
                     "VELLUR_PREVIEW_URL": f"http://127.0.0.1:{os.environ.get('AGENT_PORT', '7070')}/tasks/{tid}/preview/",
@@ -898,8 +907,7 @@ def export_blend(t, rel):
             os.remove(out + ".json")
     if not os.path.isfile(out):
         script = os.path.join(os.path.dirname(os.path.abspath(__file__)), "blender_export.py")
-        tmp = os.path.join(t["dir"], "tmp")
-        os.makedirs(tmp, exist_ok=True)
+        tmp = task_tmp(t)
         env = {k: os.environ[k] for k in PASS_ENV if k in os.environ}
         env.update({"HOME": os.path.join(t["dir"], "home"), "TMPDIR": tmp})
         cmd = [blender, "--background", "--factory-startup", src, "--python", script, "--", out]
@@ -1000,7 +1008,8 @@ def auto_shots(tid, t):
     for size in ("desktop", "mobile"):
         try:
             result = subprocess.run(["vellur-screenshot", f"http://127.0.0.1:{port}/tasks/{tid}/preview/", f"auto-run{t['run']}-{size}", size],
-                                    env=dict(os.environ, VELLUR_SHOTS=shots), capture_output=True, timeout=120)
+                                    env=dict(os.environ, VELLUR_SHOTS=shots, TMPDIR=task_tmp(t)),
+                                    capture_output=True, timeout=120)
             if result.returncode:
                 detail = (result.stderr or result.stdout or b"").decode(errors="replace").strip()[-1000:]
                 screenshot_notice(t, f"{size} screenshot failed (exit {result.returncode}): {detail}")
