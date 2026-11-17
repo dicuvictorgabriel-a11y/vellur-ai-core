@@ -19,7 +19,9 @@ from fastapi.responses import FileResponse, JSONResponse, StreamingResponse
 from pydantic import BaseModel
 
 from .auth import COOKIE, SESSION_SECONDS, Auth, AuthError, temp_password
+# Context service initialized in build_admin
 from .lifecycle import ControlError, Controller
+from .mcp_adapter import register_mcp_routes
 from .settings import SettingsError
 
 STATIC = os.path.join(os.path.dirname(__file__), "static")
@@ -331,5 +333,60 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     register_studio3d(app, ctrl, router, agent, admin, admin_write)
     app.state.selfdev = register_selfdev(app, ctrl, admin, admin_write)
     register_efficiency(app, ctrl, admin, admin_write)
+
+    # Context Bridge: initialize context service and register MCP routes
+    from .context import ContextService
+    context_service = ContextService(ctrl.db)
+    app.state.context_service = context_service
+    register_mcp_routes(app, context_service)
+
+    # Context API for dashboard (behind login)
+    from .context import ContextService
+
+    @app.get("/autopilot/api/context/projects", dependencies=[Depends(admin)])
+    async def list_context_projects():
+        """List projects that have context data."""
+        rows = ctrl.db.all("SELECT DISTINCT project FROM context_items ORDER BY project")
+        return {"projects": [r["project"] for r in rows]}
+
+    @app.get("/autopilot/api/context/{project}", dependencies=[Depends(admin)])
+    async def get_project_context_api(project: str, task_id: str | None = None, max_items: int = 50, max_tokens: int = 8000):
+        """Get bounded context for a project (dashboard API)."""
+        return context_service.get_agent_context(project, task_id, max_items, max_tokens)
+
+    @app.post("/autopilot/api/context/{project}/refresh", dependencies=[Depends(admin_write)])
+    async def refresh_context_api(project: str, source: str | None = None):
+        """Manually trigger context refresh."""
+        if source:
+            result = context_service.refresh_source(project, source, triggered_by="manual")
+            return result.__dict__
+        results = context_service.refresh_all(project, triggered_by="manual")
+        return [r.__dict__ for r in results]
+
+    @app.get("/autopilot/api/context/{project}/search", dependencies=[Depends(admin)])
+    async def search_context_api(project: str, q: str, limit: int = 50):
+        """Full-text search across context."""
+        results = context_service.search(project, q, limit)
+        return {"results": [r.to_dict() for r in results]}
+
+    @app.get("/autopilot/api/context/{project}/refresh-log", dependencies=[Depends(admin)])
+    async def refresh_log_api(project: str, source: str | None = None, limit: int = 50):
+        """Get context refresh audit log."""
+        sql = "SELECT * FROM context_refresh_log WHERE project=?"
+        params = [project]
+        if source:
+            sql += " AND source=?"
+            params.append(source)
+        sql += " ORDER BY created_at DESC LIMIT ?"
+        params.append(limit)
+        rows = ctrl.db.all(sql, tuple(params))
+        return {"refresh_log": [dict(r) for r in rows]}
+
+    # On controller start, recover context
+    @app.on_event("startup")
+    async def context_startup():
+        settings = ctrl.settings.get()
+        project = settings.get("project", "default")
+        context_service.on_controller_start(project)
 
     return app
