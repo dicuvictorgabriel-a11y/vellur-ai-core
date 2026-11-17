@@ -257,6 +257,26 @@ function TaskDetail({ id }: { id: number }) {
     return event?.data ? (event.data as unknown as AgentReport) : null;
   }, [task.data?.report, events]);
 
+  const [publishing, setPublishing] = useState("");
+  const [publishError, setPublishError] = useState("");
+  const publish = async (direct: boolean) => {
+    const t = task.data;
+    if (!t || publishing) return;
+    const where = direct ? `directly to ${t.base || "the base branch"}` : "as a new draft pull request";
+    if (!window.confirm(`Publish ${t.files_changed ?? "the"} changed files ${where}? Review the file list first.`)) return;
+    setPublishing(direct ? "push" : "pr");
+    setPublishError("");
+    try {
+      await (direct ? api.pushTask(id) : api.publishTask(id));
+      task.reload();
+      delivery.reload();
+    } catch (reason) {
+      setPublishError(errorMessage(reason));
+    } finally {
+      setPublishing("");
+    }
+  };
+
   const send = async () => {
     if (!follow.trim() || sending) return;
     setSending(true);
@@ -299,6 +319,20 @@ function TaskDetail({ id }: { id: number }) {
           value={timeAgo(t.started as number | undefined)}
           detail={t.ended ? `ended ${timeAgo(t.ended as number)}` : "still running"}
         />
+      </section>
+      <section className="nova-card nova-publish" aria-label="Publish to GitHub">
+        <SectionTitle hint={t.can_publish ? `${t.files_changed ?? 0} changed files` : t.publish_why || "not available"}>GitHub</SectionTitle>
+        <div className="nova-actions">
+          <Button kind="primary" size="sm" disabled={!t.can_publish || !!publishing} onClick={() => void publish(false)}>
+            {publishing === "pr" ? "Creating pull request…" : t.pr_url ? "Retry pull request" : "Create pull request"}
+          </Button>
+          <Button kind="tertiary" size="sm" disabled={!t.can_publish || !!publishing} onClick={() => void publish(true)}>
+            {publishing === "push" ? "Pushing…" : `Push to ${t.base || "base branch"}`}
+          </Button>
+          {t.pr_url ? <a href={t.pr_url} target="_blank" rel="noreferrer">Open pull request</a> : null}
+        </div>
+        {!t.can_publish && t.publish_why ? <p className="nova-note">Unavailable: {t.publish_why}.</p> : null}
+        {publishError ? <InlineNotification kind="error" lowContrast title="GitHub" subtitle={publishError} hideCloseButton /> : null}
       </section>
       {eventError ? <InlineNotification kind="warning" lowContrast title="Event stream" subtitle={eventError} hideCloseButton /> : null}
       <div className="nova-columns">

@@ -982,3 +982,15 @@ async def test_publish_names_the_failing_operation_and_workflow_permission(agent
     j = (await admin.post(f"/autopilot/api/agent/tasks/{tid}/publish", headers=WRITE)).json()
     assert j["error"] == "github_forbidden" and "Workflows" not in j["message"]
     assert j["details"]["operation"] == "POST /git/trees"
+
+
+async def test_task_detail_explains_why_publishing_is_unavailable(agents):
+    ctrl, router, mgr, runner, gh, admin = agents()
+    tid = (await mgr.create("Add a health endpoint", "vellur-coder", "o/r"))["id"]
+    await wait_final(mgr, tid)
+    j = (await admin.get(f"/autopilot/api/agent/tasks/{tid}", headers=ADMIN)).json()
+    assert j["can_publish"] is False and "no GitHub token" in j["publish_why"]
+    token = "github_pat_" + "c" * 30
+    mgr.set_github_token(token)
+    r = await admin.get(f"/autopilot/api/agent/tasks/{tid}", headers=ADMIN)
+    assert r.json()["can_publish"] is True and r.json()["publish_why"] == "" and token not in r.text

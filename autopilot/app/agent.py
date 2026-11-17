@@ -1029,6 +1029,11 @@ class AgentManager:
         return {**t, "legacy": not has_events, "log": self.db.kv_get(f"task_log_{tid}", "") or "",
                 "diff_stat": d.get("stat", ""), "diagnostics": self.diagnostics(tid),
                 "can_publish": bool(t["state"] in FINAL and t["repo"] and t["files_changed"] and self.github_token()),
+                "publish_why": ("" if t["state"] in FINAL and t["repo"] and t["files_changed"] and self.github_token()
+                                else "the task is still running" if t["state"] not in FINAL
+                                else "the task has no GitHub repository" if not t["repo"]
+                                else "the task changed no files" if not t["files_changed"]
+                                else "no GitHub token saved (Settings → GitHub connection)"),
                 "can_message": bool(t["state"] in FINAL and t["started"] and has_events)}
 
     def diff(self, tid: int) -> dict:
