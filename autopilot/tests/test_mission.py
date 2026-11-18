@@ -129,6 +129,7 @@ async def test_start_links_agent_task_and_owner_judges_it(mission):
     assert r.status_code == 200, r.text
     tid = r.json()["agent_task_id"]
     assert r.json()["item"]["effective_state"] == "running"
+    runner.finish_after = 10 ** 9            # rulearea rămâne deschisă până la judecată (fără cursă de polling)
     await wait_meta(runner, "Sarcină: Adaugă modul întunecat")
     prompt = runner.meta["prompt"]
     assert "Obiectiv: Pune site-ul pe noul brand" in prompt and "Culori și tipografie" in prompt
@@ -145,6 +146,7 @@ async def test_start_links_agent_task_and_owner_judges_it(mission):
     assert (await admin.post(f"{M}/items/{it['id']}/verify", headers=WRITE)).status_code == 400
     assert (await admin.post(f"{M}/items/{it['id']}/return", headers=WRITE, json={})).status_code == 400
     # rulare încheiată → sarcina intră în review de la sine (derivat din task, nu inventat)
+    runner.finish_after = 2
     t = await wait_final(mgr, tid)
     assert t["state"] == "done"
     d = await snap(admin)

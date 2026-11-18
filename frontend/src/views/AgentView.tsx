@@ -33,7 +33,7 @@ import type {
 import { EmptyState, LoadError, Loading, PageHeader, SectionTitle, Stat } from "../components/Ui";
 import { useAsync } from "../hooks";
 import { navigate, type Route } from "../router";
-import { dateTime, errorMessage, money, num, tagType, timeAgo } from "../utils";
+import { dateTime, errorMessage, FILE_ACCEPT, money, num, tagType, timeAgo } from "../utils";
 
 const RUNNING = new Set(["running", "working", "started", "publishing", "cancelling"]);
 
@@ -318,6 +318,7 @@ function NewTask() {
           <input
             ref={fileRef}
             type="file"
+            accept={FILE_ACCEPT}
             multiple
             hidden
             onChange={(event) => void pickFiles(event.target.files)}
@@ -781,6 +782,7 @@ function TaskDetail({ id }: { id: number }) {
                 <input
                   ref={fileRef}
                   type="file"
+                  accept={FILE_ACCEPT}
                   multiple
                   hidden
                   onChange={(event) => void pickFiles(event.target.files)}
@@ -986,8 +988,7 @@ function TaskDetail({ id }: { id: number }) {
         ) : null}
       </div>
       <p className="nova-note">
-        3D task assets stay in 3D Studio. The classic dashboard remains available as a fallback, but every task
-        control now works here.
+        3D task assets stay in 3D Studio. Every task control works here.
       </p>
     </div>
   );

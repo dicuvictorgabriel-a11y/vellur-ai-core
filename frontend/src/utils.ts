@@ -75,3 +75,6 @@ export function assetUrl(url: string | null | undefined): string {
   const match = window.location.pathname.match(/^(\/tasks\/\d+\/preview\/)/);
   return match ? `${match[1]}${url.replace(/^\//, "")}` : url;
 }
+
+export const FILE_ACCEPT =
+  "image/*,.pdf,.doc,.docx,.xls,.xlsx,.ppt,.pptx,.txt,.md,.csv,.json,.xml,.yaml,.yml,.toml,.py,.js,.ts,.tsx,.jsx,.css,.html,.sh,.sql,.zip,.glb,.gltf,.obj,.stl,.blend";

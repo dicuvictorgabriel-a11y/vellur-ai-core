@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Button, InlineNotification, Modal, Select, Tag, TextArea, TextInput } from "@carbon/react";
 import { Add, Edit, Music, TrashCan } from "@carbon/icons-react";
 import { api } from "../api/client";
@@ -17,6 +17,34 @@ type ReleaseForm = {
   notes: string;
   cover_image_id: string;
 };
+
+function CoverPicker({ onSelect }: { onSelect: (imageId: string) => void }) {
+  const [images, setImages] = useState<Array<{ id: string; url: string }> | null>(null);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    api
+      .listImages()
+      .then((list) => setImages(list.images || []))
+      .catch((reason) => setError(errorMessage(reason)));
+  }, []);
+
+  if (error) return <InlineNotification kind="error" lowContrast title={error} hideCloseButton />;
+  if (!images) return <p className="nova-note">Loading images…</p>;
+  if (!images.length) return <p className="nova-note">No images in the library yet. Generate one in Chat first.</p>;
+
+  return (
+    <ul className="nova-cover-picker">
+      {images.map((image) => (
+        <li key={image.id}>
+          <button type="button" onClick={() => onSelect(image.id)} aria-label={`Use image ${image.id} as cover`}>
+            <img src={image.url} alt="" loading="lazy" />
+          </button>
+        </li>
+      ))}
+    </ul>
+  );
+}
 
 const EMPTY_RELEASE: ReleaseForm = {
   title: "",
@@ -43,6 +71,8 @@ export function MusicView({ route }: { route: Route }) {
   const [trackNotes, setTrackNotes] = useState("");
   const [editingTrack, setEditingTrack] = useState<MusicTrack | null>(null);
   const [profileOpen, setProfileOpen] = useState(false);
+  const [pickerOpen, setPickerOpen] = useState(false);
+  const [pickerError, setPickerError] = useState("");
   const [profile, setProfile] = useState({ artist_name: "", genre: "", bio: "", links: "" });
 
   const openNew = () => {
@@ -213,12 +243,31 @@ export function MusicView({ route }: { route: Route }) {
                   <Button size="sm" kind="danger--ghost" renderIcon={TrashCan} onClick={() => void removeRelease(selected)}>Delete</Button>
                 </div>
                 {selected.cover_image_id ? (
-                  <img
-                    className="nova-cover"
-                    src={`/autopilot/api/images/${encodeURIComponent(selected.cover_image_id)}/content`}
-                    alt={`Cover for ${selected.title}`}
-                  />
+                  <span className="nova-cover-wrap">
+                    <img
+                      className="nova-cover"
+                      src={`/autopilot/api/images/${encodeURIComponent(selected.cover_image_id)}/content`}
+                      alt={`Cover for ${selected.title}`}
+                    />
+                    <span className="nova-cover-blend" aria-hidden="true" />
+                  </span>
                 ) : null}
+                <div className="nova-row">
+                  <Button
+                    size="sm"
+                    kind="tertiary"
+                    onClick={() => {
+                      setPickerError("");
+                      api
+                        .listImages()
+                        .then(() => setPickerOpen(true))
+                        .catch((reason) => setPickerError(errorMessage(reason)));
+                    }}
+                  >
+                    Choose cover
+                  </Button>
+                </div>
+                {pickerError ? <InlineNotification kind="error" lowContrast title={pickerError} hideCloseButton /> : null}
                 <dl className="nova-kv">
                   <div><dt>Artist</dt><dd>{selected.artist || "—"}</dd></div>
                   <div><dt>Target</dt><dd>{dateOnly(selected.target_date)}</dd></div>
@@ -275,6 +324,25 @@ export function MusicView({ route }: { route: Route }) {
                   </div>
                 </form>
                 <p className="nova-note"><Music size={14} /> {music.data.profile.artist_name ? `Artist profile: ${music.data.profile.artist_name}` : "Artist profile is empty."}</p>
+                <Modal
+                  open={pickerOpen}
+                  modalHeading="Choose a cover image"
+                  passiveModal
+                  onRequestClose={() => setPickerOpen(false)}
+                  aria-label="Choose a cover image"
+                >
+                  <CoverPicker
+                    onSelect={(imageId) => {
+                      setPickerOpen(false);
+                      setBusy(true);
+                      void api
+                        .updateRelease(selected.id, { cover_image_id: imageId })
+                        .then(() => music.reload())
+                        .catch((reason) => setPickerError(errorMessage(reason)))
+                        .finally(() => setBusy(false));
+                    }}
+                  />
+                </Modal>
               </>
             ) : (
               <EmptyState title="Choose a release" detail="Or create a new one." />

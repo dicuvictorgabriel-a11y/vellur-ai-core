@@ -267,9 +267,9 @@ async def test_precision_studio_is_gone_and_3d_studio_stays(rig):
     import httpx
     from app.api import build_admin
     static = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "app", "static")
-    for name in ("studio.html", "studio.js", "studio.css", "geometry.js"):
+    for name in ("studio.html", "studio.js", "studio.css", "geometry.js", "dashboard.html"):
         assert not os.path.exists(os.path.join(static, name)), name
-    html = open(os.path.join(static, "dashboard.html")).read()
+    html = open(os.path.join(static, "3d", "studio3d.html")).read()
     assert "/autopilot/studio/" not in html and "Precision Studio" not in html
     ctrl = rig()
     async with httpx.AsyncClient(transport=httpx.ASGITransport(app=build_admin(ctrl)), base_url="https://ai.example") as c:

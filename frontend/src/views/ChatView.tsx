@@ -14,7 +14,25 @@ import { Markdown } from "../components/Markdown";
 import { EmptyState, LoadError, Loading, PageHeader } from "../components/Ui";
 import { useAsync } from "../hooks";
 import { navigate, type Route } from "../router";
-import { assetUrl, dateTime, errorMessage, timeAgo } from "../utils";
+import { assetUrl, dateTime, errorMessage, FILE_ACCEPT, timeAgo } from "../utils";
+
+function Lightbox({ url, onClose }: { url: string; onClose: () => void }) {
+  useEffect(() => {
+    const onKey = (event: KeyboardEvent) => {
+      if (event.key === "Escape") onClose();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
+  return (
+    <div className="nova-lightbox" role="dialog" aria-modal="true" aria-label="Image preview" onClick={onClose}>
+      <img src={url} alt="" />
+      <button type="button" className="nova-lightbox-close" aria-label="Close image preview" onClick={onClose}>
+        <Close size={20} />
+      </button>
+    </div>
+  );
+}
 
 interface PendingAttachment extends AttachmentInfo {
   localName?: string;
@@ -45,6 +63,7 @@ export function ChatView({ route }: { route: Route }) {
   const [titleDraft, setTitleDraft] = useState("");
   const fileRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [zoom, setZoom] = useState<string | null>(null);
   const abortRef = useRef<AbortController | null>(null);
 
   const list = conversations.data?.conversations ?? [];
@@ -309,28 +328,53 @@ export function ChatView({ route }: { route: Route }) {
                     <div className="nova-message-text">{message.role === "user" ? message.content : <Markdown text={message.content || ""} />}</div>
                     {message.meta?.attachments?.length ? (
                       <div className="nova-attach-list">
-                        {message.meta.attachments.map((attachment) => (
-                          <a
-                            key={attachment.id}
-                            href={assetUrl(`/autopilot/api/attachments/${attachment.id}/content`)}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="nova-attachment"
-                          >
-                            <Attachment size={14} /> {attachment.name || attachment.id}
-                          </a>
-                        ))}
+                        {message.meta.attachments.map((attachment) => {
+                          const url = assetUrl(`/autopilot/api/attachments/${attachment.id}/content`);
+                          const isImage = attachment.mime?.startsWith("image/") || /\.(png|jpe?g|gif|webp|avif|bmp)$/i.test(attachment.name || "");
+                          return (
+                            <a
+                              key={attachment.id}
+                              href={url}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="nova-attachment"
+                              download={attachment.name || undefined}
+                            >
+                              {isImage ? (
+                                <img
+                                  className="nova-attachment-thumb"
+                                  src={url}
+                                  alt={attachment.name || "Attachment"}
+                                  onClick={(event) => {
+                                    event.preventDefault();
+                                    event.stopPropagation();
+                                    setZoom(url);
+                                  }}
+                                />
+                              ) : (
+                                <Attachment size={14} />
+                              )}
+                              {attachment.name || attachment.id}
+                            </a>
+                          );
+                        })}
                       </div>
                     ) : null}
                     {Array.isArray(message.meta?.images)
-                      ? message.meta.images.map((image, index) => (
-                          <img
-                            key={image.id || index}
-                            className="nova-message-image"
-                            src={assetUrl(image.url || (image.id ? `/autopilot/api/images/${image.id}/content` : ""))}
-                            alt={image.alt || "Generated image"}
-                          />
-                        ))
+                      ? message.meta.images.map((image, index) => {
+                          const url = assetUrl(image.url || (image.id ? `/autopilot/api/images/${image.id}/content` : ""));
+                          return (
+                            <img
+                              key={image.id || index}
+                              className="nova-message-image is-zoomable"
+                              src={url}
+                              alt={image.alt || "Generated image"}
+                              role="button"
+                              aria-label="View full size"
+                              onClick={() => setZoom(url)}
+                            />
+                          );
+                        })
                       : null}
                     <small className="nova-message-time">
                       {dateTime(message.created)}
@@ -388,6 +432,7 @@ export function ChatView({ route }: { route: Route }) {
                   <input
                     ref={fileRef}
                     type="file"
+                    accept={FILE_ACCEPT}
                     multiple
                     hidden
                     onChange={(event) => void pickFiles(event.target.files)}
@@ -412,8 +457,10 @@ export function ChatView({ route }: { route: Route }) {
       </div>
       <p className="nova-note">
         Conversations can be renamed and user messages reopened in the composer for an edited resend. The server keeps
-        the original turn in history; true in-place message rewriting is not exposed by the API.
+        the original turn in history; true in-place message rewriting is not exposed by the API. Click any image to
+        view it full size.
       </p>
+      {zoom ? <Lightbox url={zoom} onClose={() => setZoom(null)} /> : null}
     </div>
   );
 }

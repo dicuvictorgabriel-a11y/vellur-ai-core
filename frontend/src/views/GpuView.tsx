@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Button, InlineNotification, Tag } from "@carbon/react";
+import { Button, InlineNotification, Tag, TextInput } from "@carbon/react";
 import { Meter, Play, Renew, Stop } from "@carbon/icons-react";
 import { api } from "../api/client";
 import { LoadError, Loading, PageHeader, SectionTitle, Stat } from "../components/Ui";
@@ -11,6 +11,9 @@ export function GpuView() {
   const [busy, setBusy] = useState("");
   const [notice, setNotice] = useState("");
   const [failed, setFailed] = useState(false);
+  const [hyperaiHost, setHyperaiHost] = useState("ssh.hyper.ai");
+  const [hyperaiPort, setHyperaiPort] = useState("");
+  const [vastOffer, setVastOffer] = useState<Record<string, unknown> | null>(null);
 
   if (status.loading && !status.data) return <Loading label="Reading GPU state" />;
   if (status.error) return <LoadError message={status.error} onRetry={status.reload} />;
@@ -18,15 +21,16 @@ export function GpuView() {
   const session = s.session;
   const settings = s.settings || {};
 
-  const run = async (label: string, action: () => Promise<unknown>, confirmation: string) => {
-    if (!window.confirm(confirmation)) return;
+  const run = async (label: string, action: () => Promise<unknown>, confirmation?: string, withResult?: (result: unknown) => void) => {
+    if (confirmation && !window.confirm(confirmation)) return;
     setBusy(label);
     setNotice("");
     setFailed(false);
     try {
-      await action();
+      const result = await action();
       setNotice(`${label} accepted by the controller.`);
       status.reload();
+      withResult?.(result);
     } catch (reason) {
       setFailed(true);
       setNotice(errorMessage(reason));
@@ -40,7 +44,7 @@ export function GpuView() {
       <PageHeader
         kicker="NOVA · GPU"
         title="Inference control"
-        description="The controller owns the GPU lifecycle. This screen reads the same state as vac and the classic dashboard."
+        description="The controller owns the GPU lifecycle. This screen reads the same state as vac."
         actions={<Button kind="tertiary" renderIcon={Renew} onClick={status.reload}>Refresh</Button>}
       />
       <section className="nova-stat-grid">
@@ -133,7 +137,7 @@ export function GpuView() {
           <SectionTitle hint="controller view">Providers</SectionTitle>
           <ul className="nova-provider-list">
             {(s.providers || []).map((provider) => (
-              <li key={provider.provider}>
+              <li key={provider.provider} className="nova-provider">
                 <div>
                   <strong>{provider.provider}</strong>
                   <small>{provider.detail || (provider.automated ? "automated lifecycle" : "assisted lifecycle")}</small>
@@ -151,9 +155,65 @@ export function GpuView() {
             <div><dt>HyperAI SSH</dt><dd>{String(settings.hyperai_ssh_host || "—")}:{String(settings.hyperai_ssh_port || "—")}</dd></div>
           </dl>
         </section>
+
+        <section className="nova-card">
+          <SectionTitle hint="HyperAI assisted">Connect HyperAI</SectionTitle>
+          <p className="nova-note">
+            Paste the SSH host and port of a HyperAI workspace (the port changes on every restart of the workspace).
+            The controller then opens its own tunnel to it; the workspace never gets a credential for this server.
+          </p>
+          <form
+            className="nova-hyperai-form"
+            onSubmit={(event) => {
+              event.preventDefault();
+              void run(
+                "Connect",
+                () => api.hyperaiConnect(hyperaiHost, Number(hyperaiPort)),
+                "Attach this HyperAI workspace as the GPU session?",
+              );
+            }}
+          >
+            <TextInput
+              id="nova-hyperai-host"
+              labelText="SSH host"
+              placeholder="ssh.hyper.ai"
+              value={hyperaiHost}
+              onChange={(event) => setHyperaiHost((event.target as HTMLInputElement).value)}
+            />
+            <TextInput
+              id="nova-hyperai-port"
+              labelText="SSH port"
+              type="number"
+              placeholder="22220"
+              value={hyperaiPort}
+              onChange={(event) => setHyperaiPort((event.target as HTMLInputElement).value)}
+            />
+            <Button type="submit" disabled={Boolean(busy) || !hyperaiHost || !Number(hyperaiPort)}>
+              Connect
+            </Button>
+          </form>
+        </section>
+
+        <section className="nova-card">
+          <SectionTitle hint="non-billable">Vast.ai offers</SectionTitle>
+          <p className="nova-note">
+            Runs a credential check and an offer search for the current profile. Nothing is rented; no instance is
+            created.
+          </p>
+          <Button
+            disabled={Boolean(busy)}
+            onClick={() => void run("Check", () => api.providerCheck("vastai"), undefined, (result) => setVastOffer(result as Record<string, unknown>))}
+          >
+            Check offers
+          </Button>
+          {vastOffer ? (
+            <pre className="nova-offer">{JSON.stringify(vastOffer, null, 2)}</pre>
+          ) : null}
+        </section>
       </div>
       <p className="nova-note">
-        HyperAI assisted attach, profile changes, budget editing and provider checks remain in the classic dashboard.
+        HyperAI profile changes and budget editing live in Settings; this screen only connects workspaces and checks
+        offers.
       </p>
     </div>
   );

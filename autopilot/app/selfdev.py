@@ -54,6 +54,12 @@ DASHBOARD_FORBIDDEN_SNIPPETS = (
     ("X-Vellur-Admin", "browser static files must never reference internal X-Vellur-Admin header"),
 )
 
+# The React app replaced dashboard.html; the browser invariants continue to apply to its sources.
+FRONTEND_FORBIDDEN_SNIPPETS = (
+    ("localStorage", "NOVA's React app must never use localStorage"),
+    ("X-Vellur-Admin", "browser static files must never reference internal X-Vellur-Admin header"),
+)
+
 DEPLOY_COMMAND_RE = re.compile(
     r"\b(vac-autoupdate|systemctl\s+(restart|stop|enable|disable)|service\s+\S+\s+restart|"
     r"docker\s+compose\s+.*\b(up|down|restart)\b|git\s+push\s+--force|ssh\s+root@)\b",
@@ -111,6 +117,14 @@ def audit_paths_and_diff(
                 for needle, reason in DASHBOARD_FORBIDDEN_SNIPPETS:
                     if needle in text:
                         violations.append({"kind": "dashboard_invariant", "path": rel, "reason": reason})
+
+        if workspace_root and rel.startswith("frontend/") and rel.endswith((".ts", ".tsx", ".html", ".css", ".js")):
+            fp = workspace_root / rel
+            if fp.is_file():
+                text = fp.read_text(encoding="utf-8", errors="replace")
+                for needle, reason in FRONTEND_FORBIDDEN_SNIPPETS:
+                    if needle in text:
+                        violations.append({"kind": "frontend_invariant", "path": rel, "reason": reason})
 
     if workspace_root:
         auth_fp = workspace_root / "autopilot/app/auth.py"

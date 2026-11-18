@@ -1,5 +1,5 @@
 import { Button } from "@carbon/react";
-import { Activity, Book, ColorPalette, Meter, Play, Roadmap, SettingsAdjust, Tools, Version } from "@carbon/icons-react";
+import { Activity, Book, ColorPalette, Meter, Play, Roadmap, SettingsAdjust, Version } from "@carbon/icons-react";
 import { PageHeader, SectionTitle } from "../components/Ui";
 import { navigate } from "../router";
 
@@ -79,13 +79,12 @@ export function ToolsView() {
         })}
       </div>
       <section className="nova-card">
-        <SectionTitle hint="unchanged by this preview">Classic dashboard</SectionTitle>
+        <SectionTitle hint="appearance">NOVA interface</SectionTitle>
         <p>
-          The production entry point stays at <code>/autopilot/</code>. The React preview is additive and can be removed by
-          deleting the static build and the route, without touching the legacy dashboard.
+          NOVA's interface is the React app served at <code>/autopilot/</code>. The theme it uses is set in Theme
+          Studio and shared with 3D Studio.
         </p>
         <div className="nova-row">
-          <Button kind="tertiary" href="/autopilot/" renderIcon={Tools}>Open classic NOVA</Button>
           <Button kind="ghost" href="#/themes" renderIcon={ColorPalette}>Theme Studio</Button>
         </div>
       </section>

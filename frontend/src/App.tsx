@@ -2,6 +2,7 @@ import { Suspense, lazy } from "react";
 import { AppShell } from "./components/AppShell";
 import { ChangePasswordScreen, LoginScreen } from "./components/AuthScreens";
 import { ErrorBoundary } from "./components/ErrorBoundary";
+import { IdentityProvider } from "./components/Pearl";
 import { Loading } from "./components/Ui";
 import { useAuth } from "./auth";
 import { useHashRoute } from "./router";
@@ -77,10 +78,12 @@ export function App() {
   })();
 
   return (
-    <AppShell route={route}>
-      <ErrorBoundary key={route.name}>
-        <Suspense fallback={<Loading label="Loading view" />}>{view}</Suspense>
-      </ErrorBoundary>
-    </AppShell>
+    <IdentityProvider>
+      <AppShell route={route}>
+        <ErrorBoundary key={route.name}>
+          <Suspense fallback={<Loading label="Loading view" />}>{view}</Suspense>
+        </ErrorBoundary>
+      </AppShell>
+    </IdentityProvider>
   );
 }

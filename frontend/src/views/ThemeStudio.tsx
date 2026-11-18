@@ -86,8 +86,8 @@ export function ThemeStudio() {
         </section>
       ))}
       <p className="nova-note">
-        Current preference: <code>{preference}</code>. The classic dashboard reads the same cookie and server setting, so both
-        entry points stay visually aligned.
+        Current preference: <code>{preference}</code>. It is stored in the <code>nova_theme</code> cookie and the
+        <code>ui_theme</code> server setting, so every NOVA screen stays visually aligned.
       </p>
     </div>
   );

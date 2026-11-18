@@ -14,7 +14,7 @@ function collectErrors(page: Page): string[] {
 test("home loads live controller data", async ({ page }) => {
   const errors = collectErrors(page);
   await page.goto("/");
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Good to see you");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(/Good (morning|afternoon|evening)/);
   await expect(page.getByText("Controller", { exact: false }).first()).toBeVisible();
   await expect(page.getByRole("link", { name: /NOVA/ }).first()).toBeVisible();
   expect(errors).toEqual([]);

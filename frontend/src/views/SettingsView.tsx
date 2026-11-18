@@ -15,6 +15,9 @@ type SettingsForm = {
   monthly_budget_usd: string;
   total_budget_cap_usd: string;
   max_hourly_usd: string;
+  max_session_usd: string;
+  agent_max_minutes: string;
+  agent_max_usd: string;
   max_session_hours: string;
   auto_start_paid: boolean;
   paid_fallback: boolean;
@@ -29,6 +32,9 @@ const FALLBACK: SettingsForm = {
   monthly_budget_usd: "50",
   total_budget_cap_usd: "0",
   max_hourly_usd: "0.50",
+  max_session_usd: "2.00",
+  agent_max_minutes: "20",
+  agent_max_usd: "1.00",
   max_session_hours: "3",
   auto_start_paid: false,
   paid_fallback: false,
@@ -46,6 +52,9 @@ function fromStatus(status: Status): SettingsForm {
     monthly_budget_usd: value("monthly_budget_usd"),
     total_budget_cap_usd: value("total_budget_cap_usd"),
     max_hourly_usd: value("max_hourly_usd"),
+    max_session_usd: value("max_session_usd"),
+    agent_max_minutes: value("agent_max_minutes"),
+    agent_max_usd: value("agent_max_usd"),
     max_session_hours: value("max_session_hours"),
     auto_start_paid: Boolean(settings.auto_start_paid),
     paid_fallback: Boolean(settings.paid_fallback),
@@ -80,6 +89,9 @@ export function SettingsView() {
         monthly_budget_usd: Number(form.monthly_budget_usd),
         total_budget_cap_usd: Number(form.total_budget_cap_usd),
         max_hourly_usd: Number(form.max_hourly_usd),
+        max_session_usd: Number(form.max_session_usd),
+        agent_max_minutes: Number(form.agent_max_minutes),
+        agent_max_usd: Number(form.agent_max_usd),
         max_session_hours: Number(form.max_session_hours),
       });
       setNote("Settings saved on the server.");
@@ -151,6 +163,9 @@ export function SettingsView() {
             <TextInput id="set-monthly" labelText="Monthly budget (USD)" type="number" step="0.01" min={0} value={form.monthly_budget_usd} onChange={(event) => setForm({ ...form, monthly_budget_usd: event.target.value })} />
             <TextInput id="set-cap" labelText="All-time cap (USD; 0 = monthly only)" type="number" step="0.01" min={0} value={form.total_budget_cap_usd} onChange={(event) => setForm({ ...form, total_budget_cap_usd: event.target.value })} />
             <TextInput id="set-hourly" labelText="Maximum hourly spend (USD)" type="number" step="0.01" min={0} value={form.max_hourly_usd} onChange={(event) => setForm({ ...form, max_hourly_usd: event.target.value })} />
+            <TextInput id="set-session-usd" labelText="Maximum spend per GPU session (USD)" type="number" step="0.01" min={0} value={form.max_session_usd} onChange={(event) => setForm({ ...form, max_session_usd: event.target.value })} />
+            <TextInput id="set-agent-minutes" labelText="Maximum agent task duration (minutes)" type="number" step="1" min={0} value={form.agent_max_minutes} onChange={(event) => setForm({ ...form, agent_max_minutes: event.target.value })} />
+            <TextInput id="set-agent-usd" labelText="Maximum agent task spend (USD)" type="number" step="0.01" min={0} value={form.agent_max_usd} onChange={(event) => setForm({ ...form, agent_max_usd: event.target.value })} />
           </div>
           <div className="nova-checkstack">
             <Checkbox id="set-enabled" labelText="Autopilot enabled" checked={form.enabled} onChange={(_, checked) => setForm({ ...form, enabled: Boolean(checked) })} />
