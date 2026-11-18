@@ -142,3 +142,13 @@ UI can be restored from the archive tag afterwards if the owner decides to re-op
   rule (as the owner's React migration already does). Owner should update the rule text.
 - The `test_mission` timing race exposed during this run is pre-existing (baseline passes only because of
   different ordering); it may flake in CI independent of this branch.
+
+## Closure (2026-11-18)
+
+- Cutover merged in PR #44; `/autopilot/` serves only `static/react/` (CI-built, fetched by the installer for the exact
+  release commit). No classic-dashboard route or file remains in `main`.
+- **Durable archive (supersedes the local tag above):** GitHub branch `archive/legacy-dashboard` at `0c7fbd3`, the last
+  commit before the cutover; it contains `autopilot/app/static/dashboard.html`. Restore a file with
+  `git checkout origin/archive/legacy-dashboard -- autopilot/app/static/dashboard.html`. Never served in production.
+- Kept on purpose: `/autopilot/react/` alias (old links/bookmarks), `/autopilot/3d/`, `/autopilot/carbon/` (3D Studio),
+  and the selfdev invariant checks that still mention `dashboard.html` (harmless: they only fire if that file returns).
