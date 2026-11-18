@@ -137,17 +137,30 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
     public_streams = {"n": 0}
     MAX_PUBLIC_STREAMS = 20
 
+    # React-only frontend. The bundle lives in static/react/ (installed by bin/vac-autoupdate
+    # from the CI-built release asset); it is the single proposed production entry point.
+    react_root = os.path.realpath(os.path.join(STATIC, "react"))
+
     @app.get("/autopilot/")
     async def dashboard():
-        return FileResponse(os.path.join(STATIC, "dashboard.html"), headers={"Cache-Control": "no-store"})
+        # React-only entry point (branch nova/react-only). The legacy dashboard.html was retired;
+        # it stays recoverable from the git tag legacy-dashboard-archive, not from any route.
+        index = os.path.join(react_root, "index.html")
+        if os.path.isfile(index):
+            return FileResponse(index, headers={"Cache-Control": "no-store"})
+        return JSONResponse(
+            status_code=503,
+            content={
+                "error": "react_build_missing",
+                "message": "NOVA's React app is not installed. Run 'bin/vac-autoupdate' (or build frontend/ locally); the legacy dashboard is not served anymore.",
+            },
+        )
 
     @app.get("/autopilot/3d/", dependencies=[Depends(admin)])
     async def studio3d():
         return FileResponse(os.path.join(STUDIO3D, "studio3d.html"), headers=STUDIO3D_HEADERS)
 
-    # Opt-in React migration preview. The classic dashboard above remains the production entry point.
-    react_root = os.path.realpath(os.path.join(STATIC, "react"))
-
+    # Compatibility alias kept for the transition: /autopilot/react/ serves the same single React app.
     @app.get("/autopilot/react")
     async def react_preview_redirect():
         return RedirectResponse("/autopilot/react/", status_code=308)
@@ -166,6 +179,15 @@ def build_admin(ctrl: Controller, gateway_transport: httpx.AsyncBaseTransport | 
             raise HTTPException(404, "not found")
         cache = "no-store" if asset.endswith(".html") else "public, max-age=31536000, immutable"
         return FileResponse(target, headers={"Cache-Control": cache, "X-Content-Type-Options": "nosniff"})
+
+    # The React build uses relative asset URLs (vite base "./"), so the same bundle works when the
+    # app is served at /autopilot/ (assets resolve to /autopilot/assets/...) and at /autopilot/react/.
+    @app.get("/autopilot/assets/{asset:path}")
+    async def react_assets(asset: str):
+        target = os.path.realpath(os.path.join(react_root, "assets", asset))
+        if not target.startswith(react_root + os.sep) or not os.path.isfile(target):
+            raise HTTPException(404, "not found")
+        return FileResponse(target, headers={"Cache-Control": "public, max-age=31536000, immutable", "X-Content-Type-Options": "nosniff"})
 
     # IBM Carbon assets (tokens, IBM Plex fonts, bundled official web components). Public: the login page uses them too.
     carbon_root = os.path.realpath(os.path.join(os.path.dirname(os.path.abspath(__file__)), "static", "carbon"))

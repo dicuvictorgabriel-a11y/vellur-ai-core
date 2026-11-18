@@ -1,6 +1,9 @@
 # NOVA React migration (P2, incremental preview)
 
-Status: opt-in preview only. The production entry point stays `/autopilot/` (`autopilot/app/static/dashboard.html`).
+Status update 2026-11-17: branch `nova/react-only` (see `docs/NOVA-REACT-ONLY-CUTOVER.md`) prepares the full
+cutover — `/autopilot/` serves the React app there and the legacy dashboard is retired (recoverable from the git
+tag `legacy-dashboard-archive`). Nothing merged or deployed; this document describes the older opt-in preview state.
+The production entry point on `main` stays `/autopilot/` (`autopilot/app/static/dashboard.html`).
 The React app is served at `/autopilot/react/` when `frontend/` has been built into
 `autopilot/app/static/react/` (gitignored). No production default was flipped, merged or deployed.
 

@@ -1,9 +1,71 @@
-import { Button, Tag } from "@carbon/react";
+import { useState } from "react";
+import { Button, InlineNotification, Tag, TextArea } from "@carbon/react";
 import { Renew } from "@carbon/icons-react";
 import { api } from "../api/client";
 import { EmptyState, LoadError, Loading, PageHeader, SectionTitle, Stat } from "../components/Ui";
 import { useAsync } from "../hooks";
 import { money, num, percent, tagType } from "../utils";
+
+type FixedCost = { name?: string; usd?: number; amount_usd?: number; in_budget?: boolean; [key: string]: unknown };
+
+export function FixedCostsEditor({
+  initial,
+  onSaved,
+}: {
+  initial: FixedCost[];
+  onSaved: () => void;
+}) {
+  const toText = (list: FixedCost[]) =>
+    list
+      .map((item) => `${String(item.name || "Cost")} | ${Number(item.usd ?? item.amount_usd ?? 0)} | ${item.in_budget ? "yes" : "no"}`)
+      .join("\n");
+  const [text, setText] = useState(() => toText(initial));
+  const [notice, setNotice] = useState<{ kind: "error" | "success"; text: string } | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const save = async (event: React.FormEvent) => {
+    event.preventDefault();
+    setNotice(null);
+    setSaving(true);
+    try {
+      const rows = text
+        .split("\n")
+        .map((line) => line.trim())
+        .filter(Boolean)
+        .map((line) => {
+          const parts = line.split("|").map((part) => part.trim());
+          return { name: parts[0], usd: Number(parts[1] || 0), in_budget: /^y/i.test(parts[2] || "") };
+        });
+      await api.updateSettings({ fixed_costs: rows });
+      setNotice({ kind: "success", text: "Fixed costs saved." });
+      onSaved();
+    } catch (reason) {
+      setNotice({ kind: "error", text: String(reason) });
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <form
+      className="nova-fixed-costs"
+      onSubmit={save}
+      style={{ marginTop: "1rem" }}
+    >
+      {notice ? <InlineNotification kind={notice.kind} title={notice.text} onCloseButtonClick={() => setNotice(null)} lowContrast /> : null}
+      <TextArea
+        id="nova-fixed-costs"
+        labelText="Fixed monthly costs"
+        rows={4}
+        value={text}
+        onChange={(event) => setText((event.target as HTMLTextAreaElement).value)}
+        placeholder={"Domain | 12.00 | no\nRent | 0.25 | yes"}
+      />
+      <p className="nova-note">One per line: <code>name | usd | yes/no</code> — yes counts it inside the monthly budget.</p>
+      <Button type="submit" size="sm" disabled={saving}>{saving ? "Saving…" : "Save fixed costs"}</Button>
+    </form>
+  );
+}
 
 export function CostsView() {
   const costs = useAsync(() => api.costs(), []);
@@ -72,6 +134,7 @@ export function CostsView() {
             </ul>
           )}
           <p className="nova-note">All-in total: {money(budget.all_in_total_usd)}. Fixed outside budget: {money(budget.fixed_outside_budget_usd)}.</p>
+          <FixedCostsEditor initial={fixed} onSaved={() => costs.reload()} />
         </section>
 
         <section className="nova-card nova-span-2">

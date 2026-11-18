@@ -50,9 +50,6 @@ export function LoginScreen() {
         <Button type="submit" renderIcon={LoginIcon} disabled={busy || !password}>
           {busy ? "Signing in…" : "Sign in"}
         </Button>
-        <a className="nova-auth-legacy" href="/autopilot/">
-          Open the classic dashboard
-        </a>
       </form>
     </main>
   );

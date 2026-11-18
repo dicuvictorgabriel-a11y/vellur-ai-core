@@ -110,17 +110,21 @@ Tests: `cd autopilot && pytest -q` (no network: guarded). Never let tests reach 
   installs it only if the `tests` workflow passed for that commit, and restores the previous release on failure.
   You cannot install anything and must not try to.
 - Live preview: `.vellur/preview.json` starts `dev/preview.sh`, which runs the real dashboard from your checkout with
-  an empty demo database (`dev/preview_server.py`, never installed on the server). Edit
-  `autopilot/app/static/dashboard.html` and the preview shows it after a reload. Python changes need the preview
+  an empty demo database (`dev/preview_server.py`, never installed on the server). The frontend is the React app in
+  `frontend/` (Vite + Carbon, `npm run build` writes `autopilot/app/static/react/`); the preview proxy serves it.
+  After editing frontend sources run `cd frontend && npm run build`, then reload. Python changes need the preview
   process restarted (the owner's Reload button does not restart it; say so in your report).
-- Tests: `bash dev/test.sh` (the whole suite, the same as CI). Run it before reporting.
-- Frozen: `autopilot/app/auth.py`, the login and password-change markup and their script block in `dashboard.html`
-  (`tests/test_auth_frozen.py` fails if they change). Keep `localStorage` out of the dashboard (a test checks it).
-- The dashboard is one static file without a build step; keep it that way.
+- Tests: `bash dev/test.sh` (the whole suite, the same as CI). Run it before reporting. Frontend: `cd frontend &&
+  npm run typecheck`, `npx playwright test` (e2e against the preview, needs `dockerd`-free ports 4173/4180/5173).
+- Frozen: `autopilot/app/auth.py` and its `/autopilot/api/auth` routes (`tests/test_auth_frozen.py` fails if they
+  change). Keep `localStorage` out of the dashboard (a test checks it).
+- The dashboard is React-only (commit 39ec9fe): `/autopilot/` serves `static/react/`; the legacy one-file
+  `dashboard.html` was retired (preserved offline at the local Git tag `legacy-dashboard-archive`, not deployed).
+  Writes from the UI go through `x-vellur-request: 1` (CSRF) + session cookie; no new cross-origin routes.
 
 ## NOVA (2026-11-16, docs/NOVA.md)
 
-The product's visible name is the temporary codename **NOVA** (`BRAND` constant in `dashboard.html`); technical
+The product's visible name is the temporary codename **NOVA** (React app title); technical
 identifiers stay `vellur` (domain, paths, cookies, model ids, headers, repository). The conversation view is the
 workspace: modes Discover / Build / Review / Ship over one linked task (`#modeBar`, `#stage`). Release status comes
 from `Release.delivery()` (`GET /autopilot/api/agent/tasks/{id}/delivery`): task record, GitHub and the installer's

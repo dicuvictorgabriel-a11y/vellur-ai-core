@@ -113,7 +113,7 @@ export function ActivityView() {
             </div>
           </dl>
           <p className="nova-note">
-            Approval, install and rollback stay in the classic dashboard and the installer report; this slice is read-only.
+            Approval, install and rollback live in the Release view and the installer report; this page is read-only.
           </p>
         </section>
       ) : null}

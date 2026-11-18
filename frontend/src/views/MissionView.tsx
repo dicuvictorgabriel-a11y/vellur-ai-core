@@ -165,7 +165,7 @@ export function MissionView() {
       <PageHeader
         kicker="NOVA · Mission"
         title="Mission Control"
-        description="One active objective, its queue, the studio scenes and the self-development runs. Editing uses the same mission API as the classic dashboard."
+        description="One active objective, its queue, the studio scenes and the self-development runs. Editing uses the controller's mission API."
         actions={
           <>
             <Button kind="ghost" onClick={openObjective}>{objective ? "Edit objective" : "Set objective"}</Button>

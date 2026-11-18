@@ -13,8 +13,8 @@ test("real login, forced password change and session shell", async ({ page }) =>
   await page.locator("#new-password").fill("browser-new-password");
   await page.locator("#confirm-password").fill("browser-new-password");
   await page.getByRole("button", { name: "Save password" }).click();
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Good to see you.", { timeout: 30_000 });
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(/Good (morning|afternoon|evening)/, { timeout: 30_000 });
   await page.reload();
-  await expect(page.getByRole("heading", { level: 1 })).toContainText("Good to see you.");
+  await expect(page.getByRole("heading", { level: 1 })).toContainText(/Good (morning|afternoon|evening)/);
   await expect(page.getByRole("heading", { name: "Sign in" })).toHaveCount(0);
 });

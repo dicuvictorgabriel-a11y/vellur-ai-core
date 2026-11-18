@@ -153,7 +153,64 @@ export interface LlmState {
   effective: Record<string, LlmTarget[]>;
   providers: Array<{ name: string; display?: string; configured?: boolean; [key: string]: unknown }>;
   catalog: Array<{ target: string; name?: string; provider?: string; [key: string]: unknown }>;
+  prices?: Record<string, [number, number]>;
+  image_prices?: Record<string, number>;
+  images?: { max_usd?: number; agent_max_usd?: number; confirm_paid?: boolean; agent?: boolean; [key: string]: unknown };
   budget_exhausted?: boolean;
+  [key: string]: unknown;
+}
+
+export interface RoutingState {
+  mode: string;
+  active?: boolean;
+  modes: string[];
+  allowance_usd: number;
+  task_limit_usd: number;
+  spent_month_usd?: number;
+  reserved_usd?: number;
+  available_usd?: number;
+  reserved_calls?: number;
+  pool?: string[];
+  decisions?: Array<{ id: number; ts: number; tag?: string; role?: string; policy?: string; chosen?: string; est_usd?: number; outcome?: string; [key: string]: unknown }>;
+  [key: string]: unknown;
+}
+
+export interface RoutingDecision {
+  id: string;
+  chosen: string;
+  reason?: string;
+  required?: string;
+  ranked?: Array<{ target: string; usable: boolean; why: string; [key: string]: unknown }>;
+  [key: string]: unknown;
+}
+
+export interface ModelsCatalogRow {
+  target: string;
+  provider?: string;
+  id?: string;
+  maker?: string;
+  model?: string;
+  in?: number;
+  out?: number;
+  ctx?: number;
+  image_price?: number;
+  capabilities?: string[];
+  labels?: string[];
+  vision?: number;
+  image_generation?: number;
+  tool_call?: number;
+  coding?: number;
+  free?: number;
+  usable?: number;
+  [key: string]: unknown;
+}
+
+export interface ImageStatus {
+  available?: boolean;
+  target?: string;
+  price_per_image?: number;
+  price_source?: string;
+  suggested?: Array<{ target: string; price?: number; [key: string]: unknown }>;
   [key: string]: unknown;
 }
 

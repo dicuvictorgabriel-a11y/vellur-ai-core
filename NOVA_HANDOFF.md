@@ -4,6 +4,13 @@ Sesiune curentă: branch local `nova/mission-control`, pornit de la `57fd83c`; f
 `c1c052c` „After run 3" a fost făcut automat de mediul de lucru, nu de agent). Istoric: `claude/eager-goodall-uj35ck`
 (repornit din `main` cc8389c după PR #14). Detalii: `docs/NOVA.md`.
 
+## 2026-11-17 — React-only candidate (branch `nova/react-only`)
+
+Branch local pe copia izolată (bază `f71e414`): `/autopilot/` servește aplicația React, dashboard-ul legacy e
+retras (recuperabil din tag-ul `legacy-dashboard-archive`), suita completă + 14 teste Playwright trec. Detalii,
+matrice de paritate, checklist de cutover și rollback: `docs/NOVA-REACT-ONLY-CUTOVER.md`. Nimic împins sau
+instalat; decizia aparține ownerului.
+
 ## Phase one (merged in #14)
 Shell + tokens, Discover/Build/Review/Ship work surface, delivery endpoint + release stepper, honest cost chip,
 ApprovalDialog, toasts.

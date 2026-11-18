@@ -17,9 +17,13 @@ import type {
   MusicRelease,
   MusicState,
   MusicTrack,
+  ImageStatus,
+  ModelsCatalogRow,
   PreviewInfo,
   Projects,
   ReleaseState,
+  RoutingDecision,
+  RoutingState,
   Status,
   Timeline,
 } from "./types";
@@ -99,8 +103,32 @@ export const api = {
   updateRoutes: (routes: Record<string, string[]>) =>
     request<LlmState>("llm/routes", { method: "PUT", body: JSON.stringify(routes) }),
   providers: () => request<Json>("llm/providers"),
+  hyperaiConnect: (host: string, port: number) =>
+    request<Json>("hyperai/connect", { method: "POST", body: JSON.stringify({ host, port }) }),
+  providerCheck: (name: string) =>
+    request<Json>(`providers/${encodeURIComponent(name)}/check`, { method: "POST", body: "{}" }),
   testModel: (target: string) =>
     request<Json>("llm/test", { method: "POST", body: JSON.stringify({ target }) }),
+  models: () =>
+    request<{ models: ModelsCatalogRow[]; capabilities: Record<string, string[]> }>("llm/models"),
+  saveProvider: (name: string, changes: Json) =>
+    request<LlmState>(`llm/providers/${encodeURIComponent(name)}`, {
+      method: "PUT",
+      body: JSON.stringify(changes),
+    }),
+  deleteProvider: (name: string) =>
+    request<Json>(`llm/providers/${encodeURIComponent(name)}`, { method: "DELETE" }),
+  loadCatalog: (name: string) =>
+    request<Json>(`providers/${encodeURIComponent(name)}/catalog`, { method: "POST", body: "{}" }),
+  catalog: (name: string) =>
+    request<Array<Json>>(`providers/${encodeURIComponent(name)}/catalog`),
+  routing: () => request<RoutingState>("routing"),
+  saveRouting: (changes: Json) =>
+    request<RoutingState>("routing", { method: "PUT", body: JSON.stringify(changes) }),
+  routingDecision: (id: string) => request<RoutingDecision>(`routing/decisions/${encodeURIComponent(id)}`),
+  imageStatus: () => request<ImageStatus>("images/status"),
+  listImages: (query = "") =>
+    request<{ images: Array<{ id: string; url: string; [key: string]: unknown }> }>(`images${query ? `?${query}` : ""}`),
 
   agent: () => request<AgentState>("agent"),
   repos: () => request<AgentRepos>("agent/repos"),
@@ -176,6 +204,7 @@ export const api = {
       `agent/tasks/${id}/events?after=${after}`,
     ),
 
+  settings: () => request<Json>("settings"),
   updateSettings: (changes: Json) =>
     request<Json>("settings", { method: "PUT", body: JSON.stringify(changes) }),
   setGithubToken: (token: string) =>

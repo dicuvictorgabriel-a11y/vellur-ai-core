@@ -31,7 +31,9 @@ import {
   Tools,
   Version,
 } from "@carbon/icons-react";
-import type { ReactElement } from "react";
+import { useState, type ReactElement } from "react";
+import { AccountDialog } from "./AccountDialog";
+import { Pearl, useIdentity } from "./Pearl";
 import { useAuth } from "../auth";
 import { useTheme } from "../theme";
 import { navigate, type Route } from "../router";
@@ -68,6 +70,8 @@ export function navItems() {
 export function AppShell({ route, children }: { route: Route; children: React.ReactNode }) {
   const { logout, me } = useAuth();
   const { theme, setTheme, setFollowSystem, system } = useTheme();
+  const identity = useIdentity();
+  const [acctOpen, setAcctOpen] = useState(false);
 
   const toggleMode = () => setTheme(theme.mode === "dark" ? "porcelain" : "obsidian");
 
@@ -94,6 +98,13 @@ export function AppShell({ route, children }: { route: Route; children: React.Re
             </HeaderName>
             <span className="nova-header-product">VELLUR AI Core</span>
             <HeaderGlobalBar>
+              <HeaderGlobalAction
+                aria-label="Account"
+                onClick={() => setAcctOpen(true)}
+                tooltipAlignment="end"
+              >
+                {identity.seed ? <Pearl seed={identity.seed} className="nova-pearl-sm" /> : null}
+              </HeaderGlobalAction>
               <HeaderGlobalAction
                 aria-label={theme.mode === "dark" ? "Switch to a light theme" : "Switch to a dark theme"}
                 onClick={toggleMode}
@@ -156,6 +167,7 @@ export function AppShell({ route, children }: { route: Route; children: React.Re
           <main id="main-content" className="nova-main" tabIndex={-1}>
             {children}
           </main>
+          <AccountDialog open={acctOpen} onClose={() => setAcctOpen(false)} />
         </>
       )}
     />

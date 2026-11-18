@@ -1,12 +1,14 @@
 import { Button, Tag } from "@carbon/react";
 import { Add, ArrowRight, Bot, Chat, Meter, Money, Play } from "@carbon/icons-react";
 import { api } from "../api/client";
+import { Pearl, greeting, useIdentity } from "../components/Pearl";
 import { EmptyState, LoadError, Loading, PageHeader, SectionTitle, Stat } from "../components/Ui";
 import { useAsync } from "../hooks";
 import { navigate } from "../router";
 import { dateTime, duration, money, num, percent, tagType, timeAgo } from "../utils";
 
 export function HomeView() {
+  const identity = useIdentity();
   const status = useAsync(() => api.status(), []);
   const agent = useAsync(() => api.agent(), []);
   const projects = useAsync(() => api.projects(), []);
@@ -23,9 +25,11 @@ export function HomeView() {
 
   return (
     <div className="nova-view">
-      <PageHeader
-        kicker="NOVA · Mission control"
-        title="Good to see you."
+      <div className="nova-hero">
+        {identity.seed ? <Pearl seed={identity.seed} /> : null}
+        <PageHeader
+          kicker="NOVA · Mission control"
+          title={greeting(identity.name)}
         description="One workspace for the controller, the coding agent, the GPU and the money. Nothing here is a mock."
         actions={
           <>
@@ -37,7 +41,8 @@ export function HomeView() {
             </Button>
           </>
         }
-      />
+        />
+      </div>
 
       <section className="nova-stat-grid" aria-label="System at a glance">
         <Stat

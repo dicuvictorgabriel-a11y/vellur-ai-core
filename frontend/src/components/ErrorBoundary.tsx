@@ -22,7 +22,7 @@ export class ErrorBoundary extends Component<{ children: ReactNode }, State> {
         <div className="nova-crash" role="alert">
           <span className="nova-kicker">Recoverable error</span>
           <h1>This screen stopped unexpectedly</h1>
-          <p>The classic dashboard is unaffected. Reload this preview, or return to the last working screen.</p>
+          <p>Your data is unaffected. Reload the page, or return to the last working screen.</p>
           <pre>{this.state.error.message}</pre>
           <div className="nova-row">
             <Button kind="primary" onClick={() => window.location.reload()}>
