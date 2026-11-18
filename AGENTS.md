@@ -73,7 +73,7 @@ in its network namespace; `vac verify` must pass. Validate Caddy output on 2.6�
 Inference goes through `autopilot/app/router.py`: public names (vellur-coder/chat/max) → ordered targets
 (`provider:model` OpenAI-compatible APIs, or `gpu`). Keys are write-only on the server. Usage and cost are recorded per
 request; paid targets obey the monthly budget; paid fallback is opt-in. HyperAI is optional, not the foundation.
-Workspace (chat with history, models, costs, agent) lives in `workspace.py` + `static/dashboard.html`, all behind the
+Workspace (chat with history, models, costs, agent) lives in `workspace.py` + the React app (`frontend/`, built by CI into `static/react/`), all behind the
 existing login. Coding agent: `agent.py` (controller, keeps the GitHub token) + `agent/` (isolated OpenCode runner).
 Agent design, event log, outcomes and the failed-test investigation: `docs/AGENT.md`. A task's `state` is the process
 state; `outcome` is the judged result. Never report `completed` from an exit code alone.
@@ -119,7 +119,7 @@ Tests: `cd autopilot && pytest -q` (no network: guarded). Never let tests reach 
 - Frozen: `autopilot/app/auth.py` and its `/autopilot/api/auth` routes (`tests/test_auth_frozen.py` fails if they
   change). Keep `localStorage` out of the dashboard (a test checks it).
 - The dashboard is React-only (commit 39ec9fe): `/autopilot/` serves `static/react/`; the legacy one-file
-  `dashboard.html` was retired (preserved offline at the local Git tag `legacy-dashboard-archive`, not deployed).
+  `dashboard.html` was retired (preserved on the GitHub branch `archive/legacy-dashboard`, commit 0c7fbd3; never served or built).
   Writes from the UI go through `x-vellur-request: 1` (CSRF) + session cookie; no new cross-origin routes.
 
 ## NOVA (2026-11-16, docs/NOVA.md)
@@ -142,10 +142,9 @@ incident is NOT confirmed yet (server logs needed).
 
 ## Design system (owner decision 2026-11-16, docs/CARBON.md)
 
-Use **IBM Carbon** (github.com/carbon-design-system/carbon) as the interaction/layout reference from now on, adapted to
-the single static dashboard file (no React, no build step, no copied code). The UI Shell is implemented: phone menu
-button + overlay side nav, desktop rail collapse (`#navOpen`, `#bnMenu`, `#railToggle`, shell script at the end of
-`dashboard.html`). Earlier pattern notes: docs/ASTRYX.md.
+Use **IBM Carbon** (github.com/carbon-design-system/carbon) as the interaction/layout reference from now on, implemented in the React app with `@carbon/react` (`frontend/src/components/AppShell.tsx`). React is the only
+supported frontend; there is no classic-dashboard fallback. Rollback: approve an older release in Activity → NOVA
+version, or restore files from the branch `archive/legacy-dashboard`. Earlier pattern notes: docs/ASTRYX.md.
 
 ## Themes (2026-11-16, docs/THEMES.md)
 

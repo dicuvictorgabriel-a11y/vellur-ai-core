@@ -7,7 +7,7 @@ Sesiune curentă: branch local `nova/mission-control`, pornit de la `57fd83c`; f
 ## 2026-11-17 — React-only candidate (branch `nova/react-only`)
 
 Branch local pe copia izolată (bază `f71e414`): `/autopilot/` servește aplicația React, dashboard-ul legacy e
-retras (recuperabil din tag-ul `legacy-dashboard-archive`), suita completă + 14 teste Playwright trec. Detalii,
+retras (recuperabil din branch-ul GitHub `archive/legacy-dashboard`), suita completă + 14 teste Playwright trec. Detalii,
 matrice de paritate, checklist de cutover și rollback: `docs/NOVA-REACT-ONLY-CUTOVER.md`. Nimic împins sau
 instalat; decizia aparține ownerului.
 
@@ -81,5 +81,5 @@ the server logs and update the Knowledge record `release:recovery-2026-11-16:inc
 6. Persist workspace mode per project on the server (now sessionStorage per conversation).
 
 ## Rules that still apply
-Auth frozen, no localStorage, no build step, no paid calls in tests, no deploy/merge by agents. The owner merges and
+Auth frozen, no localStorage, React built only by CI (never on the VPS), no paid calls in tests, no deploy/merge by agents. The owner merges and
 approves the exact commit in Activity → NOVA version.
